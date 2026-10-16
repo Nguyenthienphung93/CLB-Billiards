@@ -87,6 +87,163 @@
     cursor:default;
 }
 
+
+/* =========================
+   DANH SÁCH DẠNG BẢNG + PHÂN TRANG
+========================= */
+.activation-summary{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    flex-wrap:wrap;
+}
+.activation-summary-main{min-width:0}
+.activation-summary strong{color:#123a61}
+
+.activation-table-wrap{
+    width:100%;
+    overflow-x:auto;
+    border:1px solid #dbe7f2;
+    border-radius:18px;
+    background:#fff;
+    box-shadow:0 10px 24px rgba(15,44,76,.05);
+}
+.activation-table{
+    width:100%;
+    min-width:1180px;
+    border-collapse:collapse;
+}
+.activation-table thead th{
+    padding:12px 11px;
+    background:#eaf4ff;
+    border-bottom:1px solid #cfe0f2;
+    color:#123a61;
+    font-size:11px;
+    font-weight:1000;
+    text-transform:uppercase;
+    letter-spacing:.2px;
+    text-align:left;
+    white-space:nowrap;
+}
+.activation-table tbody td{
+    padding:12px 11px;
+    border-bottom:1px solid #edf2f7;
+    color:#173b61;
+    font-size:12px;
+    font-weight:750;
+    vertical-align:middle;
+}
+.activation-table tbody tr:last-child td{border-bottom:0}
+.activation-table tbody tr:hover{background:#f8fbff}
+.activation-row.is-confirmed{background:#f8fafc}
+.activation-row.is-confirmed:hover{background:#f3f6f9}
+.table-index{width:50px;text-align:center!important;color:#64748b!important}
+.table-code{font-weight:950!important;color:#174ea6!important;white-space:nowrap}
+.table-member-code{white-space:nowrap;font-weight:900!important}
+.table-name{min-width:150px;font-weight:900!important;color:#102a43!important}
+.table-benefit{min-width:180px}
+.table-benefit-name{font-weight:950;color:#123a61}
+.table-benefit-value{margin-top:3px;color:#1d4ed8;font-weight:950}
+.table-condition{
+    margin-top:5px;
+    max-width:320px;
+    color:#9a5a00;
+    font-size:10px;
+    line-height:1.45;
+    font-weight:800;
+}
+.table-status{min-width:135px}
+.table-status-main{font-weight:950;color:#475569}
+.table-status-time{margin-top:3px;color:#94a3b8;font-size:10px;line-height:1.4;font-weight:800}
+.table-action{width:175px;text-align:center!important}
+.type-badge{white-space:nowrap}
+.activate-btn{
+    min-width:132px;
+    height:38px;
+    padding:0 12px;
+    font-size:11px;
+}
+.activate-btn.activity-link{
+    background:#fff3cd;
+    color:#8a5a00;
+    border:1px solid #f0c36d;
+    cursor:pointer;
+}
+.empty-table-cell{
+    padding:42px 18px!important;
+    text-align:center;
+    color:#64748b!important;
+    font-weight:850!important;
+}
+
+.activation-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:14px;
+    flex-wrap:wrap;
+    padding:2px 2px 0;
+}
+.page-size-form{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    color:#516981;
+    font-size:12px;
+    font-weight:850;
+}
+.page-size-form select{
+    height:38px;
+    padding:0 32px 0 10px;
+    border:1px solid #cbd9ea;
+    border-radius:10px;
+    background:#fff;
+    color:#123a61;
+    font-weight:900;
+    cursor:pointer;
+}
+.pager{
+    display:flex;
+    align-items:center;
+    gap:8px;
+}
+.pager-btn{
+    min-width:38px;
+    height:38px;
+    padding:0 11px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border:1px solid #cbd9ea;
+    border-radius:10px;
+    background:#fff;
+    color:#123a61;
+    font-weight:950;
+    text-decoration:none;
+}
+.pager-btn:hover{background:#eef6ff;border-color:#9fc5f5}
+.pager-btn.disabled{pointer-events:none;opacity:.45;background:#f8fafc}
+.pager-current{
+    height:38px;
+    padding:0 13px;
+    display:inline-flex;
+    align-items:center;
+    border-radius:10px;
+    background:#eef6ff;
+    border:1px solid #d5e6f8;
+    color:#123a61;
+    font-size:12px;
+    font-weight:950;
+    white-space:nowrap;
+}
+
+@media(max-width:620px){
+    .activation-footer{align-items:stretch;flex-direction:column}
+    .page-size-form{justify-content:space-between}
+    .pager{justify-content:center}
+}
+
 /* =========================
    QR SCANNER
 ========================= */
@@ -239,95 +396,150 @@
 
     <div class="activation-head">
         <h1>Kích hoạt Quà/Voucher</h1>
-        <p>Tìm theo Mã Quà hoặc Mã Voucher và xác nhận khi khách sử dụng quyền lợi.</p>
     </div>
 
     <form class="activation-search" method="get" action="{{ url_for('kich_hoat_qua') }}">
+        <input type="hidden" name="per_page" value="{{ per_page }}">
         <input type="text" name="q" value="{{ q or '' }}" placeholder="Nhập mã Quà hoặc Voucher..." autocomplete="off" autofocus>
         <button type="submit" class="search-submit-btn"><i class="fa-solid fa-magnifying-glass"></i> Tìm kiếm</button>
         <button type="button" id="openQrScannerBtn" class="scan-open-btn"><i class="fa-solid fa-qrcode"></i> Quét mã</button>
     </form>
 
-    <div class="activation-summary">
-        Đang hiển thị <strong>{{ items|length }}</strong> Quà/Voucher.
-        Mục đã xác nhận được giữ 3 ngày trước khi Supabase tự xóa.
-    </div>
 
-    <div class="activation-grid">
-        {% for item in items %}
-        <article class="activation-card {% if item.da_xac_nhan %}is-confirmed{% endif %}" data-type="{{ item.loai }}" data-code="{{ item.ma }}">
+    <div class="activation-table-wrap">
+        <table class="activation-table">
+            <thead>
+                <tr>
+                    <th class="table-index">STT</th>
+                    <th>Loại</th>
+                    <th>Mã Quà/Voucher</th>
+                    <th>Mã thành viên</th>
+                    <th>Họ và tên</th>
+                    <th>Quà / Voucher</th>
+                    <th>Trạng thái</th>
+                    <th class="table-action">Hành động</th>
+                </tr>
+            </thead>
 
-            <div class="activation-card-top">
-                <div class="type-badge {% if item.loai == 'QUA' %}reward{% else %}voucher{% endif %}">
-                    {% if item.loai == 'QUA' %}
-                        <i class="fa-solid fa-gift"></i>
-                    {% else %}
-                        <i class="fa-solid fa-ticket"></i>
-                    {% endif %}
-                    {{ item.loai_hien_thi }}
-                </div>
+            <tbody>
+                {% for item in items %}
+                <tr class="activation-row {% if item.da_xac_nhan %}is-confirmed{% endif %}"
+                    data-type="{{ item.loai }}"
+                    data-code="{{ item.ma }}">
 
-                <div class="card-status-wrap">
-                    <div class="card-status js-card-status">
-                        {{ item.trang_thai }}
-                    </div>
+                    <td class="table-index">
+                        {{ ((page - 1) * per_page) + loop.index }}
+                    </td>
 
-                    <div class="card-status-time js-card-time">
-                        {% if item.da_xac_nhan and item.kich_hoat_at_hien_thi %}
-                            Xác nhận: {{ item.kich_hoat_at_hien_thi }}
+                    <td>
+                        <span class="type-badge {% if item.loai == 'QUA' %}reward{% else %}voucher{% endif %}">
+                            {% if item.loai == 'QUA' %}
+                                <i class="fa-solid fa-gift"></i>
+                            {% else %}
+                                <i class="fa-solid fa-ticket"></i>
+                            {% endif %}
+                            {{ item.loai_hien_thi }}
+                        </span>
+                    </td>
+
+                    <td class="table-code">{{ item.ma }}</td>
+                    <td class="table-member-code">{{ item.ma_thanh_vien or '—' }}</td>
+                    <td class="table-name">{{ item.ho_va_ten or '—' }}</td>
+
+                    <td class="table-benefit">
+                        <div class="table-benefit-name">{{ item.ten or '—' }}</div>
+
+                        {% if item.gia_tri_hien_thi %}
+                        <div class="table-benefit-value">{{ item.gia_tri_hien_thi }}</div>
                         {% endif %}
-                    </div>
-                </div>
-            </div>
 
-            <div class="activation-card-body">
-                <div class="info-row">
-                    <div class="info-label">Mã thành viên</div>
-                    <div class="info-value">{{ item.ma_thanh_vien or '—' }}</div>
-                </div>
+                        {% if item.loai == 'VOUCHER' and item.dieu_kien_dong %}
+                        <div class="table-condition">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                            {% for line in item.dieu_kien_dong %}
+                                {% if not loop.first %}<br>{% endif %}• {{ line }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    </td>
 
-                <div class="info-row">
-                    <div class="info-label">Họ và tên</div>
-                    <div class="info-value">{{ item.ho_va_ten or '—' }}</div>
-                </div>
+                    <td class="table-status">
+                        <div class="table-status-main js-card-status">{{ item.trang_thai }}</div>
+                        <div class="table-status-time js-card-time">
+                            {% if item.da_xac_nhan and item.kich_hoat_at_hien_thi %}
+                                Xác nhận: {{ item.kich_hoat_at_hien_thi }}
+                            {% endif %}
+                        </div>
+                    </td>
 
-                <div class="info-row">
-                    <div class="info-label">{% if item.loai == 'QUA' %}Mã quà{% else %}Mã Voucher{% endif %}</div>
-                    <div class="info-value">{{ item.ma }}</div>
-                </div>
+                    <td class="table-action">
+                        {% if item.da_xac_nhan %}
+                        <button type="button" class="activate-btn done" disabled>
+                            <i class="fa-solid fa-circle-check"></i> Đã xác nhận
+                        </button>
 
-                {% if item.loai == 'VOUCHER' and item.dieu_kien_dong %}
-                <div class="condition-box">
-                    <strong>⚠ Điều kiện sử dụng</strong>
-                    {% for line in item.dieu_kien_dong %}
-                        <div>• {{ line }}</div>
-                    {% endfor %}
-                </div>
-                {% endif %}
+                        {% elif item.loai == 'VOUCHER' and item.dieu_kien_dong %}
+                        <button type="button"
+                                class="activate-btn activity-link"
+                                onclick="window.location.href='{{ url_for('hoat_dong') }}'">
+                            <i class="fa-solid fa-receipt"></i> Áp dụng Hoạt Động
+                        </button>
 
-                <div class="activation-actions">
-                    {% if item.da_xac_nhan %}
-                    <button type="button" class="activate-btn done" disabled>
-                        <i class="fa-solid fa-circle-check"></i> Đã xác nhận
-                    </button>
-
-                    {% elif item.loai == 'VOUCHER' and item.dieu_kien_dong %}
-                    <button type="button" class="activate-btn condition-only" disabled>
-                        <i class="fa-solid fa-receipt"></i> Áp dụng tại Hoạt Động
-                    </button>
-
-                    {% else %}
-                    <button type="button" class="activate-btn ready js-activate-btn" data-type="{{ item.loai }}" data-code="{{ item.ma }}">
-                        <i class="fa-solid fa-check"></i> Kích hoạt
-                    </button>
-                    {% endif %}
-                </div>
-            </div>
-        </article>
-        {% else %}
-        <div class="empty-state">Không tìm thấy Quà/Voucher phù hợp.</div>
-        {% endfor %}
+                        {% else %}
+                        <button type="button"
+                                class="activate-btn ready js-activate-btn"
+                                data-type="{{ item.loai }}"
+                                data-code="{{ item.ma }}">
+                            <i class="fa-solid fa-check"></i> Kích hoạt
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="empty-table-cell">
+                        Không tìm thấy Quà/Voucher phù hợp.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
     </div>
+
+    <div class="activation-footer">
+        <form class="page-size-form" method="get" action="{{ url_for('kich_hoat_qua') }}">
+            <input type="hidden" name="q" value="{{ q or '' }}">
+            <input type="hidden" name="page" value="1">
+            <span>Hiển thị</span>
+            <select name="per_page" onchange="this.form.submit()">
+                {% for size in [30, 50, 100, 200, 500] %}
+                    <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>
+                        {{ size }} mục
+                    </option>
+                {% endfor %}
+            </select>
+            <span>/ trang</span>
+        </form>
+
+        <div class="pager">
+            <a class="pager-btn {% if page <= 1 %}disabled{% endif %}"
+               href="{{ url_for('kich_hoat_qua', q=q, per_page=per_page, page=page-1) }}"
+               aria-label="Trang trước">
+                <i class="fa-solid fa-chevron-left"></i>
+            </a>
+
+            <div class="pager-current">
+                Trang {{ page }} / {{ total_pages }}
+            </div>
+
+            <a class="pager-btn {% if page >= total_pages %}disabled{% endif %}"
+               href="{{ url_for('kich_hoat_qua', q=q, per_page=per_page, page=page+1) }}"
+               aria-label="Trang sau">
+                <i class="fa-solid fa-chevron-right"></i>
+            </a>
+        </div>
+    </div>
+
 </div>
 
 <div id="confirmOverlay" class="confirm-overlay">
@@ -524,15 +736,15 @@
                 return;
             }
 
-            const card = selectedButton.closest('.activation-card');
-            card.classList.add('is-confirmed');
+            const row = selectedButton.closest('.activation-row');
+            row.classList.add('is-confirmed');
 
-            const status = card.querySelector('.js-card-status');
+            const status = row.querySelector('.js-card-status');
             if(status){
                 status.textContent = result.trang_thai || 'Đã xác nhận';
             }
 
-            const timeBox = card.querySelector('.js-card-time');
+            const timeBox = row.querySelector('.js-card-time');
             if(timeBox){
                 let textTime = '';
 

@@ -1467,8 +1467,247 @@
     </section>
 
 
+    <!-- ===================================================
+         3. TÍCH PHÍ ĐỔI QUÀ
+    ==================================================== -->
+    <section class="promo-card promo-accordion">
+
+        <div class="promo-card-head">
+
+            <div class="promo-title-wrap">
+
+                <div class="promo-icon">
+                    💰
+                </div>
+
+                <div>
+                    <h2 class="promo-title">
+                        Tích lũy tiền chơi để đổi quà
+                    </h2>
+
+                    <div class="promo-description">
+                        {{ promo_money.mo_ta if promo_money else '' }}
+                    </div>
+
+                    {% if promo_money %}
+                    <div class="promo-period">
+
+                        <span>
+                            📅 Từ:
+                            <strong>
+                                {{ promo_money.bat_dau_hien_thi or 'Không giới hạn' }}
+                            </strong>
+                        </span>
+
+                        <span>
+                            đến:
+                            <strong>
+                                {{ promo_money.ket_thuc_hien_thi or 'Không giới hạn' }}
+                            </strong>
+                        </span>
+
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+
+            {% if promo_money %}
+            <div class="header-right-box">
+            <div
+                class="promo-status-badge
+                    {% if not promo_money.mo_chuong_trinh %}
+                        closed
+                    {% elif promo_money.trang_thai_ma == 'SAP_DIEN_RA' %}
+                        upcoming
+                    {% elif promo_money.trang_thai_ma == 'DANG_DIEN_RA' %}
+                        active
+                    {% elif promo_money.trang_thai_ma == 'KET_THUC' %}
+                        ended
+                    {% else %}
+                        closed
+                    {% endif %}
+                "
+            >
+                {% if not promo_money.mo_chuong_trinh %}
+                    Chưa mở
+                {% elif promo_money.trang_thai_ma == 'SAP_DIEN_RA' %}
+                    Sắp diễn ra
+                {% elif promo_money.trang_thai_ma == 'DANG_DIEN_RA' %}
+                    Bắt đầu
+                {% elif promo_money.trang_thai_ma == 'KET_THUC' %}
+                    Kết thúc
+                {% else %}
+                    Chưa mở
+                {% endif %}
+            </div>
+            {% endif %}
+            </div>
+
+        </div>
+
+
+        <div class="promo-body">
+
+            {% if not promo_money or not promo_money.mo_chuong_trinh %}
+
+                <div class="closed-box">
+
+                    <strong>
+                        Chương trình tích lũy tiền chơi chưa mở
+                    </strong>
+
+                    Quý khách vui lòng quay lại sau.
+
+                </div>
+
+            {% else %}
+
+                <div class="process-box">
+
+                    <div class="process-copy">
+                        <div class="process-title">
+                            Quá trình tích lũy
+                        </div>
+
+                        <div class="process-sub">
+                            Chỉ tính các hóa đơn nằm trong thời gian chương trình:
+                            <strong>{{ promo_money.bat_dau_hien_thi or 'Không giới hạn' }}</strong>
+                            →
+                            <strong>{{ promo_money.ket_thuc_hien_thi or 'Không giới hạn' }}</strong>
+                        </div>
+                    </div>
+
+                    <div class="process-value">
+                        {{ promo_money.tien_do_hien_thi }}
+                    </div>
+
+                </div>
+
+                <div class="progress-track-wrap">
+
+                    <div class="progress-track">
+
+                        <div class="progress-line-bg"></div>
+
+                        <div
+                            class="progress-line-fill"
+                            style="width: {{ promo_money.progress_percent or 0 }}%;"
+                        ></div>
+
+                        <div
+                            class="progress-node progress-node-zero"
+                            style="left:0%;"
+                        >
+                            <div class="progress-circle">
+                                0
+                            </div>
+
+                            <div class="progress-node-label">
+                                0 Vnđ
+                            </div>
+                        </div>
+
+                        {% set last_value =
+                            promo_money.moc[-1].gia_tri_moc
+                            if promo_money.moc
+                            else 0
+                        %}
+
+                        {% for m in promo_money.moc %}
+
+                            {% if last_value > 0 %}
+                                {% set position =
+                                    (
+                                        m.gia_tri_moc
+                                        / last_value
+                                        * 100
+                                    )
+                                %}
+                            {% else %}
+                                {% set position = 0 %}
+                            {% endif %}
+
+                            <div
+                                class="progress-node"
+                                style="left: {{ position }}%;"
+                            >
+                                <div
+                                    class="
+                                        progress-circle
+                                        {% if m.co_the_doi %}
+                                            reached
+                                        {% endif %}
+                                    "
+                                >
+                                    {{ loop.index }}
+                                </div>
+
+                                <div class="progress-node-label">
+                                    {{ m.moc_hien_thi }}
+                                </div>
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+                </div>
+
+
+                <div class="reward-grid">
+
+                    {% for m in promo_money.moc %}
+
+                    <div class="reward-card {% if m.co_the_doi %}can-redeem{% endif %}">
+
+                        <div class="reward-level">
+                            Mốc {{ m.moc_hien_thi }}
+                        </div>
+
+                        <div class="reward-name">
+                            🎁 {{ m.ten_qua_tang }}
+                        </div>
+
+                        <button
+                            type="button"
+                            class="redeem-btn {% if promo_money.dang_hoat_dong and m.co_the_doi %}enabled{% else %}disabled{% endif %}"
+                            {% if promo_money.dang_hoat_dong and m.co_the_doi %}
+                            onclick="redeemReward(
+                                '{{ m.ma_moc }}',
+                                '{{ m.ten_qua_tang|e }}'
+                            )"
+                            {% else %}
+                            disabled
+                            {% endif %}
+                        >
+                            {% if promo_money.dang_hoat_dong and m.co_the_doi %}
+                                Đổi quà
+                            {% elif promo_money.trang_thai_ma == 'SAP_DIEN_RA' %}
+                                Chưa bắt đầu
+                            {% elif promo_money.trang_thai_ma == 'KET_THUC' %}
+                                Đã kết thúc
+                            {% else %}
+                                Chưa đủ điều kiện
+                            {% endif %}
+                        </button>
+
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+
     <!-- ====================================================
-    QUÀ TẶNG & VOUCHER
+    4. QUÀ TẶNG & VOUCHER
     ==================================================== -->
     <section class="promo-card promo-accordion active">
 
@@ -1541,8 +1780,12 @@
                                 <div class="gv-type">
                                     {% if reward.loai_khuyen_mai == 'THOI_LUONG' %}
                                         ⏱️ Quà tích giờ
-                                    {% else %}
+                                    {% elif reward.loai_khuyen_mai == 'SO_LAN' %}
                                         🎱 Quà tích lượt
+                                    {% elif reward.loai_khuyen_mai == 'SO_TIEN' %}
+                                        💰 Quà tích phí
+                                    {% else %}
+                                        🎁 Quà khuyến mãi
                                     {% endif %}
                                 </div>
 

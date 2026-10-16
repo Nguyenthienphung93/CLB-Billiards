@@ -43,7 +43,7 @@
 
 {% block content %}
 <div class="setup-page">
-  <div class="setup-head"><h1>Setup</h1><p>Quản lý cài đặt chung. Tất cả thông tin được lưu trong một file JSON duy nhất.</p></div>
+  <div class="setup-head"><h1>Setup</h1></div>
 
   <div class="setup-shell">
     <div class="setup-tabs">
@@ -60,7 +60,7 @@
           <div class="setup-grid">
             <div class="field"><label>Tiêu đề</label><input type="text" name="club_title" value="{{ setup_config.club.title }}" required></div>
             <div class="field"><label>Tên CLB</label><input type="text" name="club_name" value="{{ setup_config.club.name }}" required></div>
-            <div class="field"><label>Số lượng bàn</label><input type="number" name="table_count" min="1" max="100" value="{{ setup_config.club.table_count }}" required><div class="helper">Tăng số bàn: hệ thống tự tạo thêm. Giảm số bàn: dữ liệu bàn cũ không bị xóa.</div></div>
+            <div class="field"><label>Số lượng bàn</label><input type="number" name="table_count" min="1" max="100" value="{{ setup_config.club.table_count }}" required></div>
           </div>
         </div>
         <div class="save-row"><button class="save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu</button></div>
@@ -113,7 +113,7 @@
               <div class="field full"><label>Tên chủ tài khoản</label><input id="accountName" type="text" name="account_name" value="{{ setup_config.payment.account_name }}" oninput="updateQrPreview()"></div>
               <div class="field"><label>Ngân hàng</label><select id="bankCode" name="bank_code" onchange="updateQrPreview()"><option value="">-- Chọn ngân hàng --</option>{% for bank in bank_options %}<option value="{{ bank.code }}" {% if bank.code == setup_config.payment.bank_code %}selected{% endif %}>{{ bank.name }}</option>{% endfor %}</select></div>
               <div class="field"><label>Số tài khoản</label><input id="accountNumber" type="text" name="account_number" value="{{ setup_config.payment.account_number }}" inputmode="numeric" oninput="updateQrPreview()"></div>
-              <div class="field full"><label>Ghi chú chuyển khoản</label><input id="noteTemplate" type="text" name="note_template" value="{{ setup_config.payment.note_template }}" placeholder="Khách lẻ hoặc mã Thành Viên" oninput="updateQrPreview()"><div class="helper">Mặc định: <strong>Khách lẻ hoặc mã Thành Viên</strong>.</div></div>
+              <div class="field full"><label>Ghi chú chuyển khoản</label><input id="noteTemplate" type="text" name="note_template" value="{{ setup_config.payment.note_template }}" placeholder="Khách lẻ hoặc mã Thành Viên" oninput="updateQrPreview()"></div>
             </div>
           </div>
           <div class="qr-card">

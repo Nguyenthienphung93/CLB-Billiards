@@ -9,7 +9,11 @@
 .page-heading p{margin:6px 0 0;color:#64748b;font-size:14px;font-weight:600}
 .info-panel,.invoice-panel{background:#fff;border:1px solid #dbe7f2;border-radius:20px;box-shadow:0 12px 28px rgba(15,44,76,.06)}
 .info-panel{padding:18px}
+.section-head-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:15px;flex-wrap:wrap}
 .section-title{display:flex;align-items:center;gap:9px;margin-bottom:15px;font-size:18px;font-weight:900;color:#123a61}
+.section-head-row .section-title{margin-bottom:0}
+.rank-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:14px;background:#f7fbff;border:1px solid #dbe7f2}
+.rank-head-label{color:#6b7f94;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.45px}
 .section-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:#eaf3ff;color:#2563eb;flex:0 0 34px}
 .info-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px}
 .info-item{min-height:74px;padding:12px 14px;border:1px solid #dce8f3;border-radius:14px;background:linear-gradient(180deg,#fbfdff,#f5f9fd)}
@@ -95,6 +99,10 @@ tbody tr:hover{background:#f8fbff}
         padding:11px;
     }
 
+
+    .section-head-row{align-items:stretch;gap:8px;margin-bottom:10px}
+
+    .rank-head{width:100%;justify-content:space-between;padding:8px 10px;border-radius:11px}
 
     .section-title{
         margin-bottom:10px;
@@ -255,19 +263,36 @@ tbody tr:hover{background:#f8fbff}
     </div>
 
     <section class="info-panel">
-        <div class="section-title"><span class="section-icon">👤</span>Hồ sơ thành viên</div>
+        <div class="section-head-row">
+            <div class="section-title"><span class="section-icon">👤</span>Hồ sơ thành viên</div>
+            <div class="rank-head">
+                <span class="rank-head-label">Hạng thành viên</span>
+                <span class="rank-pill">{{ member.hang_thanh_vien or 'Chưa xếp hạng' }}</span>
+            </div>
+        </div>
+
         <div class="info-grid">
             <div class="info-item"><span class="label">Mã thành viên</span><div class="value">{{ member.ma_thanh_vien or '—' }}</div></div>
             <div class="info-item"><span class="label">Họ và tên</span><div class="value">{{ member.ho_va_ten or '—' }}</div></div>
-            <div class="info-item"><span class="label">Hạng thành viên</span><div class="value"><span class="rank-pill">{{ member.hang_thanh_vien or 'Chưa xếp hạng' }}</span></div></div>
-            <div class="info-item"><span class="label">Giới tính</span><div class="value">{{ member.gioi_tinh or '—' }}</div></div>
             <div class="info-item"><span class="label">Ngày sinh</span><div class="value">{{ member.ngay_sinh_hien_thi or member.ngay_sinh or '—' }}</div></div>
+
+            <div class="info-item"><span class="label">Giới tính</span><div class="value">{{ member.gioi_tinh or '—' }}</div></div>
             <div class="info-item"><span class="label">Số điện thoại</span><div class="value">{{ member.so_dien_thoai or '—' }}</div></div>
             <div class="info-item"><span class="label">Địa chỉ</span><div class="value">{{ member.dia_chi or '—' }}</div></div>
+        </div>
+    </section>
+
+    <section class="info-panel">
+        <div class="section-title"><span class="section-icon">🎱</span>Hồ sơ hoạt động</div>
+
+        <div class="info-grid">
+            <div class="info-item"><span class="label">Thời gian đăng ký lần đầu</span><div class="value">{{ member.ngay_dang_ky_hien_thi or 'Chưa có' }}</div></div>
+            <div class="info-item"><span class="label">Thời gian chơi gần nhất</span><div class="value">{{ member.thoi_gian_choi_gan_nhat_hien_thi or 'Chưa có' }}</div></div>
+            <div class="info-item"><span class="label">Số tiền đã chi</span><div class="value">{{ member.so_tien_da_chi_hien_thi or '0 đ' }}</div></div>
+
             <div class="info-item"><span class="label">Số lần đã chơi</span><div class="value">{{ member.so_lan_da_choi or 0 }} lần</div></div>
-            <div class="info-item"><span class="label">Chơi gần nhất</span><div class="value">{{ member.thoi_gian_choi_gan_nhat_hien_thi or 'Chưa có' }}</div></div>
-            <div class="info-item"><span class="label">Thời gian chơi lâu nhất</span><div class="value">{% if member.thoi_gian_choi_lau_nhat %}{{ member.thoi_gian_choi_lau_nhat }} phút{% else %}Chưa có{% endif %}</div></div>
-            <div class="info-item"><span class="label">Thời gian chơi ngắn nhất</span><div class="value">{% if member.thoi_gian_choi_ngan_nhat %}{{ member.thoi_gian_choi_ngan_nhat }} phút{% else %}Chưa có{% endif %}</div></div>
+            <div class="info-item"><span class="label">Thời gian chơi lâu nhất</span><div class="value">{{ member.thoi_gian_choi_lau_nhat_hien_thi or 'Chưa có' }}</div></div>
+            <div class="info-item"><span class="label">Thời gian chơi ngắn nhất</span><div class="value">{{ member.thoi_gian_choi_ngan_nhat_hien_thi or 'Chưa có' }}</div></div>
         </div>
     </section>
 

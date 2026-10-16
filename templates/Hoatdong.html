@@ -1047,6 +1047,337 @@
     font-weight:950;
 }
 
+
+/* =========================
+   TÌM / QUÉT THÀNH VIÊN
+========================= */
+.member-search-wrap{
+    position:relative;
+}
+.member-search-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 132px;
+    gap:10px;
+    align-items:center;
+}
+.member-search-input-wrap{
+    position:relative;
+}
+.member-search-input-wrap input{
+    padding-right:42px;
+}
+.member-search-clear{
+    position:absolute;
+    right:7px;
+    top:50%;
+    transform:translateY(-50%);
+    width:30px;
+    height:30px;
+    border:0;
+    border-radius:9px;
+    background:#eef2f7;
+    color:#64748b;
+    font-size:17px;
+    font-weight:900;
+    cursor:pointer;
+    display:none;
+}
+.member-search-clear.show{display:grid;place-items:center;}
+.member-scan-btn{
+    height:44px;
+    border:0;
+    border-radius:12px;
+    background:linear-gradient(135deg,#0f766e,#0d9488);
+    color:#fff;
+    font-weight:950;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    box-shadow:0 9px 20px rgba(13,148,136,.18);
+}
+.member-search-help{
+    margin-top:7px;
+    color:#64748b;
+    font-size:11px;
+    line-height:1.45;
+    font-weight:750;
+}
+.member-search-results{
+    display:none;
+    position:absolute;
+    left:0;
+    right:142px;
+    top:50px;
+    z-index:4300;
+    max-height:280px;
+    overflow:auto;
+    padding:6px;
+    border:1px solid #cbd5e1;
+    border-radius:14px;
+    background:#fff;
+    box-shadow:0 18px 40px rgba(15,23,42,.18);
+}
+.member-search-results.show{display:block;}
+.member-search-item{
+    width:100%;
+    border:0;
+    border-bottom:1px solid #edf2f7;
+    background:#fff;
+    padding:10px 11px;
+    text-align:left;
+    cursor:pointer;
+    border-radius:10px;
+}
+.member-search-item:last-child{border-bottom:0;}
+.member-search-item:hover,
+.member-search-item.active{
+    background:#eff6ff;
+}
+.member-search-item-name{
+    color:#123a61;
+    font-size:13px;
+    font-weight:950;
+}
+.member-search-item-meta{
+    margin-top:3px;
+    color:#64748b;
+    font-size:11px;
+    line-height:1.4;
+    font-weight:750;
+}
+.member-search-empty{
+    padding:13px 12px;
+    text-align:center;
+    color:#64748b;
+    font-size:12px;
+    font-weight:800;
+}
+
+
+.qr-scan-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    z-index:6200;
+    background:rgba(15,23,42,.56);
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+}
+.qr-scan-backdrop.show{display:flex;}
+
+.qr-scan-modal{
+    width:min(640px,96vw);
+    max-height:94vh;
+    overflow:auto;
+    border-radius:22px;
+    background:#fff;
+    box-shadow:0 30px 80px rgba(15,23,42,.32);
+}
+
+.qr-scan-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:16px 18px;
+    border-bottom:1px solid #e2e8f0;
+}
+.qr-scan-head h3{
+    margin:0;
+    color:#123a61;
+    font-size:20px;
+    font-weight:1000;
+}
+
+.qr-scan-body{
+    padding:16px 18px 18px;
+}
+
+.qr-reader-box{
+    min-height:320px;
+    border-radius:18px;
+    overflow:hidden;
+    background:#0f172a;
+    border:1px solid #1e293b;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+
+.qr-reader-box:empty::before{
+    content:"";
+    width:210px;
+    height:210px;
+    border:3px solid rgba(255,255,255,.68);
+    border-radius:18px;
+    box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,.10),
+        0 0 0 999px rgba(15,23,42,.12);
+}
+
+.qr-scan-note{
+    margin:10px 0 0;
+    color:#64748b;
+    font-size:12px;
+    line-height:1.5;
+    font-weight:750;
+}
+
+.qr-device-title{
+    margin-top:14px;
+    color:#334155;
+    font-size:12px;
+    font-weight:950;
+}
+
+.qr-camera-row{
+    margin-top:7px;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:10px;
+}
+.qr-camera-row select,
+.qr-camera-row button{
+    height:42px;
+    border-radius:11px;
+    font-weight:850;
+}
+.qr-camera-row select{
+    border:1px solid #cbd5e1;
+    background:#fff;
+    padding:0 10px;
+}
+.qr-camera-row button{
+    border:0;
+    padding:0 15px;
+    background:#2563eb;
+    color:#fff;
+    cursor:pointer;
+}
+
+.qr-tools-grid{
+    margin-top:12px;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+}
+
+.qr-tool-card{
+    border:1px solid #dbe7f2;
+    background:#f8fbff;
+    border-radius:14px;
+    padding:12px;
+}
+
+.qr-tool-label{
+    display:flex;
+    align-items:center;
+    gap:7px;
+    margin-bottom:8px;
+    color:#123a61;
+    font-size:12px;
+    font-weight:950;
+}
+
+.qr-image-btn{
+    width:100%;
+    height:42px;
+    border:1px solid #cbd5e1;
+    border-radius:11px;
+    background:#fff;
+    color:#334155;
+    font-weight:900;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+}
+.qr-image-btn:hover{
+    border-color:#93c5fd;
+    color:#1d4ed8;
+    background:#f8fbff;
+}
+
+.qr-manual-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px;
+}
+.qr-manual-row input{
+    width:100%;
+    height:42px;
+    border:1px solid #cbd5e1;
+    border-radius:11px;
+    background:#fff;
+    padding:0 11px;
+    color:#0f172a;
+    font-weight:800;
+    outline:none;
+}
+.qr-manual-row input:focus{
+    border-color:#60a5fa;
+    box-shadow:0 0 0 3px rgba(37,99,235,.10);
+}
+.qr-manual-row button{
+    height:42px;
+    border:0;
+    border-radius:11px;
+    padding:0 14px;
+    background:linear-gradient(135deg,#16a34a,#15803d);
+    color:#fff;
+    font-weight:950;
+    cursor:pointer;
+}
+
+.qr-manual-help{
+    margin-top:7px;
+    color:#64748b;
+    font-size:10px;
+    line-height:1.45;
+    font-weight:700;
+}
+
+.qr-scan-status{
+    margin-top:12px;
+    min-height:20px;
+    padding:10px 12px;
+    border-radius:12px;
+    background:#f8fafc;
+    border:1px solid #e2e8f0;
+    color:#475569;
+    font-size:12px;
+    line-height:1.45;
+    font-weight:850;
+}
+.qr-scan-status:empty{
+    display:none;
+}
+.qr-scan-status.good{
+    color:#15803d;
+    background:#f0fdf4;
+    border-color:#bbf7d0;
+}
+.qr-scan-status.bad{
+    color:#dc2626;
+    background:#fff1f2;
+    border-color:#fecdd3;
+}
+
+@media(max-width:640px){
+    .member-search-row{grid-template-columns:1fr;}
+    .member-search-results{right:0;top:50px;}
+    .member-scan-btn{width:100%;}
+    .qr-reader-box{min-height:240px;}
+    .qr-camera-row{grid-template-columns:1fr;}
+    .qr-tools-grid{grid-template-columns:1fr;}
+    .qr-manual-row{grid-template-columns:1fr;}
+    .qr-manual-row button{width:100%;}
+}
+
 </style>
 {% endblock %}
 
@@ -1055,7 +1386,6 @@
     <div class="page-head">
         <div>
             <h1>Hoạt Động</h1>
-            <p>Quản lý hoạt động {{ setup_config.club.table_count }} bàn bida, theo dõi thời gian chơi và tạo hóa đơn sau khi kết thúc bàn.</p>
         </div>
     </div>
 
@@ -1258,9 +1588,47 @@
             <div class="modal-section">
                 <div class="section-head"><i class="fa-solid fa-user"></i> Khung 1: Chọn thành viên / khách hàng</div>
                 <div class="member-grid">
-                    <div class="field full">
-                        <label>Chọn thành viên</label>
-                        <select id="invoiceMemberSelect" onchange="handleMemberSelect(this.value)">
+                    <div class="field full member-search-wrap">
+                        <label>Tìm thành viên</label>
+
+                        <div class="member-search-row">
+                            <div class="member-search-input-wrap">
+                                <input
+                                    id="invoiceMemberSearch"
+                                    type="text"
+                                    placeholder="Nhập mã thành viên, họ tên hoặc SĐT..."
+                                    autocomplete="off"
+                                    oninput="handleMemberSearchInput(this.value)"
+                                    onkeydown="handleMemberSearchKeydown(event)"
+                                    onfocus="handleMemberSearchInput(this.value)"
+                                >
+
+                                <button
+                                    id="memberSearchClear"
+                                    class="member-search-clear"
+                                    type="button"
+                                    title="Xóa lựa chọn"
+                                    onclick="clearSelectedMember(true)"
+                                >×</button>
+                            </div>
+
+                            <button
+                                type="button"
+                                class="member-scan-btn"
+                                onclick="openMemberQrScanner()"
+                            >
+                                <i class="fa-solid fa-qrcode"></i> Quét mã QR
+                            </button>
+                        </div>
+
+                        <div class="member-search-help">
+                            Có thể tìm theo <b>Mã thành viên</b>, <b>Họ tên</b> hoặc <b>SĐT</b>.
+                            Máy quét mã USB cũng có thể quét trực tiếp vào ô này rồi nhấn Enter.
+                        </div>
+
+                        <div id="memberSearchResults" class="member-search-results"></div>
+
+                        <select id="invoiceMemberSelect" onchange="handleMemberSelect(this.value)" style="display:none">
                             <option value="">Khách lẻ / chưa chọn thành viên</option>
                         </select>
                     </div>
@@ -1438,9 +1806,99 @@
         </div>
     </div>
 </div>
+
+
+<div id="memberQrScanModal" class="qr-scan-backdrop" onclick="closeMemberQrScannerOnBackdrop(event)">
+    <div class="qr-scan-modal">
+        <div class="qr-scan-head">
+            <h3><i class="fa-solid fa-qrcode"></i> Quét mã thành viên</h3>
+            <button type="button" class="modal-close" onclick="closeMemberQrScanner()">×</button>
+        </div>
+
+        <div class="qr-scan-body">
+
+            <div id="memberQrReader" class="qr-reader-box"></div>
+
+            <div class="qr-scan-note">
+                Đưa mã QR trên thẻ thành viên vào giữa khung camera. Hệ thống sẽ tự đọc mã và chọn đúng thành viên.
+            </div>
+
+            <div class="qr-device-title">
+                <i class="fa-solid fa-camera"></i> Camera / Webcam kết nối với thiết bị
+            </div>
+
+            <div class="qr-camera-row">
+                <select id="memberQrCameraSelect">
+                    <option value="">Đang tìm camera...</option>
+                </select>
+
+                <button type="button" onclick="restartMemberQrCamera()">
+                    <i class="fa-solid fa-rotate"></i> Đổi camera
+                </button>
+            </div>
+
+            <div class="qr-tools-grid">
+
+                <div class="qr-tool-card">
+                    <div class="qr-tool-label">
+                        <i class="fa-regular fa-image"></i>
+                        Chọn ảnh QR
+                    </div>
+
+                    <button
+                        type="button"
+                        class="qr-image-btn"
+                        onclick="document.getElementById('memberQrImageInput').click()"
+                    >
+                        <i class="fa-solid fa-image"></i>
+                        Chọn ảnh QR từ máy
+                    </button>
+
+                    <input
+                        id="memberQrImageInput"
+                        type="file"
+                        accept="image/*"
+                        onchange="scanMemberQrImage(this)"
+                        style="display:none"
+                    >
+                </div>
+
+                <div class="qr-tool-card">
+                    <div class="qr-tool-label">
+                        <i class="fa-solid fa-barcode"></i>
+                        Máy quét mã / Nhập thủ công
+                    </div>
+
+                    <div class="qr-manual-row">
+                        <input
+                            id="memberQrManualInput"
+                            type="text"
+                            placeholder="Nhập hoặc quét mã thành viên..."
+                            autocomplete="off"
+                            onkeydown="handleMemberQrManualKeydown(event)"
+                        >
+
+                        <button type="button" onclick="submitMemberQrManualCode()">
+                            Tìm
+                        </button>
+                    </div>
+
+                    <div class="qr-manual-help">
+                        Máy quét QR/Barcode USB có thể quét trực tiếp vào ô này rồi bấm Enter.
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="memberQrScanStatus" class="qr-scan-status"></div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block page_script %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
 const TABLE_COUNT = Number(
     {{ setup_config.club.table_count|default(12)|tojson }}
@@ -2629,6 +3087,10 @@ function openInvoiceModal(tableNo) {
     document.getElementById('invoiceCustomerName').value = '';
     document.getElementById('invoiceCustomerPhone').value = '';
     document.getElementById('invoiceMemberSelect').value = '';
+    const memberSearchInput = document.getElementById('invoiceMemberSearch');
+    if (memberSearchInput) memberSearchInput.value = '';
+    hideMemberSearchResults();
+    syncMemberSearchClearButton();
     document.getElementById('invoiceMemberInfo').innerHTML = 'Chưa chọn thành viên.';
     document.getElementById('discountValue').value = 0;
     document.getElementById('discountType').value = 'amount';
@@ -2679,10 +3141,458 @@ function populateMemberOptions() {
 
     const currentValue = select.value;
     select.innerHTML = '<option value="">Khách lẻ / chưa chọn thành viên</option>' + membersData.map(member => {
-        return `<option value="${member.id}">${member.ma_thanh_vien} - ${member.ho_va_ten}</option>`;
+        return `<option value="${member.id}">${escapeHtml(member.ma_thanh_vien || '')} - ${escapeHtml(member.ho_va_ten || '')}</option>`;
     }).join('');
     select.value = currentValue;
 }
+
+let memberSearchMatches = [];
+let memberSearchActiveIndex = -1;
+let memberQrScanner = null;
+let memberQrCurrentCameraId = '';
+let memberQrScannerRunning = false;
+
+function normalizeMemberSearchText(value) {
+    return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D')
+        .toLowerCase()
+        .trim();
+}
+
+function memberSearchHaystack(member) {
+    return normalizeMemberSearchText([
+        member.ma_thanh_vien || '',
+        member.ho_va_ten || '',
+        member.so_dien_thoai || ''
+    ].join(' '));
+}
+
+function syncMemberSearchClearButton() {
+    const input = document.getElementById('invoiceMemberSearch');
+    const button = document.getElementById('memberSearchClear');
+    if (!button) return;
+    button.classList.toggle('show', Boolean(input && input.value.trim()));
+}
+
+function hideMemberSearchResults() {
+    const box = document.getElementById('memberSearchResults');
+    if (!box) return;
+    box.classList.remove('show');
+    box.innerHTML = '';
+    memberSearchMatches = [];
+    memberSearchActiveIndex = -1;
+}
+
+function renderMemberSearchResults(items) {
+    const box = document.getElementById('memberSearchResults');
+    if (!box) return;
+
+    memberSearchMatches = items.slice(0, 12);
+    memberSearchActiveIndex = -1;
+
+    if (!memberSearchMatches.length) {
+        box.innerHTML = '<div class="member-search-empty">Không tìm thấy thành viên phù hợp.</div>';
+        box.classList.add('show');
+        return;
+    }
+
+    box.innerHTML = memberSearchMatches.map((member, index) => `
+        <button
+            type="button"
+            class="member-search-item"
+            data-index="${index}"
+            onclick="selectMemberFromSearch('${String(member.id).replace(/'/g, "\\'")}')"
+        >
+            <div class="member-search-item-name">${escapeHtml(member.ho_va_ten || '—')}</div>
+            <div class="member-search-item-meta">
+                Mã: <b>${escapeHtml(member.ma_thanh_vien || '—')}</b>
+                &nbsp;•&nbsp; SĐT: <b>${escapeHtml(member.so_dien_thoai || '—')}</b>
+                ${member.hang_thanh_vien ? '&nbsp;•&nbsp; ' + escapeHtml(member.hang_thanh_vien) : ''}
+            </div>
+        </button>
+    `).join('');
+
+    box.classList.add('show');
+}
+
+function handleMemberSearchInput(value) {
+    syncMemberSearchClearButton();
+
+    const keyword = normalizeMemberSearchText(value);
+    if (!keyword) {
+        hideMemberSearchResults();
+        return;
+    }
+
+    const digits = String(value || '').replace(/\D/g, '');
+
+    const matches = membersData
+        .map(member => {
+            const code = normalizeMemberSearchText(member.ma_thanh_vien);
+            const name = normalizeMemberSearchText(member.ho_va_ten);
+            const phone = String(member.so_dien_thoai || '').replace(/\D/g, '');
+            const all = memberSearchHaystack(member);
+
+            let score = 99;
+            if (code === keyword || phone === digits) score = 0;
+            else if (code.startsWith(keyword)) score = 1;
+            else if (phone && digits && phone.startsWith(digits)) score = 2;
+            else if (name.startsWith(keyword)) score = 3;
+            else if (all.includes(keyword)) score = 4;
+
+            return { member, score };
+        })
+        .filter(item => item.score < 99)
+        .sort((a, b) => a.score - b.score || String(a.member.ho_va_ten || '').localeCompare(String(b.member.ho_va_ten || ''), 'vi'))
+        .map(item => item.member);
+
+    renderMemberSearchResults(matches);
+}
+
+function selectMemberFromSearch(memberId, options={}) {
+    const member = membersData.find(item => String(item.id) === String(memberId));
+    if (!member) return false;
+
+    const select = document.getElementById('invoiceMemberSelect');
+    const input = document.getElementById('invoiceMemberSearch');
+
+    if (select) select.value = String(member.id);
+    if (input) input.value = `${member.ma_thanh_vien || ''} - ${member.ho_va_ten || ''}`.trim();
+
+    hideMemberSearchResults();
+    syncMemberSearchClearButton();
+    handleMemberSelect(member.id);
+
+    if (options.focusSearch !== false && input) input.focus();
+    return true;
+}
+
+function clearSelectedMember(clearCustomerFields=false) {
+    const select = document.getElementById('invoiceMemberSelect');
+    const input = document.getElementById('invoiceMemberSearch');
+
+    if (select) select.value = '';
+    if (input) input.value = '';
+    hideMemberSearchResults();
+    syncMemberSearchClearButton();
+
+    const infoBox = document.getElementById('invoiceMemberInfo');
+    if (infoBox) infoBox.innerHTML = 'Chưa chọn thành viên.';
+
+    if (clearCustomerFields) {
+        const nameInput = document.getElementById('invoiceCustomerName');
+        const phoneInput = document.getElementById('invoiceCustomerPhone');
+        if (nameInput) nameInput.value = '';
+        if (phoneInput) phoneInput.value = '';
+    }
+
+    resetMemberBenefitSelector('Hãy chọn Thành viên hoặc Đăng ký thành viên');
+    if (input) input.focus();
+}
+
+function setMemberSearchActiveIndex(index) {
+    const box = document.getElementById('memberSearchResults');
+    if (!box || !memberSearchMatches.length) return;
+
+    memberSearchActiveIndex = (index + memberSearchMatches.length) % memberSearchMatches.length;
+    box.querySelectorAll('.member-search-item').forEach((item, i) => {
+        item.classList.toggle('active', i === memberSearchActiveIndex);
+    });
+
+    const active = box.querySelector('.member-search-item.active');
+    if (active) active.scrollIntoView({ block: 'nearest' });
+}
+
+function findExactMemberByScannedCode(rawValue) {
+    const raw = String(rawValue || '').trim();
+    const normalized = normalizeMemberSearchText(raw);
+    const digits = raw.replace(/\D/g, '');
+
+    return membersData.find(member => {
+        const code = normalizeMemberSearchText(member.ma_thanh_vien);
+        const phone = String(member.so_dien_thoai || '').replace(/\D/g, '');
+        return code === normalized || (digits && phone === digits);
+    }) || null;
+}
+
+function handleMemberSearchKeydown(event) {
+    const box = document.getElementById('memberSearchResults');
+
+    if (event.key === 'ArrowDown') {
+        event.preventDefault();
+        if (box && box.classList.contains('show')) setMemberSearchActiveIndex(memberSearchActiveIndex + 1);
+        return;
+    }
+
+    if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (box && box.classList.contains('show')) setMemberSearchActiveIndex(memberSearchActiveIndex - 1);
+        return;
+    }
+
+    if (event.key === 'Escape') {
+        hideMemberSearchResults();
+        return;
+    }
+
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+
+    const input = event.currentTarget;
+    const exact = findExactMemberByScannedCode(input.value);
+
+    if (exact) {
+        selectMemberFromSearch(exact.id);
+        return;
+    }
+
+    if (memberSearchActiveIndex >= 0 && memberSearchMatches[memberSearchActiveIndex]) {
+        selectMemberFromSearch(memberSearchMatches[memberSearchActiveIndex].id);
+        return;
+    }
+
+    if (memberSearchMatches.length === 1) {
+        selectMemberFromSearch(memberSearchMatches[0].id);
+        return;
+    }
+
+    if (memberSearchMatches.length > 1) {
+        setMemberSearchActiveIndex(0);
+    }
+}
+
+function setMemberQrStatus(message, type='') {
+    const status = document.getElementById('memberQrScanStatus');
+    if (!status) return;
+    status.className = 'qr-scan-status' + (type ? ' ' + type : '');
+    status.textContent = message || '';
+}
+
+async function openMemberQrScanner() {
+    const modal = document.getElementById('memberQrScanModal');
+    if (!modal) return;
+    modal.classList.add('show');
+
+    const manualInput =
+        document.getElementById(
+            'memberQrManualInput'
+        );
+
+    if (manualInput) {
+        manualInput.value = '';
+    }
+
+    setMemberQrStatus('Đang tìm camera...');
+
+    if (typeof Html5Qrcode === 'undefined') {
+        setMemberQrStatus('Không tải được bộ đọc QR. Bạn vẫn có thể nhập mã thành viên ở ô tìm kiếm.', 'bad');
+        return;
+    }
+
+    if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+        setMemberQrStatus('Không mở được camera vì trang hiện tại chưa dùng HTTPS. Bạn vẫn có thể Chọn ảnh QR hoặc dùng Máy quét mã / Nhập thủ công bên dưới.', 'bad');
+        return;
+    }
+
+    try {
+        const cameras = await Html5Qrcode.getCameras();
+        const select = document.getElementById('memberQrCameraSelect');
+
+        if (!cameras || !cameras.length) {
+            if (select) select.innerHTML = '<option value="">Không tìm thấy camera</option>';
+            setMemberQrStatus('Không tìm thấy camera. Có thể chọn ảnh QR bên dưới.', 'bad');
+            return;
+        }
+
+        if (select) {
+            select.innerHTML = cameras.map((camera, index) => `
+                <option value="${escapeHtml(camera.id)}">${escapeHtml(camera.label || ('Camera ' + (index + 1)))}</option>
+            `).join('');
+        }
+
+        const preferred = cameras.find(camera => /back|rear|environment/i.test(camera.label || '')) || cameras[0];
+        memberQrCurrentCameraId = preferred.id;
+        if (select) select.value = preferred.id;
+        await startMemberQrCamera(preferred.id);
+
+    } catch (error) {
+        console.error(error);
+        setMemberQrStatus('Không mở được camera. Hãy kiểm tra quyền Camera hoặc chọn ảnh QR bên dưới.', 'bad');
+    }
+}
+
+async function startMemberQrCamera(cameraId) {
+    if (!cameraId || typeof Html5Qrcode === 'undefined') return;
+
+    try {
+        if (!memberQrScanner) memberQrScanner = new Html5Qrcode('memberQrReader');
+
+        if (memberQrScannerRunning) {
+            await memberQrScanner.stop().catch(() => {});
+            memberQrScannerRunning = false;
+        }
+
+        memberQrCurrentCameraId = cameraId;
+        setMemberQrStatus('Đang mở camera...');
+
+        await memberQrScanner.start(
+            cameraId,
+            { fps: 10, qrbox: { width: 220, height: 220 }, aspectRatio: 1.333334 },
+            decodedText => handleMemberQrDecoded(decodedText),
+            () => {}
+        );
+
+        memberQrScannerRunning = true;
+        setMemberQrStatus('Camera đã sẵn sàng. Đưa mã QR thành viên vào giữa khung.', 'good');
+    } catch (error) {
+        console.error(error);
+        memberQrScannerRunning = false;
+        setMemberQrStatus('Không thể bật camera này. Hãy thử camera khác hoặc chọn ảnh QR.', 'bad');
+    }
+}
+
+async function restartMemberQrCamera() {
+    const select = document.getElementById('memberQrCameraSelect');
+    const cameraId = select ? select.value : '';
+    if (!cameraId) return;
+    await startMemberQrCamera(cameraId);
+}
+
+async function handleMemberQrDecoded(decodedText) {
+    const member = findExactMemberByScannedCode(decodedText);
+
+    if (!member) {
+        setMemberQrStatus(`Đã đọc mã: ${decodedText} — nhưng không tìm thấy thành viên.`, 'bad');
+        return;
+    }
+
+    setMemberQrStatus(`Đã tìm thấy: ${member.ho_va_ten || member.ma_thanh_vien}`, 'good');
+    selectMemberFromSearch(member.id, { focusSearch: false });
+    await closeMemberQrScanner();
+}
+
+async function scanMemberQrImage(input) {
+    const file = input && input.files && input.files[0];
+    if (!file || typeof Html5Qrcode === 'undefined') return;
+
+    try {
+        if (memberQrScannerRunning && memberQrScanner) {
+            await memberQrScanner.stop().catch(() => {});
+            memberQrScannerRunning = false;
+        }
+
+        if (!memberQrScanner) memberQrScanner = new Html5Qrcode('memberQrReader');
+        setMemberQrStatus('Đang đọc ảnh QR...');
+        const decodedText = await memberQrScanner.scanFile(file, true);
+        await handleMemberQrDecoded(decodedText);
+    } catch (error) {
+        console.error(error);
+        setMemberQrStatus('Không đọc được QR từ ảnh này. Hãy thử ảnh rõ hơn.', 'bad');
+    } finally {
+        if (input) input.value = '';
+    }
+}
+
+
+function submitMemberQrManualCode() {
+    const input =
+        document.getElementById(
+            'memberQrManualInput'
+        );
+
+    const code =
+        String(
+            input ? input.value : ''
+        ).trim();
+
+    if (!code) {
+        setMemberQrStatus(
+            'Hãy nhập hoặc quét mã thành viên.',
+            'bad'
+        );
+
+        if (input) {
+            input.focus();
+        }
+
+        return;
+    }
+
+    const member =
+        findExactMemberByScannedCode(
+            code
+        );
+
+    if (!member) {
+        setMemberQrStatus(
+            `Không tìm thấy thành viên với mã: ${code}`,
+            'bad'
+        );
+        return;
+    }
+
+    setMemberQrStatus(
+        `Đã tìm thấy: ${member.ho_va_ten || member.ma_thanh_vien}`,
+        'good'
+    );
+
+    selectMemberFromSearch(
+        member.id,
+        {
+            focusSearch: false
+        }
+    );
+
+    closeMemberQrScanner();
+}
+
+
+function handleMemberQrManualKeydown(event) {
+    if (event.key !== 'Enter') {
+        return;
+    }
+
+    event.preventDefault();
+    submitMemberQrManualCode();
+}
+
+
+async function closeMemberQrScanner() {
+    const modal = document.getElementById('memberQrScanModal');
+
+    if (memberQrScannerRunning && memberQrScanner) {
+        await memberQrScanner.stop().catch(() => {});
+        memberQrScannerRunning = false;
+    }
+
+    if (modal) modal.classList.remove('show');
+
+    const manualInput =
+        document.getElementById(
+            'memberQrManualInput'
+        );
+
+    if (manualInput) {
+        manualInput.value = '';
+    }
+
+    setMemberQrStatus('');
+}
+
+function closeMemberQrScannerOnBackdrop(event) {
+    if (event.target && event.target.id === 'memberQrScanModal') {
+        closeMemberQrScanner();
+    }
+}
+
+// Click bên ngoài danh sách tìm kiếm thì đóng dropdown.
+document.addEventListener('click', function(event) {
+    const wrap = event.target.closest('.member-search-wrap');
+    if (!wrap) hideMemberSearchResults();
+});
 
 
 function resetMemberBenefitSelector(message) {
@@ -3070,8 +3980,13 @@ function handleMemberSelect(memberId) {
     const infoBox =
         document.getElementById('invoiceMemberInfo');
 
+    const searchInput =
+        document.getElementById('invoiceMemberSearch');
+
     if (!member) {
         infoBox.innerHTML = 'Chưa chọn thành viên.';
+        if (searchInput) searchInput.value = '';
+        syncMemberSearchClearButton();
 
         document.getElementById('invoiceCustomerName').value = '';
         document.getElementById('invoiceCustomerPhone').value = '';
@@ -3080,6 +3995,11 @@ function handleMemberSelect(memberId) {
             'Hãy chọn Thành viên hoặc Đăng ký thành viên'
         );
         return;
+    }
+
+    if (searchInput) {
+        searchInput.value = `${member.ma_thanh_vien || ''} - ${member.ho_va_ten || ''}`.trim();
+        syncMemberSearchClearButton();
     }
 
     document.getElementById('invoiceCustomerName').value =

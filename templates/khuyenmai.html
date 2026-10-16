@@ -2,7 +2,7 @@
 {% block title %}Khuyến Mãi - Billiards Manager{% endblock %}
 {% block content %}
 <style>
-.promo-admin-page{display:flex;flex-direction:column;gap:16px}.promo-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}.promo-page-head h1{margin:0;color:#102a43;font-size:28px;font-weight:900}.promo-page-head p{margin:6px 0 0;color:#64748b;font-size:14px;line-height:1.5;font-weight:650}.promo-tabs-shell{background:#fff;border:1px solid #dbe7f2;border-radius:20px;box-shadow:0 12px 28px rgba(15,44,76,.06);overflow:hidden}.promo-tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #dbe7f2;background:#f8fbff}.promo-tab-btn{position:relative;min-height:66px;border:0;border-right:1px solid #e5edf5;background:transparent;color:#5b7085;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 14px;font-family:inherit;font-size:14px;font-weight:900;transition:.16s ease}.promo-tab-btn:last-child{border-right:0}.promo-tab-btn:hover{background:#eef6ff;color:#1d4ed8}.promo-tab-btn.active{background:#fff;color:#0f4f8a}.promo-tab-btn.active::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:4px;border-radius:999px 999px 0 0;background:linear-gradient(90deg,#2563eb,#38bdf8)}.promo-tab-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e9f3ff;font-size:19px;flex:0 0 38px}.promo-tab-btn.active .promo-tab-icon{background:#dbeafe}.promo-tab-text{text-align:left;line-height:1.25}.promo-tab-text small{display:block;margin-top:3px;color:#94a3b8;font-size:10px;font-weight:750}.promo-tab-panel{display:none;padding:20px}.promo-tab-panel.active{display:block}.panel-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:18px;flex-wrap:wrap}.panel-title{display:flex;align-items:center;gap:12px}.panel-title-icon{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:#edf6ff}.panel-title h2{margin:0;color:#123a61;font-size:20px;font-weight:900}.panel-title p{margin:5px 0 0;color:#64748b;font-size:12px;font-weight:650}.status-pill{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:6px 11px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}.status-pill.on{background:#dcfce7;border:1px solid #86efac;color:#166534}.status-pill.off{background:#f1f5f9;border:1px solid #cbd5e1;color:#64748b}.status-dot{width:8px;height:8px;border-radius:50%;background:currentColor}.promo-form{display:flex;flex-direction:column;gap:16px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{color:#334155;font-size:12px;font-weight:850}.field input,.field textarea,.field select{width:100%;border:1px solid #cedbe8;border-radius:12px;background:#f8fbff;color:#102a43;font-family:inherit;font-size:13px;font-weight:650;outline:none;transition:.15s ease}.field input,.field select{height:43px;padding:0 12px}.field textarea{min-height:92px;resize:vertical;padding:11px 12px;line-height:1.5}.field input:focus,.field textarea:focus,.field select:focus{background:#fff;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.08)}.switch-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 14px;border:1px solid #dce7f1;border-radius:14px;background:#f8fbff}.switch-copy strong{display:block;color:#123a61;font-size:13px;font-weight:900}.switch-copy span{display:block;margin-top:3px;color:#64748b;font-size:11px;font-weight:650}.switch{position:relative;width:52px;height:29px;flex:0 0 52px}.switch input{opacity:0;width:0;height:0}.switch-slider{position:absolute;inset:0;border-radius:999px;background:#cbd5e1;cursor:pointer;transition:.18s ease}.switch-slider::before{content:"";position:absolute;width:23px;height:23px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:.18s ease}.switch input:checked + .switch-slider{background:#22c55e}.switch input:checked + .switch-slider::before{transform:translateX(23px)}.milestone-section{margin-top:3px;padding-top:16px;border-top:1px solid #e5edf5}.subsection-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}.subsection-title{color:#123a61;font-size:15px;font-weight:900}.subsection-note{color:#64748b;font-size:11px;font-weight:650}.milestone-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.milestone-card{min-height:108px;padding:12px;border:1px solid #dce7f1;border-radius:14px;background:linear-gradient(180deg,#fbfdff,#f5f9fd)}.milestone-value{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e7f1ff;color:#1d4ed8;font-size:10px;font-weight:900}.milestone-gift{margin-top:9px;color:#102a43;font-size:12px;line-height:1.35;font-weight:850}.milestone-inactive{opacity:.55;filter:grayscale(.35)}.empty-milestone{grid-column:1/-1;padding:22px;border:1px dashed #cbd5e1;border-radius:14px;text-align:center;color:#64748b;font-size:12px;font-weight:700}.voucher-box{padding:16px;border:1px solid #dce7f1;border-radius:16px;background:linear-gradient(135deg,#f8fbff,#eef6ff)}.voucher-preview{margin-top:16px;position:relative;overflow:hidden;min-height:150px;padding:18px;border-radius:18px;background:linear-gradient(135deg,#dbeafe,#eff6ff);border:1px solid #bfdbfe}.voucher-preview::after{content:"VOUCHER";position:absolute;right:-8px;bottom:-4px;transform:rotate(-11deg);color:rgba(37,99,235,.08);font-size:48px;font-weight:1000;letter-spacing:1px}.voucher-preview-title{position:relative;z-index:1;color:#123a61;font-size:18px;font-weight:900}.voucher-preview-value{position:relative;z-index:1;margin-top:8px;color:#1d4ed8;font-size:24px;font-weight:1000}.voucher-preview-desc{position:relative;z-index:1;margin-top:8px;max-width:70%;color:#64748b;font-size:11px;line-height:1.5;font-weight:650}.form-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:4px}.btn{min-height:42px;border:0;border-radius:12px;padding:0 17px;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer;transition:.15s ease}.btn:hover{transform:translateY(-1px)}.btn-primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 9px 18px rgba(37,99,235,.18)}.btn-success{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;box-shadow:0 9px 18px rgba(22,163,74,.16)}
+.promo-admin-page{display:flex;flex-direction:column;gap:16px}.promo-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}.promo-page-head h1{margin:0;color:#102a43;font-size:28px;font-weight:900}.promo-page-head p{margin:6px 0 0;color:#64748b;font-size:14px;line-height:1.5;font-weight:650}.promo-tabs-shell{background:#fff;border:1px solid #dbe7f2;border-radius:20px;box-shadow:0 12px 28px rgba(15,44,76,.06);overflow:hidden}.promo-tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #dbe7f2;background:#f8fbff}.promo-tab-btn{position:relative;min-height:66px;border:0;border-right:1px solid #e5edf5;background:transparent;color:#5b7085;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 14px;font-family:inherit;font-size:14px;font-weight:900;transition:.16s ease}.promo-tab-btn:last-child{border-right:0}.promo-tab-btn:hover{background:#eef6ff;color:#1d4ed8}.promo-tab-btn.active{background:#fff;color:#0f4f8a}.promo-tab-btn.active::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:4px;border-radius:999px 999px 0 0;background:linear-gradient(90deg,#2563eb,#38bdf8)}.promo-tab-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e9f3ff;font-size:19px;flex:0 0 38px}.promo-tab-btn.active .promo-tab-icon{background:#dbeafe}.promo-tab-text{text-align:left;line-height:1.25}.promo-tab-text small{display:block;margin-top:3px;color:#94a3b8;font-size:10px;font-weight:750}.promo-tab-panel{display:none;padding:20px}.promo-tab-panel.active{display:block}.panel-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:18px;flex-wrap:wrap}.panel-title{display:flex;align-items:center;gap:12px}.panel-title-icon{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:#edf6ff}.panel-title h2{margin:0;color:#123a61;font-size:20px;font-weight:900}.panel-title p{margin:5px 0 0;color:#64748b;font-size:12px;font-weight:650}.status-pill{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:6px 11px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}.status-pill.on{background:#dcfce7;border:1px solid #86efac;color:#166534}.status-pill.off{background:#f1f5f9;border:1px solid #cbd5e1;color:#64748b}.status-dot{width:8px;height:8px;border-radius:50%;background:currentColor}.promo-form{display:flex;flex-direction:column;gap:16px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{color:#334155;font-size:12px;font-weight:850}.field input,.field textarea,.field select{width:100%;border:1px solid #cedbe8;border-radius:12px;background:#f8fbff;color:#102a43;font-family:inherit;font-size:13px;font-weight:650;outline:none;transition:.15s ease}.field input,.field select{height:43px;padding:0 12px}.field textarea{min-height:92px;resize:vertical;padding:11px 12px;line-height:1.5}.field input:focus,.field textarea:focus,.field select:focus{background:#fff;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.08)}.switch-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 14px;border:1px solid #dce7f1;border-radius:14px;background:#f8fbff}.switch-copy strong{display:block;color:#123a61;font-size:13px;font-weight:900}.switch-copy span{display:block;margin-top:3px;color:#64748b;font-size:11px;font-weight:650}.switch{position:relative;width:52px;height:29px;flex:0 0 52px}.switch input{opacity:0;width:0;height:0}.switch-slider{position:absolute;inset:0;border-radius:999px;background:#cbd5e1;cursor:pointer;transition:.18s ease}.switch-slider::before{content:"";position:absolute;width:23px;height:23px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:.18s ease}.switch input:checked + .switch-slider{background:#22c55e}.switch input:checked + .switch-slider::before{transform:translateX(23px)}.milestone-section{margin-top:3px;padding-top:16px;border-top:1px solid #e5edf5}.subsection-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}.subsection-title{color:#123a61;font-size:15px;font-weight:900}.subsection-note{color:#64748b;font-size:11px;font-weight:650}.milestone-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.milestone-card{min-height:108px;padding:12px;border:1px solid #dce7f1;border-radius:14px;background:linear-gradient(180deg,#fbfdff,#f5f9fd)}.milestone-value{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e7f1ff;color:#1d4ed8;font-size:10px;font-weight:900}.milestone-gift{margin-top:9px;color:#102a43;font-size:12px;line-height:1.35;font-weight:850}.milestone-inactive{opacity:.55;filter:grayscale(.35)}.empty-milestone{grid-column:1/-1;padding:22px;border:1px dashed #cbd5e1;border-radius:14px;text-align:center;color:#64748b;font-size:12px;font-weight:700}.voucher-box{padding:16px;border:1px solid #dce7f1;border-radius:16px;background:linear-gradient(135deg,#f8fbff,#eef6ff)}.voucher-preview{margin-top:16px;position:relative;overflow:hidden;min-height:150px;padding:18px;border-radius:18px;background:linear-gradient(135deg,#dbeafe,#eff6ff);border:1px solid #bfdbfe}.voucher-preview::after{content:"VOUCHER";position:absolute;right:-8px;bottom:-4px;transform:rotate(-11deg);color:rgba(37,99,235,.08);font-size:48px;font-weight:1000;letter-spacing:1px}.voucher-preview-title{position:relative;z-index:1;color:#123a61;font-size:18px;font-weight:900}.voucher-preview-value{position:relative;z-index:1;margin-top:8px;color:#1d4ed8;font-size:24px;font-weight:1000}.voucher-preview-desc{position:relative;z-index:1;margin-top:8px;max-width:70%;color:#64748b;font-size:11px;line-height:1.5;font-weight:650}.form-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:4px}.btn{min-height:42px;border:0;border-radius:12px;padding:0 17px;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer;transition:.15s ease}.btn:hover{transform:translateY(-1px)}.btn-primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 9px 18px rgba(37,99,235,.18)}.btn-success{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;box-shadow:0 9px 18px rgba(22,163,74,.16)}
 @media(max-width:900px){.milestone-list{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:700px){.promo-tabs{grid-template-columns:1fr}.promo-tab-btn{justify-content:flex-start;border-right:0;border-bottom:1px solid #e5edf5;min-height:56px}.promo-tab-btn:last-child{border-bottom:0}.promo-tab-btn.active::after{left:0;right:auto;top:8px;bottom:8px;width:4px;height:auto;border-radius:0 999px 999px 0}.promo-tab-panel{padding:14px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.milestone-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){.promo-page-head h1{font-size:22px}.promo-page-head p{font-size:11px}.milestone-list{grid-template-columns:1fr}.form-actions{flex-direction:column}.btn{width:100%}.voucher-preview-desc{max-width:100%}}
 
 /* ==========================
@@ -223,12 +223,13 @@
 
 
 <div class="promo-admin-page">
-<div class="promo-page-head"><div><h1>Khuyến Mãi</h1><p>Quản lý chương trình tích giờ, tích lượt và gửi voucher cho thành viên.</p></div></div>
+<div class="promo-page-head"><div><h1>Khuyến Mãi</h1></div></div>
 <section class="promo-tabs-shell">
 <div class="promo-tabs">
 <button type="button" class="promo-tab-btn active" data-tab="promo-hours" onclick="openPromoTab('promo-hours',this)"><span class="promo-tab-icon">⏱️</span><span class="promo-tab-text">Khuyến mãi 1<small>Tích giờ đổi quà</small></span></button>
 <button type="button" class="promo-tab-btn" data-tab="promo-plays" onclick="openPromoTab('promo-plays',this)"><span class="promo-tab-icon">🎱</span><span class="promo-tab-text">Khuyến mãi 2<small>Tích lượt đổi quà</small></span></button>
-<button type="button" class="promo-tab-btn" data-tab="promo-voucher" onclick="openPromoTab('promo-voucher',this)"><span class="promo-tab-icon">🎟️</span><span class="promo-tab-text">Khuyến mãi 3<small>Tặng voucher</small></span></button>
+<button type="button" class="promo-tab-btn" data-tab="promo-money" onclick="openPromoTab('promo-money',this)"><span class="promo-tab-icon">💰</span><span class="promo-tab-text">Khuyến mãi 3<small>Tích phí đổi quà</small></span></button>
+<button type="button" class="promo-tab-btn" data-tab="promo-voucher" onclick="openPromoTab('promo-voucher',this)"><span class="promo-tab-icon">🎟️</span><span class="promo-tab-text">Khuyến mãi 4<small>Tặng voucher</small></span></button>
 </div>
 
 <div id="promo-hours" class="promo-tab-panel active">
@@ -493,8 +494,140 @@
 {% endif %}
 </div>
 
+<div id="promo-money" class="promo-tab-panel">
+{% if promo_money %}
+<div class="panel-top">
+    <div class="panel-title">
+        <div class="panel-title-icon">🎱</div>
+        <div>
+            <h2>Tích phí đổi quà</h2>
+            <p>Cài đặt chương trình tích lũy tiền chơi của thành viên để đổi quà.</p>
+        </div>
+    </div>
+    <div id="moneyStatus" class="status-pill {% if promo_money.mo_chuong_trinh %}on{% else %}off{% endif %}">
+        <span class="status-dot"></span>
+        <span class="status-text">{% if promo_money.mo_chuong_trinh %}Đang mở{% else %}Đang tắt{% endif %}</span>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('cap_nhat_khuyen_mai', promotion_id=promo_money.id) }}" class="promo-form">
+    <div class="switch-row">
+        <div class="switch-copy">
+            <strong>Hiển thị chương trình cho thành viên</strong>
+            <span>Gạt nút để bật/tắt ngay. Khi tắt, Member chỉ thấy thông báo chương trình chưa mở.</span>
+        </div>
+        <label class="switch">
+            <input
+                type="checkbox"
+                id="switchPromoMoney"
+                name="mo_chuong_trinh"
+                value="1"
+                {% if promo_money.mo_chuong_trinh %}checked{% endif %}
+                onchange="togglePromotion({{ promo_money.id }}, this, 'moneyStatus')"
+            >
+            <span class="switch-slider"></span>
+        </label>
+    </div>
+
+    <div class="form-grid">
+        <div class="field full">
+            <label>Tên chương trình</label>
+            <input type="text" name="ten_khuyen_mai" value="{{ promo_money.ten_khuyen_mai or '' }}" required>
+        </div>
+
+        <div class="field">
+            <label>Thời gian bắt đầu</label>
+            <input
+                type="text"
+                name="bat_dau"
+                value="{{ promo_money.bat_dau_input or '' }}"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="dd/mm/yyyy"
+                oninput="formatDateInput(this)"
+            >
+            <div class="promo-date-note">Định dạng: dd/mm/yyyy</div>
+        </div>
+
+        <div class="field">
+            <label>Thời gian kết thúc</label>
+            <input
+                type="text"
+                name="ket_thuc"
+                value="{{ promo_money.ket_thuc_input or '' }}"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="dd/mm/yyyy"
+                oninput="formatDateInput(this)"
+            >
+            <div class="promo-date-note">Định dạng: dd/mm/yyyy</div>
+        </div>
+
+        <div class="field full">
+            <label>Nội dung / ghi chú hiển thị</label>
+            <textarea name="mo_ta">{{ promo_money.mo_ta or '' }}</textarea>
+        </div>
+    </div>
+
+    <div class="milestone-section">
+        <div class="subsection-head">
+            <div>
+                <div class="subsection-title">Các mốc đổi quà</div>
+                <div class="subsection-note">Có thể sửa số tiền, sửa phần quà, thêm mốc mới hoặc xóa mốc.</div>
+            </div>
+        </div>
+
+        <div id="moneyMilestoneList" class="editable-milestone-list">
+            {% for m in promo_money.moc %}
+            <div class="editable-milestone-row">
+                <input type="hidden" name="moc_id" value="{{ m.id }}">
+
+                <div class="milestone-edit-field">
+                    <label>Số tiền</label>
+                    <div class="milestone-number-wrap">
+                        <input
+                            type="text"
+                            name="moc_value"
+                            inputmode="numeric"
+                            value="{{ m.gia_tri_moc or 0 }}"
+                            placeholder="VD: 500,000"
+                            oninput="formatMoneyInput(this)"
+                            required
+                        >
+                        <span>Vnđ</span>
+                    </div>
+                </div>
+
+                <div class="milestone-edit-field gift-field">
+                    <label>Phần quà</label>
+                    <input
+                        type="text"
+                        name="moc_gift"
+                        value="{{ m.ten_qua_tang or '' }}"
+                        placeholder="Nhập phần quà..."
+                        required
+                    >
+                </div>
+
+                <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" class="milestone-add-btn" onclick="addMoneyMilestone()">+ Thêm mốc tiền / quà</button>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Lưu chương trình</button>
+    </div>
+</form>
+{% else %}
+<div class="empty-milestone">Không tìm thấy chương trình SO_TIEN trong Supabase.</div>
+{% endif %}
+</div>
+
 <div id="promo-voucher" class="promo-tab-panel">
-<div class="panel-top"><div class="panel-title"><div class="panel-title-icon">🎟️</div><div><h2>Tặng Voucher</h2><p>Chọn một hoặc nhiều thành viên và gửi Voucher trực tiếp vào Member Portal.</p></div></div></div>
+<div class="panel-top"><div class="panel-title"><div class="panel-title-icon">🎟️</div><div><h2>Tặng Voucher</h2></div></div></div>
 
 <div class="voucher-box">
 <form method="post" action="{{ url_for('tang_voucher') }}" class="promo-form" onsubmit="return validateVoucherMembers()">
@@ -605,7 +738,6 @@
 <div class="voucher-preview">
     <div id="voucherPreviewTitle" class="voucher-preview-title">Tên Voucher</div>
     <div id="voucherPreviewValue" class="voucher-preview-value">Ưu đãi dành riêng cho thành viên</div>
-    <div id="voucherPreviewDesc" class="voucher-preview-desc">Nội dung Voucher sẽ hiển thị tại đây.</div>
     <div id="voucherPreviewCondition" class="voucher-preview-condition"></div>
 </div>
 
@@ -618,7 +750,6 @@
     <div class="subsection-head">
         <div>
             <div class="subsection-title">Voucher hiện tại</div>
-            <div class="subsection-note">Theo dõi, chỉnh sửa hoặc xóa các Voucher đã gửi.</div>
         </div>
         <div class="status-pill on"><span class="status-dot"></span>{{ vouchers|length }} Voucher</div>
     </div>
@@ -759,7 +890,7 @@ const selectedVoucherMembers = new Map();
 
 function openPromoTab(tabId,button){document.querySelectorAll('.promo-tab-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.promo-tab-btn').forEach(b=>b.classList.remove('active'));const panel=document.getElementById(tabId);if(panel)panel.classList.add('active');if(button)button.classList.add('active');sessionStorage.setItem('adminPromotionTab',tabId)}
 
-document.addEventListener('DOMContentLoaded',function(){const savedTab=sessionStorage.getItem('adminPromotionTab');if(savedTab){const button=document.querySelector('.promo-tab-btn[data-tab="'+savedTab+'"]');if(button)openPromoTab(savedTab,button)}renderMemberDropdown();renderSelectedMembers();document.addEventListener('click',function(e){const picker=document.getElementById('memberPicker');if(picker && !picker.contains(e.target)){document.getElementById('memberDropdown').classList.remove('show')}})});
+document.addEventListener('DOMContentLoaded',function(){const savedTab=sessionStorage.getItem('adminPromotionTab');if(savedTab){const button=document.querySelector('.promo-tab-btn[data-tab="'+savedTab+'"]');if(button)openPromoTab(savedTab,button)}renderMemberDropdown();renderSelectedMembers();document.querySelectorAll('#moneyMilestoneList input[name="moc_value"]').forEach(formatMoneyInput);document.addEventListener('click',function(e){const picker=document.getElementById('memberPicker');if(picker && !picker.contains(e.target)){document.getElementById('memberDropdown').classList.remove('show')}})});
 
 function memberSearchText(m){return [m.ho_va_ten,m.ma_thanh_vien,m.so_dien_thoai].map(v=>String(v||'').toLowerCase()).join(' ')}
 function showMemberDropdown(){document.getElementById('memberDropdown').classList.add('show');renderMemberDropdown()}
@@ -1046,6 +1177,28 @@ function addPlayMilestone(){
                 <div class="milestone-number-wrap">
                     <input type="number" name="moc_value" min="1" step="1" placeholder="VD: 10" required>
                     <span>lần</span>
+                </div>
+            </div>
+            <div class="milestone-edit-field gift-field">
+                <label>Phần quà</label>
+                <input type="text" name="moc_gift" placeholder="Nhập phần quà..." required>
+            </div>
+            <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
+        </div>
+    `);
+}
+
+function addMoneyMilestone(){
+    const box=document.getElementById('moneyMilestoneList');
+    if(!box)return;
+    box.insertAdjacentHTML('beforeend',`
+        <div class="editable-milestone-row">
+            <input type="hidden" name="moc_id" value="">
+            <div class="milestone-edit-field">
+                <label>Số tiền</label>
+                <div class="milestone-number-wrap">
+                    <input type="text" name="moc_value" inputmode="numeric" placeholder="VD: 500,000" oninput="formatMoneyInput(this)" required>
+                    <span>Vnđ</span>
                 </div>
             </div>
             <div class="milestone-edit-field gift-field">

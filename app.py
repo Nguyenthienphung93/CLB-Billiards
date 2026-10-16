@@ -2097,6 +2097,21 @@ def member_thongtin():
             )
         )
 
+        # ==========================
+        # NGÀY ĐĂNG KÝ LẦN ĐẦU
+        # ==========================
+        registered_at = parse_iso_datetime(
+            member.get("created_at")
+        )
+
+        member["ngay_dang_ky_hien_thi"] = (
+            registered_at
+            .astimezone()
+            .strftime("%d/%m/%Y")
+            if registered_at
+            else ""
+        )
+
 
         # ==========================
         # CHƠI GẦN NHẤT
@@ -2235,6 +2250,93 @@ def member_thongtin():
             )
 
 
+        # ==========================
+        # HỒ SƠ HOẠT ĐỘNG
+        # ==========================
+        total_spent = sum(
+            int(row.get("thanh_tien") or 0)
+            for row in invoices
+        )
+
+        member["so_tien_da_chi_hien_thi"] = (
+            format_money_vn(total_spent)
+        )
+
+        valid_play_rows = [
+            row
+            for row in invoices
+            if int(row.get("thoi_luong_choi_phut") or 0) > 0
+        ]
+
+        def _play_summary(row):
+            if not row:
+                return ""
+
+            duration = int(
+                row.get("thoi_luong_choi_phut")
+                or 0
+            )
+
+            hours = duration // 60
+            minutes = duration % 60
+
+            if hours and minutes:
+                duration_text = f"{hours} giờ {minutes} phút"
+            elif hours:
+                duration_text = f"{hours} giờ"
+            else:
+                duration_text = f"{minutes} phút"
+
+            play_dt = (
+                parse_iso_datetime(
+                    row.get("thoi_gian_ket_thuc")
+                )
+                or parse_iso_datetime(
+                    row.get("created_at")
+                )
+            )
+
+            date_text = (
+                play_dt.astimezone().strftime("%d/%m/%Y")
+                if play_dt
+                else "—"
+            )
+
+            return f"{date_text} ({duration_text})"
+
+        longest_row = (
+            max(
+                valid_play_rows,
+                key=lambda row: int(
+                    row.get("thoi_luong_choi_phut")
+                    or 0
+                )
+            )
+            if valid_play_rows
+            else None
+        )
+
+        shortest_row = (
+            min(
+                valid_play_rows,
+                key=lambda row: int(
+                    row.get("thoi_luong_choi_phut")
+                    or 0
+                )
+            )
+            if valid_play_rows
+            else None
+        )
+
+        member["thoi_gian_choi_lau_nhat_hien_thi"] = (
+            _play_summary(longest_row)
+        )
+
+        member["thoi_gian_choi_ngan_nhat_hien_thi"] = (
+            _play_summary(shortest_row)
+        )
+
+
     except Exception as exc:
 
         print(
@@ -2300,7 +2402,8 @@ def get_member_promotion_progress(
             "id,"
             "ma_thanh_vien,"
             "created_at,"
-            "thoi_luong_choi_phut"
+            "thoi_luong_choi_phut,"
+            "thanh_tien"
         )
         .eq(
             "ma_thanh_vien",
@@ -2345,6 +2448,16 @@ def get_member_promotion_progress(
     elif promo_type == "SO_LAN":
         total_value = len(
             invoices
+        )
+
+    elif promo_type == "SO_TIEN":
+        # Tích theo số tiền THỰC TRẢ của hóa đơn đã thanh toán.
+        total_value = sum(
+            int(
+                item.get("thanh_tien")
+                or 0
+            )
+            for item in invoices
         )
 
     else:
@@ -2527,6 +2640,7 @@ def member_khuyenmai():
 
         promo_hour = None
         promo_play = None
+        promo_money = None
         promo_voucher = None
 
         for promo in promotions:
@@ -2540,6 +2654,8 @@ def member_khuyenmai():
                 promo_hour = promo
             elif promo_type == "SO_LAN":
                 promo_play = promo
+            elif promo_type == "SO_TIEN":
+                promo_money = promo
             elif promo_type == "VOUCHER":
                 promo_voucher = promo
 
@@ -2739,6 +2855,12 @@ def member_khuyenmai():
                     ] = promotion_minutes_display(
                         target
                     )
+                elif promo_type == "SO_TIEN":
+                    milestone[
+                        "moc_hien_thi"
+                    ] = format_vnd_display(
+                        target
+                    )
                 else:
                     milestone[
                         "moc_hien_thi"
@@ -2758,6 +2880,12 @@ def member_khuyenmai():
                 ] = promotion_minutes_display(
                     current_value
                 )
+            elif promo_type == "SO_TIEN":
+                promo[
+                    "tien_do_hien_thi"
+                ] = format_vnd_display(
+                    current_value
+                )
             else:
                 promo[
                     "tien_do_hien_thi"
@@ -2771,6 +2899,10 @@ def member_khuyenmai():
 
         promo_play = prepare_promo(
             promo_play
+        )
+
+        promo_money = prepare_promo(
+            promo_money
         )
 
         vouchers = (
@@ -2893,6 +3025,10 @@ def member_khuyenmai():
                 reward[
                     "loai_hien_thi"
                 ] = "Quà tích lượt"
+            elif reward_type == "SO_TIEN":
+                reward[
+                    "loai_hien_thi"
+                ] = "Quà tích phí"
             else:
                 reward[
                     "loai_hien_thi"
@@ -2908,6 +3044,7 @@ def member_khuyenmai():
         member = None
         promo_hour = None
         promo_play = None
+        promo_money = None
         promo_voucher = None
         vouchers = []
         redeemed_rewards = []
@@ -2958,6 +3095,8 @@ def member_khuyenmai():
         promo_hour=promo_hour,
 
         promo_play=promo_play,
+
+        promo_money=promo_money,
 
         vouchers=vouchers,
 
@@ -3259,6 +3398,20 @@ def thanh_vien():
     q = clean_text(request.args.get("q"))
 
     try:
+        page = max(1, int(request.args.get("page") or 1))
+    except (TypeError, ValueError):
+        page = 1
+
+    try:
+        per_page = int(request.args.get("per_page") or 20)
+    except (TypeError, ValueError):
+        per_page = 20
+
+    allowed_per_page = {20, 50, 100, 200}
+    if per_page not in allowed_per_page:
+        per_page = 20
+
+    try:
         query = (
             supabase.table(TABLE_NAME)
             .select(
@@ -3273,29 +3426,237 @@ def thanh_vien():
                 "so_lan_da_choi,"
                 "thoi_gian_choi_gan_nhat,"
                 "thoi_gian_choi_lau_nhat,"
-                "thoi_gian_choi_ngan_nhat"
+                "thoi_gian_choi_ngan_nhat",
+                count="exact"
             )
             .order("created_at", desc=True)
         )
 
-        # Tìm theo họ tên, SĐT, ngày sinh. Ngày sinh nhập YYYY-MM-DD hoặc chuỗi chứa ngày.
         if q:
             safe_q = q.replace(",", " ").strip()
             query = query.or_(
+                f"ma_thanh_vien.ilike.%{safe_q}%,"
                 f"ho_va_ten.ilike.%{safe_q}%,"
                 f"so_dien_thoai.ilike.%{safe_q}%,"
                 f"ngay_sinh.eq.{safe_q}"
             )
 
-        rows = query.execute().data or []
+        start = (page - 1) * per_page
+        end = start + per_page - 1
+        response = query.range(start, end).execute()
+
+        rows = response.data or []
+        total_rows = int(response.count or 0)
+        total_pages = max(1, (total_rows + per_page - 1) // per_page)
+
+        if page > total_pages and total_rows:
+            return redirect(
+                url_for(
+                    "thanh_vien",
+                    q=q,
+                    per_page=per_page,
+                    page=total_pages
+                )
+            )
+
         for row in rows:
             row["ngay_sinh_hien_thi"] = format_birthdate_display(row.get("ngay_sinh"))
+
     except Exception as exc:
         print("[LOAD THANHVIEN ERROR]", repr(exc))
         rows = []
+        total_rows = 0
+        total_pages = 1
+        page = 1
         flash(f"Không đọc được dữ liệu Supabase: {exc}", "danger")
 
-    return render_template("Thanhvien.html", rows=rows, q=q)
+    return render_template(
+        "Thanhvien.html",
+        rows=rows,
+        q=q,
+        page=page,
+        per_page=per_page,
+        total_rows=total_rows,
+        total_pages=total_pages
+    )
+
+
+@app.get("/api/thanh-vien/tim-kiem")
+def api_tim_kiem_thanh_vien():
+    q = clean_text(request.args.get("q"))
+
+    if not q:
+        return jsonify({"ok": True, "items": []})
+
+    safe_q = q.replace(",", " ").strip()
+
+    try:
+        rows = (
+            supabase.table(TABLE_NAME)
+            .select(
+                "id,ma_thanh_vien,ho_va_ten,so_dien_thoai,ngay_sinh,hang_thanh_vien"
+            )
+            .or_(
+                f"ma_thanh_vien.ilike.%{safe_q}%,"
+                f"ho_va_ten.ilike.%{safe_q}%,"
+                f"so_dien_thoai.ilike.%{safe_q}%"
+            )
+            .order("ho_va_ten")
+            .limit(20)
+            .execute()
+            .data
+            or []
+        )
+
+        return jsonify({
+            "ok": True,
+            "items": rows
+        })
+
+    except Exception as exc:
+        print("[MEMBER STAT SEARCH ERROR]", repr(exc))
+        return jsonify({
+            "ok": False,
+            "message": f"Không tìm được thành viên: {exc}"
+        }), 500
+
+
+@app.get("/api/thanh-vien/<string:member_code>/thong-ke")
+def api_thong_ke_thanh_vien(member_code):
+    member_code = clean_text(member_code).upper()
+
+    try:
+        month = int(request.args.get("month") or 0)
+    except (TypeError, ValueError):
+        month = 0
+
+    try:
+        year = int(request.args.get("year") or 0)
+    except (TypeError, ValueError):
+        year = 0
+
+    if month not in range(0, 13):
+        month = 0
+
+    if year < 0:
+        year = 0
+
+    try:
+        member_rows = (
+            supabase.table(TABLE_NAME)
+            .select("id,ma_thanh_vien,ho_va_ten,so_dien_thoai")
+            .eq("ma_thanh_vien", member_code)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+
+        if not member_rows:
+            return jsonify({
+                "ok": False,
+                "message": "Không tìm thấy thành viên."
+            }), 404
+
+        member = member_rows[0]
+
+        all_invoices = (
+            supabase.table(INVOICE_TABLE)
+            .select(
+                "created_at,thoi_gian_bat_dau,thoi_gian_ket_thuc,"
+                "thoi_luong_choi_phut,tien_ban,tien_dich_vu,tong_tien,"
+                "so_tien_giam,thanh_tien,trang_thai"
+            )
+            .eq("ma_thanh_vien", member_code)
+            .eq("trang_thai", "Đã thanh toán")
+            .order("created_at", desc=True)
+            .execute()
+            .data
+            or []
+        )
+
+        all_invoice_datetimes = []
+        for row in all_invoices:
+            dt = (
+                parse_iso_datetime(row.get("created_at"))
+                or parse_iso_datetime(row.get("thoi_gian_ket_thuc"))
+            )
+            all_invoice_datetimes.append((row, dt.astimezone() if dt else None))
+
+        available_years = sorted({
+            dt.year
+            for _, dt in all_invoice_datetimes
+            if dt
+        }, reverse=True)
+
+        invoices = []
+        for row, dt in all_invoice_datetimes:
+            if year and (not dt or dt.year != year):
+                continue
+            if month and (not dt or dt.month != month):
+                continue
+            invoices.append(row)
+
+        total_plays = len(invoices)
+        total_minutes = sum(int(row.get("thoi_luong_choi_phut") or 0) for row in invoices)
+        total_table = sum(int(row.get("tien_ban") or 0) for row in invoices)
+        total_service = sum(int(row.get("tien_dich_vu") or 0) for row in invoices)
+        total_paid = sum(int(row.get("thanh_tien") or 0) for row in invoices)
+
+        play_datetimes = []
+        for row in invoices:
+            dt = (
+                parse_iso_datetime(row.get("thoi_gian_ket_thuc"))
+                or parse_iso_datetime(row.get("created_at"))
+            )
+            if dt:
+                play_datetimes.append(dt.astimezone())
+
+        latest_play = max(play_datetimes) if play_datetimes else None
+        earliest_play = min(play_datetimes) if play_datetimes else None
+
+        if latest_play and earliest_play and total_plays > 1:
+            play_time_display = (
+                f"{earliest_play.strftime('%d/%m/%Y')} - "
+                f"{latest_play.strftime('%d/%m/%Y')}"
+            )
+        elif latest_play:
+            play_time_display = latest_play.strftime("%d/%m/%Y %H:%M")
+        else:
+            play_time_display = "Chưa có"
+
+        if year and year not in available_years:
+            available_years.append(year)
+            available_years.sort(reverse=True)
+
+        return jsonify({
+            "ok": True,
+            "member": member,
+            "filter": {
+                "month": month,
+                "year": year,
+            },
+            "available_years": available_years,
+            "stats": {
+                "luot_choi": total_plays,
+                "thoi_luong_phut": total_minutes,
+                "thoi_luong_hien_thi": format_minutes_detail(total_minutes),
+                "thoi_gian_choi_hien_thi": play_time_display,
+                "tien_ban": total_table,
+                "tien_ban_hien_thi": format_money_vn(total_table),
+                "tien_dich_vu": total_service,
+                "tien_dich_vu_hien_thi": format_money_vn(total_service),
+                "tong_tien": total_paid,
+                "tong_tien_hien_thi": format_money_vn(total_paid),
+            }
+        })
+
+    except Exception as exc:
+        print("[MEMBER STAT ERROR]", repr(exc))
+        return jsonify({
+            "ok": False,
+            "message": f"Không tải được thống kê thành viên: {exc}"
+        }), 500
 
 
 @app.post("/thanh-vien/them")
@@ -3372,7 +3733,12 @@ def cap_nhat_thanh_vien(member_id):
             message = "Mã thành viên đã tồn tại."
         flash(f"Không cập nhật được thành viên: {message}", "danger")
 
-    return redirect(url_for("thanh_vien", q=clean_text(request.form.get("return_q"))))
+    return redirect(url_for(
+        "thanh_vien",
+        q=clean_text(request.form.get("return_q")),
+        page=clean_text(request.form.get("return_page")) or 1,
+        per_page=clean_text(request.form.get("return_per_page")) or 20
+    ))
 
 
 @app.post("/thanh-vien/<int:member_id>/xoa")
@@ -3384,7 +3750,12 @@ def xoa_thanh_vien(member_id):
         print("[DELETE THANHVIEN ERROR]", repr(exc))
         flash(f"Không xóa được thành viên: {exc}", "danger")
 
-    return redirect(url_for("thanh_vien", q=clean_text(request.form.get("return_q"))))
+    return redirect(url_for(
+        "thanh_vien",
+        q=clean_text(request.form.get("return_q")),
+        page=clean_text(request.form.get("return_page")) or 1,
+        per_page=clean_text(request.form.get("return_per_page")) or 20
+    ))
 
 
 def normalize_voucher_money(value):
@@ -3535,7 +3906,7 @@ def khuyen_mai_admin():
 
         # ==========================================
         # 2. BẢO ĐẢM MỖI LOẠI CÓ 1 CHƯƠNG TRÌNH
-        #    KHÔNG TẠO LẠI KM_GIO / KM_LAN / KM_VOUCHER
+        #    THỜI LƯỢNG / SỐ LẦN / SỐ TIỀN / VOUCHER
         # ==========================================
         existing_types = {
             clean_text(row.get("loai_khuyen_mai"))
@@ -3556,6 +3927,13 @@ def khuyen_mai_admin():
                 "mo_chuong_trinh": False,
                 "mo_ta":
                     "Tích lũy số lần chơi để nhận các phần quà.",
+            },
+            {
+                "ten_khuyen_mai": "Tích lũy tiền chơi để đổi quà",
+                "loai_khuyen_mai": "SO_TIEN",
+                "mo_chuong_trinh": False,
+                "mo_ta":
+                    "Tích lũy số tiền thực trả từ các hóa đơn để đổi quà.",
             },
             {
                 "ten_khuyen_mai": "Voucher thành viên",
@@ -3644,6 +4022,7 @@ def khuyen_mai_admin():
         # ==========================================
         promo_hour = None
         promo_play = None
+        promo_money = None
         promo_voucher = None
 
         for promo in promotions:
@@ -3693,6 +4072,9 @@ def khuyen_mai_admin():
 
             elif promo_type == "SO_LAN":
                 promo_play = promo
+
+            elif promo_type == "SO_TIEN":
+                promo_money = promo
 
             elif promo_type == "VOUCHER":
                 promo_voucher = promo
@@ -3792,6 +4174,7 @@ def khuyen_mai_admin():
 
         promo_hour = None
         promo_play = None
+        promo_money = None
         promo_voucher = None
         members = []
         vouchers = []
@@ -3807,6 +4190,7 @@ def khuyen_mai_admin():
 
         promo_hour=promo_hour,
         promo_play=promo_play,
+        promo_money=promo_money,
         promo_voucher=promo_voucher,
 
         members=members,
@@ -4124,12 +4508,17 @@ def cap_nhat_khuyen_mai(
 
             try:
 
-                value_number = float(
-                    raw_value.replace(
-                        ",",
-                        "."
+                if promo_type == "SO_TIEN":
+                    value_number = parse_money_value(
+                        raw_value
                     )
-                )
+                else:
+                    value_number = float(
+                        raw_value.replace(
+                            ",",
+                            "."
+                        )
+                    )
 
             except ValueError:
 
@@ -4955,6 +5344,36 @@ def kich_hoat_qua():
     ).upper()
 
     try:
+        page = max(
+            1,
+            int(
+                request.args.get("page")
+                or 1
+            )
+        )
+    except (TypeError, ValueError):
+        page = 1
+
+    try:
+        per_page = int(
+            request.args.get("per_page")
+            or 30
+        )
+    except (TypeError, ValueError):
+        per_page = 30
+
+    allowed_per_page = {
+        30,
+        50,
+        100,
+        200,
+        500,
+    }
+
+    if per_page not in allowed_per_page:
+        per_page = 30
+
+    try:
         reward_query = (
             supabase
             .table(PROMOTION_REDEEM_TABLE)
@@ -5054,7 +5473,7 @@ def kich_hoat_qua():
                 for row in member_rows
             }
 
-        items = []
+        all_items = []
 
         for reward in rewards:
             code = clean_text(
@@ -5069,7 +5488,7 @@ def kich_hoat_qua():
                 reward.get("kich_hoat_at")
             )
 
-            items.append({
+            all_items.append({
                 "loai": "QUA",
                 "loai_hien_thi": "Quà tặng",
                 "ma": code,
@@ -5082,6 +5501,8 @@ def kich_hoat_qua():
                     reward.get("ten_qua_tang")
                 ),
                 "gia_tri_hien_thi": "",
+                "dieu_kien_dong": [],
+                "dieu_kien_hien_thi": "",
                 "trang_thai": clean_text(
                     reward.get("trang_thai")
                 ) or "Chưa nhận quà",
@@ -5121,7 +5542,20 @@ def kich_hoat_qua():
                 voucher.get("kich_hoat_at")
             )
 
-            items.append({
+            conditions = normalize_voucher_conditions(
+                voucher.get("dieu_kien")
+            )
+
+            condition_lines = [
+                line
+                for line in (
+                    voucher_condition_line(item)
+                    for item in conditions
+                )
+                if line
+            ]
+
+            all_items.append({
                 "loai": "VOUCHER",
                 "loai_hien_thi": "Voucher",
                 "ma": code,
@@ -5138,23 +5572,10 @@ def kich_hoat_qua():
                         voucher.get("gia_tri")
                     )
                 ),
-                "dieu_kien":
-                    normalize_voucher_conditions(
-                        voucher.get("dieu_kien")
-                    ),
-                "dieu_kien_dong": [
-                    voucher_condition_line(item)
-                    for item in normalize_voucher_conditions(
-                        voucher.get("dieu_kien")
-                    )
-                    if voucher_condition_line(item)
-                ],
+                "dieu_kien": conditions,
+                "dieu_kien_dong": condition_lines,
                 "dieu_kien_hien_thi": " ".join(
-                    voucher_condition_line(item)
-                    for item in normalize_voucher_conditions(
-                        voucher.get("dieu_kien")
-                    )
-                    if voucher_condition_line(item)
+                    condition_lines
                 ),
                 "trang_thai": clean_text(
                     voucher.get("trang_thai")
@@ -5182,12 +5603,101 @@ def kich_hoat_qua():
                 ),
             })
 
-        items.sort(
+        # ======================================================
+        # SẮP XẾP DANH SÁCH KÍCH HOẠT QUÀ / VOUCHER
+        # Ưu tiên:
+        #   1. Mục có thể Kích hoạt trực tiếp
+        #   2. Mục chưa sử dụng nhưng phải áp dụng qua Hoạt Động
+        #   3. Mục đã sử dụng / đã xác nhận
+        # Trong cùng một nhóm: mục mới nhất lên trước.
+        # ======================================================
+        def activation_sort_priority(row):
+            is_confirmed = bool(
+                row.get("da_xac_nhan")
+            )
+
+            condition_lines = (
+                row.get("dieu_kien_dong")
+                or []
+            )
+
+            item_type = clean_text(
+                row.get("loai")
+            ).upper()
+
+            # Nhóm 3: đã sử dụng / đã nhận / đã xác nhận
+            if is_confirmed:
+                priority = 2
+
+            # Nhóm 2: Voucher chưa dùng nhưng có điều kiện,
+            # phải áp dụng trong trang Hoạt Động
+            elif (
+                item_type == "VOUCHER"
+                and condition_lines
+            ):
+                priority = 1
+
+            # Nhóm 1: có nút Kích hoạt trực tiếp
+            else:
+                priority = 0
+
+            return (
+                priority,
+                row.get("created_at") or ""
+            )
+
+        # Python sort tăng dần theo priority.
+        # Riêng thời gian cần mới nhất trước, nên sort từng nhóm
+        # bằng timestamp đảo chiều thông qua hai bước ổn định.
+        all_items.sort(
             key=lambda row: (
                 row.get("created_at")
                 or ""
             ),
             reverse=True
+        )
+
+        all_items.sort(
+            key=lambda row: (
+                activation_sort_priority(row)[0]
+            )
+        )
+
+        total_items = len(all_items)
+        total_pages = max(
+            1,
+            (
+                total_items
+                + per_page
+                - 1
+            ) // per_page
+        )
+
+        if page > total_pages:
+            page = total_pages
+
+        start_index = (
+            page - 1
+        ) * per_page
+
+        end_index = (
+            start_index
+            + per_page
+        )
+
+        items = all_items[
+            start_index:end_index
+        ]
+
+        display_from = (
+            start_index + 1
+            if total_items
+            else 0
+        )
+
+        display_to = min(
+            end_index,
+            total_items
         )
 
     except Exception as exc:
@@ -5197,6 +5707,11 @@ def kich_hoat_qua():
         )
 
         items = []
+        total_items = 0
+        total_pages = 1
+        page = 1
+        display_from = 0
+        display_to = 0
 
         flash(
             f"Không tải được danh sách Quà/Voucher: {exc}",
@@ -5206,9 +5721,14 @@ def kich_hoat_qua():
     return render_template(
         "Kichhoatqua.html",
         items=items,
-        q=q
+        q=q,
+        page=page,
+        per_page=per_page,
+        total_items=total_items,
+        total_pages=total_pages,
+        display_from=display_from,
+        display_to=display_to,
     )
-
 
 @app.get("/api/kich-hoat-qua/tra-cuu/<string:code>")
 def api_tra_cuu_qua_voucher(code):

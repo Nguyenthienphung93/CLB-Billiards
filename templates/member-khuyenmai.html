@@ -914,6 +914,71 @@
     margin-top:2px;
 }
 
+
+.gv-card{
+    position:relative;
+    padding-right:150px;
+}
+.gv-state-panel{
+    position:absolute;
+    top:14px;
+    right:14px;
+    width:112px;
+    border-radius:14px;
+    padding:10px 10px 9px;
+    border:1px solid transparent;
+    box-shadow:0 8px 18px rgba(15,23,42,.08);
+}
+.gv-state-panel.available{
+    background:linear-gradient(180deg,#e9fce7,#d8f7dc);
+    border-color:#9fe0a6;
+    color:#166534;
+}
+.gv-state-panel.used{
+    background:linear-gradient(180deg,#f1f5f9,#e2e8f0);
+    border-color:#cbd5e1;
+    color:#475569;
+}
+.gv-state-label,
+.gv-expiry-label{
+    font-size:10px;
+    font-weight:900;
+    text-transform:uppercase;
+    letter-spacing:.5px;
+    opacity:.85;
+}
+.gv-state-value{
+    margin-top:3px;
+    font-size:14px;
+    line-height:1.15;
+    font-weight:1000;
+}
+.gv-expiry-line{
+    margin-top:8px;
+    padding-top:8px;
+    border-top:1px dashed rgba(0,0,0,.10);
+}
+.gv-expiry-value{
+    margin-top:3px;
+    font-size:11px;
+    line-height:1.35;
+    font-weight:850;
+}
+.gv-used-time{
+    margin-top:6px;
+    font-size:10px;
+    line-height:1.35;
+    font-weight:800;
+    opacity:.9;
+}
+.gv-info{margin-top:4px; padding-right:0;}
+.gv-name{padding-right:0;}
+.gv-condition{margin-top:8px;}
+@media (max-width: 640px){
+    .gv-card{padding-right:16px;}
+    .gv-state-panel{position:static;width:100%;margin-bottom:2px;order:-1;}
+}
+
 </style>
 {% endblock %}
 
@@ -1454,10 +1519,22 @@
                     {% if reward_items %}
                     <div class="gv-list">
                         {% for reward in reward_items %}
-                        <div class="gv-card reward-card">
+                        <div class="gv-card reward-card {{ 'used' if reward.da_su_dung else 'available' }}">
                             <div class="gv-qr-box js-qr-code"
                                  data-code="{{ reward.qr_code_value }}"
                                  title="{{ reward.ma_hien_thi }}">
+                            </div>
+
+                            <div class="gv-state-panel {{ 'used' if reward.da_su_dung else 'available' }}">
+                                <div class="gv-state-label">Trạng thái</div>
+                                <div class="gv-state-value">{{ reward.trang_thai_hien_thi or 'Chưa nhận quà' }}</div>
+                                <div class="gv-expiry-line">
+                                    <div class="gv-expiry-label">Thời hạn</div>
+                                    <div class="gv-expiry-value">Khi chương trình khuyến mãi kết thúc</div>
+                                    {% if reward.da_su_dung and reward.kich_hoat_at_hien_thi %}
+                                    <div class="gv-used-time">Xác nhận: {{ reward.kich_hoat_at_hien_thi }}</div>
+                                    {% endif %}
+                                </div>
                             </div>
 
                             <div class="gv-content">
@@ -1469,35 +1546,16 @@
                                     {% endif %}
                                 </div>
 
-                                <div class="gv-name">
-                                    {{ reward.ten_qua_tang }}
-                                </div>
+                                <div class="gv-name">{{ reward.ten_qua_tang }}</div>
 
                                 <div class="gv-info">
-
-                                    Trạng thái:
-
-                                    <strong>
-                                        {{ reward.trang_thai_hien_thi or 'Chưa nhận quà' }}
-
-                                        {% if
-                                            reward.da_su_dung
-                                            and reward.kich_hoat_at_hien_thi
-                                        %}
-                                            ({{ reward.kich_hoat_at_hien_thi }})
-                                        {% endif %}
-                                    </strong>
-
+                                    Quà tặng dành riêng cho thành viên của {{ app_setup.club.title }} {{ app_setup.club.name }}.
                                 </div>
 
-                                <div class="gv-code">
-                                    Mã quà: {{ reward.ma_hien_thi }}
-                                </div>
+                                <div class="gv-code">Mã quà: {{ reward.ma_hien_thi }}</div>
                             </div>
 
-                            <div class="gv-watermark">
-                                QUÀ TẶNG
-                            </div>
+                            <div class="gv-watermark">QUÀ TẶNG</div>
                         </div>
                         {% endfor %}
                     </div>
@@ -1523,43 +1581,34 @@
                     {% if voucher_items %}
                     <div class="gv-list">
                         {% for voucher in voucher_items %}
-                        <div class="gv-card voucher-card">
+                        <div class="gv-card voucher-card {{ 'used' if voucher.da_su_dung else 'available' }}">
                             <div class="gv-qr-box js-qr-code"
                                  data-code="{{ voucher.qr_code_value }}"
                                  title="{{ voucher.ma_hien_thi }}">
                             </div>
 
-                            <div class="gv-content">
-                                <div class="gv-type">
-                                    Voucher thành viên
+                            <div class="gv-state-panel {{ 'used' if voucher.da_su_dung else 'available' }}">
+                                <div class="gv-state-label">Trạng thái</div>
+                                <div class="gv-state-value">{{ voucher.trang_thai_hien_thi or 'Chưa sử dụng' }}</div>
+                                <div class="gv-expiry-line">
+                                    <div class="gv-expiry-label">Thời hạn</div>
+                                    <div class="gv-expiry-value">{{ voucher.ngay_het_han_hien_thi or 'Khi chương trình khuyến mãi kết thúc' }}</div>
+                                    {% if voucher.da_su_dung and voucher.kich_hoat_at_hien_thi %}
+                                    <div class="gv-used-time">Đã dùng: {{ voucher.kich_hoat_at_hien_thi }}</div>
+                                    {% endif %}
                                 </div>
+                            </div>
 
-                                <div class="gv-name">
-                                    {{ voucher.ten_voucher }}
-                                </div>
+                            <div class="gv-content">
+                                <div class="gv-type">Voucher thành viên</div>
+
+                                <div class="gv-name">{{ voucher.ten_voucher }}</div>
 
                                 {% if voucher.gia_tri_hien_thi %}
-                                <div class="gv-value">
-                                    {{ voucher.gia_tri_hien_thi }}
-                                </div>
+                                <div class="gv-value">{{ voucher.gia_tri_hien_thi }}</div>
                                 {% endif %}
 
-                                <div class="gv-info">
-                                    {{ voucher.noi_dung or '' }}
-                                    <br>
-                                    Trạng thái:
-
-                                    <strong>
-                                        {{ voucher.trang_thai_hien_thi or 'Chưa sử dụng' }}
-
-                                        {% if
-                                            voucher.da_su_dung
-                                            and voucher.kich_hoat_at_hien_thi
-                                        %}
-                                            ({{ voucher.kich_hoat_at_hien_thi }})
-                                        {% endif %}
-                                    </strong>
-                                </div>
+                                <div class="gv-info">{{ voucher.noi_dung or '' }}</div>
 
                                 {% if voucher.dieu_kien_dong %}
                                 <div class="gv-condition">
@@ -1570,14 +1619,10 @@
                                 </div>
                                 {% endif %}
 
-                                <div class="gv-code">
-                                    Mã Voucher: {{ voucher.ma_hien_thi }}
-                                </div>
+                                <div class="gv-code">Mã Voucher: {{ voucher.ma_hien_thi }}</div>
                             </div>
 
-                            <div class="gv-watermark">
-                                VOUCHER
-                            </div>
+                            <div class="gv-watermark">VOUCHER</div>
                         </div>
                         {% endfor %}
                     </div>

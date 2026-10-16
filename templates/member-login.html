@@ -1,761 +1,165 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập Thành viên - Billiards Thanh Trung</title>
-
+    <title>Đăng nhập Thành viên - {{ app_setup.club.title }} {{ app_setup.club.name }}</title>
     <style>
-        *{
-            box-sizing:border-box;
+        *{box-sizing:border-box}
+        :root{
+            --bg:#eef5fb;
+            --text:#133a60;
+            --sub:#60748a;
+            --line:#dbe6f1;
+            --blue:#2f6df6;
+            --blue-dark:#113f8b;
+            --card:#ffffff;
         }
-
-        html,body{
-            margin:0;
-            min-height:100%;
-            font-family:"Segoe UI",Arial,Tahoma,sans-serif;
-            color:#102a43;
-        }
-
         body{
+            margin:0;
             min-height:100vh;
+            font-family:"Segoe UI",Arial,sans-serif;
+            color:var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(84,179,255,.26) 0 16%, transparent 17%),
+                radial-gradient(circle at bottom right, rgba(87,208,130,.24) 0 12%, transparent 13%),
+                linear-gradient(135deg,#edf5fb 0%,#f8fbff 100%);
             display:flex;
             align-items:center;
             justify-content:center;
-            padding:28px;
-            position:relative;
-            overflow:hidden;
-            background:
-                radial-gradient(circle at 15% 18%, rgba(96,165,250,.30), transparent 28%),
-                radial-gradient(circle at 82% 82%, rgba(34,197,94,.18), transparent 30%),
-                linear-gradient(135deg,#dff3ff 0%,#eef8ff 46%,#f7fbff 100%);
+            padding:28px 16px;
         }
-
-        body::before,
-        body::after{
-            content:"";
-            position:absolute;
-            border-radius:50%;
-            pointer-events:none;
-            opacity:.52;
-        }
-
-        body::before{
-            width:390px;
-            height:390px;
-            left:-145px;
-            top:-145px;
-            background:linear-gradient(135deg,#60a5fa,#0ea5e9);
-        }
-
-        body::after{
-            width:330px;
-            height:330px;
-            right:-115px;
-            bottom:-115px;
-            background:linear-gradient(135deg,#22c55e,#14b8a6);
-        }
-
-        .login-shell{
-            position:relative;
-            z-index:2;
-            width:min(1040px,96vw);
-            min-height:610px;
-            display:grid;
-            grid-template-columns:1.05fr .95fr;
-            overflow:hidden;
-            border-radius:30px;
-            border:1px solid rgba(255,255,255,.76);
-            background:rgba(255,255,255,.80);
-            box-shadow:
-                0 28px 80px rgba(15,37,64,.18),
-                inset 0 1px 0 rgba(255,255,255,.92);
-            backdrop-filter:blur(18px);
-        }
-
-        .intro-panel{
-            position:relative;
-            overflow:hidden;
-            padding:52px 50px;
-            color:#fff;
-            background:
-                linear-gradient(145deg,rgba(9,75,136,.96),rgba(16,115,175,.94));
-            display:flex;
-            flex-direction:column;
-            justify-content:space-between;
-        }
-
-        .intro-panel::before{
-            content:"";
-            position:absolute;
-            width:270px;
-            height:270px;
-            border-radius:50%;
-            right:-80px;
-            top:-65px;
-            background:rgba(255,255,255,.09);
-        }
-
-        .intro-panel::after{
-            content:"";
-            position:absolute;
-            width:230px;
-            height:230px;
-            border-radius:50%;
-            left:-90px;
-            bottom:-90px;
-            background:rgba(255,255,255,.07);
-        }
-
-        .intro-content,
-        .intro-footer{
-            position:relative;
-            z-index:2;
-        }
-
-        .logo-wrap{
-            width:86px;
-            height:86px;
-            border-radius:22px;
-            padding:10px;
-            display:grid;
-            place-items:center;
-            background:rgba(255,255,255,.96);
-            border:1px solid rgba(255,255,255,.7);
-            box-shadow:0 16px 40px rgba(0,0,0,.18);
-            margin-bottom:28px;
-        }
-
-        .logo-wrap img{
-            width:100%;
-            height:100%;
-            object-fit:contain;
-            border-radius:14px;
-        }
-
-        .brand-small{
-            margin:0;
-            font-size:17px;
-            font-weight:800;
-            letter-spacing:.5px;
-            opacity:.96;
-        }
-
-        .brand-main{
-            margin:6px 0 20px;
-            font-size:43px;
-            line-height:1.04;
-            font-weight:900;
-            letter-spacing:-1px;
-            text-shadow:
-                0 2px 0 rgba(255,255,255,.16),
-                0 9px 20px rgba(0,0,0,.22);
-        }
-
-        .intro-copy{
-            max-width:520px;
-            margin:0;
-            font-size:16px;
-            line-height:1.75;
-            font-weight:600;
-            color:rgba(255,255,255,.90);
-        }
-
-        .member-card-preview{
-            margin-top:30px;
-            width:min(330px,100%);
-            aspect-ratio:1.8 / 1;
-            border-radius:22px;
-            padding:18px;
-            position:relative;
-            overflow:hidden;
-            background:
-                linear-gradient(145deg,#8fd0ff 0%,#57afe8 48%,#2e82d6 100%);
-            box-shadow:0 18px 36px rgba(0,0,0,.18);
-            border:1px solid rgba(255,255,255,.34);
-        }
-
-        .member-card-preview::after{
-            content:"BILLIARDS  THANH TRUNG";
-            position:absolute;
-            left:22px;
-            bottom:18px;
-            transform:rotate(-13deg);
-            font-size:27px;
-            font-weight:1000;
-            letter-spacing:1px;
-            color:rgba(255,255,255,.14);
-            white-space:nowrap;
-        }
-
-        .preview-rank{
-            position:absolute;
-            right:16px;
-            top:15px;
-            font-size:11px;
-            font-weight:900;
-            padding:7px 10px;
-            border-radius:999px;
-            background:rgba(255,255,255,.18);
-            border:1px solid rgba(255,255,255,.28);
-        }
-
-        .preview-name{
-            position:absolute;
-            left:18px;
-            bottom:44px;
-            font-size:20px;
-            font-weight:900;
-            letter-spacing:.8px;
-        }
-
-        .preview-code{
-            position:absolute;
-            left:18px;
-            bottom:20px;
-            font-size:12px;
-            font-weight:800;
-            opacity:.92;
-        }
-
-        .intro-footer{
-            margin-top:28px;
-            font-size:12px;
-            font-weight:600;
-            color:rgba(255,255,255,.74);
-        }
-
-        .form-panel{
-            padding:54px 48px;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            background:rgba(255,255,255,.93);
-        }
-
-        .form-inner{
-            width:100%;
-            max-width:390px;
-        }
-
-        .form-eyebrow{
-            margin:0 0 6px;
-            color:#2563eb;
-            font-size:13px;
-            font-weight:900;
-            text-transform:uppercase;
-            letter-spacing:1.2px;
-        }
-
-        .form-title{
-            margin:0;
-            font-size:34px;
-            line-height:1.16;
-            font-weight:900;
-            color:#102a43;
-        }
-
-        .form-subtitle{
-            margin:10px 0 28px;
-            color:#64748b;
-            font-size:14px;
-            line-height:1.6;
-            font-weight:600;
-        }
-
-        .field{
-            margin-bottom:17px;
-        }
-
-        .field label{
-            display:block;
-            margin-bottom:8px;
-            font-size:13px;
-            font-weight:850;
-            color:#334155;
-        }
-
-        .input-wrap{
-            position:relative;
-        }
-
-        .input-icon{
-            position:absolute;
-            left:14px;
-            top:50%;
-            transform:translateY(-50%);
-            width:22px;
-            height:22px;
-            display:grid;
-            place-items:center;
-            color:#64748b;
-            pointer-events:none;
-        }
-
-        .field input{
-            width:100%;
-            height:50px;
-            border:1px solid #cbd5e1;
-            border-radius:14px;
-            background:#f8fbff;
-            padding:0 48px 0 46px;
-            color:#0f172a;
-            font-size:14px;
-            font-weight:700;
-            outline:none;
-            transition:.16s ease;
-        }
-
-        .field input:focus{
-            background:#fff;
-            border-color:#60a5fa;
-            box-shadow:0 0 0 4px rgba(37,99,235,.11);
-        }
-
-        .password-toggle{
-            position:absolute;
-            right:10px;
-            top:50%;
-            transform:translateY(-50%);
-            width:34px;
-            height:34px;
-            border:0;
-            border-radius:9px;
-            background:transparent;
-            color:#64748b;
-            cursor:pointer;
-            display:grid;
-            place-items:center;
-        }
-
-        .password-toggle:hover{
-            background:#eaf2fb;
-            color:#1d4ed8;
-        }
-
-        .login-btn{
-            width:100%;
-            height:50px;
-            margin-top:5px;
-            border:0;
-            border-radius:14px;
-            background:linear-gradient(135deg,#2563eb,#1d4ed8);
-            color:#fff;
-            font-size:15px;
-            font-weight:900;
-            cursor:pointer;
-            box-shadow:0 14px 28px rgba(37,99,235,.24);
-            transition:.15s ease;
-        }
-
-        .login-btn:hover{
-            transform:translateY(-1px);
-            filter:brightness(1.03);
-        }
-
-        .login-help{
-            margin-top:18px;
-            padding:12px 13px;
-            border-radius:12px;
-            background:#f1f7fd;
-            color:#5f7187;
-            font-size:12px;
-            line-height:1.55;
-            font-weight:600;
-            border:1px solid #dbe9f7;
-        }
-
         .flash-stack{
-            position:fixed;
-            z-index:9999;
-            left:50%;
-            top:26px;
-            transform:translateX(-50%);
-            width:min(520px,calc(100vw - 28px));
-            display:grid;
-            gap:10px;
+            position:fixed; top:22px; left:50%; transform:translateX(-50%); z-index:2000;
+            display:flex; flex-direction:column; gap:10px; width:min(480px,calc(100vw - 30px));
         }
+        .flash{padding:14px 16px;border-radius:14px;font-size:14px;font-weight:700;box-shadow:0 12px 28px rgba(0,0,0,.10)}
+        .flash-danger{background:#ffe5e5;color:#9f1d1d;border:1px solid #fecaca}
+        .flash-success{background:#e8fff0;color:#146c43;border:1px solid #bbf7d0}
+        .flash-warning{background:#fff7db;color:#9a6700;border:1px solid #fde68a}
+        .flash-info{background:#eaf4ff;color:#1e4fa8;border:1px solid #bfdbfe}
 
-        .flash{
-            border-radius:14px;
-            padding:13px 16px;
-            text-align:center;
-            font-size:14px;
-            font-weight:800;
-            box-shadow:0 14px 34px rgba(15,23,42,.18);
-            animation:flashIn .2s ease;
+        .login-card{
+            width:min(560px, 100%);
+            background:rgba(255,255,255,.95);
+            border:1px solid var(--line);
+            border-radius:28px;
+            box-shadow:0 20px 50px rgba(18,56,96,.10);
+            padding:30px 28px 24px;
         }
+        .brand-box{display:flex; flex-direction:column; align-items:center; text-align:center; gap:10px; margin-bottom:18px;}
+        .logo-wrap{width:82px;height:82px;border-radius:24px;background:#fff;display:grid;place-items:center;overflow:hidden;border:1px solid #e2eaf2;box-shadow:0 10px 24px rgba(0,0,0,.08)}
+        .logo-wrap img{width:100%;height:100%;object-fit:contain}
+        .brand-small{margin:0;font-size:14px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:#4d6a88}
+        .brand-main{margin:0;font-size:40px;line-height:1.04;font-weight:1000;color:#0e5ba6;text-shadow:0 1px 0 #fff,0 8px 14px rgba(11,91,169,.16)}
 
-        .flash-danger{
-            background:#fff1f2;
-            color:#be123c;
-            border:1px solid #fecdd3;
-        }
+        .panel-title{margin:16px 0 6px; text-align:center; font-size:18px; font-weight:900; color:#2f6df6; letter-spacing:.6px; text-transform:uppercase}
+        .panel-subtitle{margin:0 0 22px; text-align:center; color:#123a60; font-size:38px; line-height:2; font-weight:1000}
+        .intro-note{margin:0 auto 22px; max-width:460px; text-align:center; color:#64748b; font-size:14px; line-height:1.7; font-weight:600}
 
-        .flash-success{
-            background:#ecfdf5;
-            color:#047857;
-            border:1px solid #a7f3d0;
-        }
+        .field{margin-bottom:16px}
+        .field label{display:block;margin-bottom:8px;font-size:14px;font-weight:800;color:#234c77}
+        .input-wrap{position:relative}
+        .input-wrap input{width:100%;height:52px;border-radius:16px;border:1px solid #ccd9ea;background:#fff;padding:0 48px 0 46px;font-size:16px;font-weight:700;color:#163c65;outline:none;transition:.15s ease;box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+        .input-wrap input:focus{border-color:#8bb7ff; box-shadow:0 0 0 4px rgba(47,109,246,.10)}
+        .input-icon,.toggle-pass{position:absolute;top:50%;transform:translateY(-50%);display:grid;place-items:center;color:#6b7d93}
+        .input-icon{left:14px}
+        .toggle-pass{right:14px;border:0;background:transparent;cursor:pointer;padding:0}
+        .login-btn{width:100%;height:52px;border:0;border-radius:16px;background:linear-gradient(135deg,#2f6df6,#2558d9);color:#fff;font-size:18px;font-weight:900;cursor:pointer;box-shadow:0 16px 26px rgba(37,88,217,.18)}
+        .login-btn:hover{filter:brightness(.98)}
 
-        @keyframes flashIn{
-            from{opacity:0;transform:translateY(-8px)}
-            to{opacity:1;transform:translateY(0)}
-        }
+        .hint-box{margin-top:14px;padding:14px 16px;border-radius:14px;background:#f5f9ff;border:1px solid #dbe8f7;color:#5d7086;font-size:13px;line-height:1.65;font-weight:650}
+        .hint-box strong{color:#21466f}
 
-        @media(max-width:820px){
-            body{
-                overflow:auto;
-                padding:16px;
-            }
+        .footer-note{margin-top:18px; text-align:center; color:#7a8ea5; font-size:12px; font-weight:700}
 
-            .login-shell{
-                grid-template-columns:1fr;
-                min-height:0;
-            }
-
-            .intro-panel{
-                padding:32px 28px;
-            }
-
-            .brand-main{
-                font-size:34px;
-            }
-
-            .member-card-preview{
-                display:none;
-            }
-
-            .form-panel{
-                padding:36px 25px 40px;
-            }
-        }
-
-        @media(max-width:480px){
-            .intro-panel{
-                padding:27px 22px;
-            }
-
-            .form-panel{
-                padding:30px 20px 34px;
-            }
-
-            .form-title{
-                font-size:28px;
-            }
-
-            .logo-wrap{
-                width:68px;
-                height:68px;
-                border-radius:18px;
-            }
-        }
-
-        body{
-            padding:10px;
-        }
-
-        .login-shell{
-            width:100%;
-
-            border-radius:20px;
-        }
-
-        .brand-small{
-            font-size:13px;
-        }
-
-        .brand-main{
-            font-size:27px;
-        }
-
-        .intro-copy{
-            font-size:12px;
-            line-height:1.55;
-        }
-
-        .form-subtitle{
-            font-size:12px;
-        }
-
-        .field input{
-            height:46px;
-        }
-
-        .login-btn{
-            height:46px;
+        @media (max-width: 640px){
+            .login-card{padding:24px 18px 20px;border-radius:22px}
+            .brand-main{font-size:30px}
+            .panel-subtitle{font-size:28px}
+            .intro-note{font-size:13px}
+            .input-wrap input,.login-btn{height:48px;font-size:15px}
         }
     </style>
 </head>
-
 <body>
-
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             <div class="flash-stack">
                 {% for category, message in messages %}
-                    <div class="flash flash-{{ category }}">
-                        {{ message }}
-                    </div>
+                    <div class="flash flash-{{ category }}">{{ message }}</div>
                 {% endfor %}
             </div>
         {% endif %}
     {% endwith %}
 
-    <main class="login-shell">
-
-        <section class="intro-panel">
-
-            <div class="intro-content">
-
-                <div class="logo-wrap">
-                    {% if logo_url %}
-                        <img src="{{ logo_url }}" alt="Logo CLB">
-                    {% else %}
-                        <div style="font-size:34px">🎱</div>
-                    {% endif %}
-                </div>
-
-                <p class="brand-small">Câu Lạc Bộ Billiards</p>
-                <h1 class="brand-main">Thanh Trung</h1>
-
-                <p class="intro-copy">
-                    Khu vực dành riêng cho thành viên CLB. Đăng nhập để xem
-                    thẻ thành viên, hạng thành viên và các thông tin cá nhân
-                    được lưu trong hệ thống.
-                </p>
-
-                <div class="member-card-preview">
-                    <div class="preview-rank">MEMBER</div>
-                    <div class="preview-name">THANH TRUNG CLUB</div>
-                    <div class="preview-code">BILLIARDS MEMBER CARD</div>
-                </div>
-
+    <main class="login-card">
+        <div class="brand-box">
+            <div class="logo-wrap">
+                {% if logo_url %}
+                    <img src="{{ logo_url }}" alt="Logo CLB">
+                {% else %}
+                    <div style="font-size:34px">🎱</div>
+                {% endif %}
             </div>
+            <p class="brand-small">{{ app_setup.club.title }}</p>
+            <h1 class="brand-main">{{ app_setup.club.name }}</h1>
+        </div>
 
-            <div class="intro-footer">
-                Member Portal · Thanh Trung Billiards
+        <h2 class="panel-subtitle">Đăng nhập thành viên</h2>
+
+        
+
+        <form method="post" action="{{ url_for('member_login') }}" autocomplete="off">
+            <div class="field">
+                <label for="member_code">ID / User</label>
+                <div class="input-wrap">
+                    <span class="input-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/><path d="M7 9H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M7 13H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+                    </span>
+                    <input id="member_code" type="text" name="ma_thanh_vien" placeholder="Nhập mã thành viên" required autofocus autocomplete="username">
+                </div>
             </div>
-
-        </section>
-
-        <section class="form-panel">
-
-            <div class="form-inner">
-
-                <p class="form-eyebrow">Member Portal</p>
-                <h2 class="form-title">Đăng nhập thành viên</h2>
-
-                <p class="form-subtitle">
-                    Sử dụng mã thành viên và số điện thoại đã đăng ký tại CLB.
-                </p>
-
-                <form
-                    method="post"
-                    action="{{ url_for('member_login') }}"
-                    autocomplete="off"
-                >
-
-                    <div class="field">
-                        <label for="member_code">
-                            ID / User
-                        </label>
-
-                        <div class="input-wrap">
-
-                            <span class="input-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M7 9H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                    <path d="M7 13H17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </span>
-
-                            <input
-                                id="member_code"
-                                type="text"
-                                name="ma_thanh_vien"
-                                placeholder="Nhập mã thành viên"
-                                required
-                                autofocus
-                                autocomplete="username"
-                            >
-
-                        </div>
-                    </div>
-
-                    <div class="field">
-
-                        <label for="member_phone">
-                            Pass
-                        </label>
-
-                        <div class="input-wrap">
-
-                            <span class="input-icon">
-                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                                    <rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" stroke-width="2"/>
-                                    <path d="M11 18H13" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                                </svg>
-                            </span>
-
-                            <input
-                                id="member_phone"
-                                type="password"
-                                name="so_dien_thoai"
-                                placeholder="Nhập số điện thoại"
-                                inputmode="numeric"
-                                maxlength="10"
-                                pattern="[0-9]{10}"
-                                required
-                                autocomplete="current-password"
-                                oninput="
-                                    this.value =
-                                        this.value
-                                        .replace(/\D/g,'')
-                                        .slice(0,10);
-                                "
-                            >
-
-                            <button
-                                type="button"
-                                class="password-toggle"
-                                onclick="toggleMemberPassword()"
-                                title="Ẩn / hiện số điện thoại"
-                                aria-label="Ẩn / hiện số điện thoại"
-                            >
-
-                                <svg
-                                    id="eyeOpen"
-                                    width="19"
-                                    height="19"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                >
-                                    <path
-                                        d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"
-                                        stroke="currentColor"
-                                        stroke-width="2"
-                                    />
-                                    <circle
-                                        cx="12"
-                                        cy="12"
-                                        r="3"
-                                        stroke="currentColor"
-                                        stroke-width="2"
-                                    />
-                                </svg>
-
-                                <svg
-                                    id="eyeClosed"
-                                    width="19"
-                                    height="19"
-                                    viewBox="0 0 24 24"
-                                    fill="none"
-                                    style="display:none"
-                                >
-                                    <path
-                                        d="m3 3 18 18"
-                                        stroke="currentColor"
-                                        stroke-width="2"
-                                        stroke-linecap="round"
-                                    />
-                                    <path
-                                        d="M10.7 5.1A11 11 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-3 3.9M6.5 6.5C3.6 8.3 2 12 2 12s3.5 7 10 7c1.7 0 3.2-.5 4.4-1.2"
-                                        stroke="currentColor"
-                                        stroke-width="2"
-                                        stroke-linecap="round"
-                                    />
-                                </svg>
-
-                            </button>
-                        </div>
-
-                    </div>
-
-                    <button
-                        type="submit"
-                        class="login-btn"
-                    >
-                        Đăng nhập
+            <div class="field">
+                <label for="member_phone">Pass</label>
+                <div class="input-wrap">
+                    <span class="input-icon">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><rect x="7" y="2" width="10" height="20" rx="2" stroke="currentColor" stroke-width="2"/><path d="M10 5H14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M12 18H12.01" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>
+                    </span>
+                    <input id="member_phone" type="password" name="so_dien_thoai" placeholder="Nhập số điện thoại" required autocomplete="current-password">
+                    <button type="button" class="toggle-pass" onclick="togglePass()" aria-label="Ẩn hiện mật khẩu">
+                        <svg id="eyeOpen" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M2 12C3.8 7.8 7.4 5 12 5C16.6 5 20.2 7.8 22 12C20.2 16.2 16.6 19 12 19C7.4 19 3.8 16.2 2 12Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="2"/></svg>
                     </button>
-
-                </form>
-
-                <div class="login-help">
-                    <b>User / ID:</b> Mã thành viên của Ken.<br>
-                    <b>Pass:</b> Số điện thoại 10 số đã đăng ký tại CLB.
                 </div>
-
             </div>
+            <button type="submit" class="login-btn">Đăng nhập</button>
+        </form>
 
-        </section>
+        <div class="hint-box">
+            <p class="intro-note">
+                Phần mềm dành riêng cho thành viên CLB <strong>"{{ app_setup.club.name }}"</strong>. Hãy đăng nhập để xem thông tin thành viên, quá trình hoạt động và ưu đãi thành viên trong hệ thống.
+            </p>
+        </div>
 
+
+        <div class="footer-note">Member Portal · {{ app_setup.club.title }} {{ app_setup.club.name }}</div>
     </main>
 
     <script>
-        function toggleMemberPassword(){
-
-            const input =
-                document.getElementById(
-                    'member_phone'
-                );
-
-            const eyeOpen =
-                document.getElementById(
-                    'eyeOpen'
-                );
-
-            const eyeClosed =
-                document.getElementById(
-                    'eyeClosed'
-                );
-
-            const hidden =
-                input.type === 'password';
-
-            input.type =
-                hidden
-                    ? 'text'
-                    : 'password';
-
-            eyeOpen.style.display =
-                hidden
-                    ? 'none'
-                    : 'block';
-
-            eyeClosed.style.display =
-                hidden
-                    ? 'block'
-                    : 'none';
+        function togglePass(){
+            const input = document.getElementById('member_phone');
+            if(!input) return;
+            input.type = input.type === 'password' ? 'text' : 'password';
         }
-
-
         window.setTimeout(function(){
-
-            document
-                .querySelectorAll('.flash')
-                .forEach(function(item){
-
-                    item.style.transition =
-                        'opacity .25s ease, transform .25s ease';
-
-                    item.style.opacity =
-                        '0';
-
-                    item.style.transform =
-                        'translateY(-8px)';
-
-                    window.setTimeout(
-                        function(){
-                            item.remove();
-                        },
-                        260
-                    );
-                });
-
-        },3500);
+            document.querySelectorAll('.flash').forEach(function(item){
+                item.style.transition = 'opacity .25s ease, transform .25s ease';
+                item.style.opacity = '0';
+                item.style.transform = 'translateY(-10px)';
+                window.setTimeout(function(){ item.remove(); }, 280);
+            });
+        }, 3200);
     </script>
-
 </body>
 </html>

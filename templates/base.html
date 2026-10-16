@@ -333,6 +333,7 @@
 
         <nav class="nav-list">
 
+            {% if admin_can('thanh_vien') %}
             <!-- THÀNH VIÊN -->
             <a
                 href="{{ url_for('thanh_vien') }}"
@@ -351,8 +352,10 @@
                     Thành Viên
                 </span>
             </a>
+            {% endif %}
 
 
+            {% if admin_can('hoat_dong') %}
             <!-- HOẠT ĐỘNG -->
             <a
                 href="{{ url_for('hoat_dong') }}"
@@ -366,8 +369,10 @@
                     Hoạt Động
                 </span>
             </a>
+            {% endif %}
 
 
+            {% if admin_can('hoa_don') %}
             <!-- HÓA ĐƠN -->
             <a
                 href="{{ url_for('hoa_don') }}"
@@ -384,7 +389,9 @@
                     Hóa Đơn
                 </span>
             </a>
+            {% endif %}
 
+            {% if admin_can('khuyen_mai') %}
             <!-- KHUYẾN MÃI -->
             <a
                 href="{{ url_for('khuyen_mai_admin') }}"
@@ -402,8 +409,10 @@
                     Khuyến Mãi
                 </span>
             </a>
+            {% endif %}
 
 
+            {% if admin_can('kich_hoat_qua') %}
             <!-- KÍCH HOẠT QUÀ / VOUCHER -->
             <a
                 href="{{ url_for('kich_hoat_qua') }}"
@@ -420,8 +429,10 @@
                     Kích hoạt Quà/Voucher
                 </span>
             </a>
+            {% endif %}
 
 
+            {% if admin_can('setup') %}
             <!-- SETUP -->
             <a
                 href="{{ url_for('setup') }}"
@@ -435,6 +446,7 @@
                     Setup
                 </span>
             </a>
+            {% endif %}
 
         </nav>
 

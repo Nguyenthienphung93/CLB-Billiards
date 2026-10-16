@@ -12,6 +12,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from flask import (
     Flask,
+    g,
     flash,
     jsonify,
     redirect,
@@ -21,6 +22,7 @@ from flask import (
     session,
 )
 from supabase import create_client
+from werkzeug.security import generate_password_hash, check_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
 load_dotenv(BASE_DIR / ".env")
@@ -52,6 +54,7 @@ PROMOTION_TABLE = "Khuyenmai"
 PROMOTION_MILESTONE_TABLE = "Khuyenmai_moc"
 PROMOTION_REDEEM_TABLE = "Khuyenmai_doiqua"
 PROMOTION_VOUCHER_TABLE = "Khuyenmai_voucher"
+ADMIN_TABLE = "admin_info"
 
 SETUP_FILE = BASE_DIR / "club_setup.json"
 
@@ -864,12 +867,31 @@ def inject_layout_data():
     except Exception:
         setup_config = normalize_setup_config()
 
+    current_admin = None
+    admin_permissions = {
+        key: False
+        for key in ADMIN_PERMISSION_KEYS
+    }
+
+    if session.get("admin_logged_in"):
+        current_admin = get_current_admin()
+
+        if current_admin:
+            admin_permissions = (
+                admin_row_permissions(
+                    current_admin
+                )
+            )
+
     return {
         "logo_url": find_logo_url(),
         "app_setup": setup_config,
         "payment_qr_url": build_payment_qr_url(
             setup_config
         ),
+        "current_admin": current_admin,
+        "admin_permissions": admin_permissions,
+        "admin_can": current_admin_can,
     }
 
 
@@ -1702,17 +1724,324 @@ def validate_member(payload):
         return "Ngày sinh không được để trống."
     return ""
 
+
+# ==========================================================
+# QUẢN TRỊ ADMIN + PHÂN QUYỀN
+# ==========================================================
+ADMIN_PERMISSION_KEYS = (
+    "thanh_vien",
+    "hoat_dong",
+    "hoa_don",
+    "khuyen_mai",
+    "kich_hoat_qua",
+    "setup",
+    "quan_tri_admin",
+)
+
+FULL_ADMIN_PERMISSIONS = {
+    key: True
+    for key in ADMIN_PERMISSION_KEYS
+}
+
+ADMIN_PERMISSION_LABELS = (
+    ("thanh_vien", "Thành Viên"),
+    ("hoat_dong", "Hoạt Động"),
+    ("hoa_don", "Hóa Đơn"),
+    ("khuyen_mai", "Khuyến Mãi"),
+    ("kich_hoat_qua", "Kích hoạt Quà/Voucher"),
+    ("setup", "Setup"),
+    ("quan_tri_admin", "Phân quyền Admin"),
+)
+
+ENDPOINT_PERMISSION_MAP = {
+    # Thành viên
+    "thanh_vien": "thanh_vien",
+    "api_tim_kiem_thanh_vien": "thanh_vien",
+    "api_thong_ke_thanh_vien": "thanh_vien",
+    "them_thanh_vien": "thanh_vien",
+    "cap_nhat_thanh_vien": "thanh_vien",
+    "xoa_thanh_vien": "thanh_vien",
+
+    # Hoạt động
+    "hoat_dong": "hoat_dong",
+    "api_bat_dau_ban": "hoat_dong",
+    "api_luu_gio_hang": "hoat_dong",
+    "api_tao_hoa_don": "hoat_dong",
+    "api_uu_dai_tien_thanh_vien": "hoat_dong",
+
+    # Hóa đơn
+    "hoa_don": "hoa_don",
+    "xoa_hoa_don": "hoa_don",
+
+    # Khuyến mãi
+    "khuyen_mai_admin": "khuyen_mai",
+    "toggle_khuyen_mai": "khuyen_mai",
+    "cap_nhat_khuyen_mai": "khuyen_mai",
+    "tang_voucher": "khuyen_mai",
+    "cap_nhat_voucher": "khuyen_mai",
+    "xoa_voucher": "khuyen_mai",
+
+    # Kích hoạt quà / voucher
+    "kich_hoat_qua": "kich_hoat_qua",
+    "api_tra_cuu_qua_voucher": "kich_hoat_qua",
+    "xac_nhan_kich_hoat_qua": "kich_hoat_qua",
+
+    # Setup
+    "setup": "setup",
+
+    # Quản trị Admin
+    "them_admin": "quan_tri_admin",
+    "cap_nhat_admin": "quan_tri_admin",
+    "xoa_admin": "quan_tri_admin",
+}
+
+
+def normalize_admin_permissions(value):
+    if isinstance(value, str):
+        try:
+            value = json.loads(value)
+        except Exception:
+            value = {}
+
+    if not isinstance(value, dict):
+        value = {}
+
+    return {
+        key: bool(value.get(key, False))
+        for key in ADMIN_PERMISSION_KEYS
+    }
+
+
+def admin_row_permissions(admin_row):
+    if not isinstance(admin_row, dict):
+        return {
+            key: False
+            for key in ADMIN_PERMISSION_KEYS
+        }
+
+    if bool(admin_row.get("is_owner")):
+        return dict(FULL_ADMIN_PERMISSIONS)
+
+    return normalize_admin_permissions(
+        admin_row.get("quyen_han")
+    )
+
+
+def get_current_admin():
+    cached = getattr(
+        g,
+        "_current_admin",
+        None
+    )
+
+    if cached is not None:
+        return cached or None
+
+    admin_id = session.get("admin_id")
+
+    if not admin_id:
+        g._current_admin = {}
+        return None
+
+    try:
+        rows = (
+            supabase
+            .table(ADMIN_TABLE)
+            .select(
+                "id,"
+                "username,"
+                "email,"
+                "ho_va_ten,"
+                "active,"
+                "is_owner,"
+                "quyen_han"
+            )
+            .eq("id", admin_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+
+        admin = rows[0] if rows else None
+
+        if (
+            not admin
+            or not bool(admin.get("active"))
+        ):
+            g._current_admin = {}
+            return None
+
+        admin["quyen_han_chuan"] = (
+            admin_row_permissions(admin)
+        )
+
+        g._current_admin = admin
+        return admin
+
+    except Exception as exc:
+        print(
+            "[LOAD CURRENT ADMIN ERROR]",
+            repr(exc)
+        )
+        g._current_admin = {}
+        return None
+
+
+def current_admin_can(permission_key):
+    permission_key = clean_text(
+        permission_key
+    )
+
+    admin = get_current_admin()
+
+    if not admin:
+        return False
+
+    if bool(admin.get("is_owner")):
+        return True
+
+    return bool(
+        admin
+        .get(
+            "quyen_han_chuan",
+            {}
+        )
+        .get(
+            permission_key,
+            False
+        )
+    )
+
+
+def admin_permissions_from_form(form):
+    permissions = {}
+
+    for key in ADMIN_PERMISSION_KEYS:
+        permissions[key] = (
+            form.get(
+                f"perm_{key}"
+            )
+            == "1"
+        )
+
+    return permissions
+
+
+def first_allowed_admin_endpoint():
+    preferred = (
+        ("thanh_vien", "thanh_vien"),
+        ("hoat_dong", "hoat_dong"),
+        ("hoa_don", "hoa_don"),
+        ("khuyen_mai", "khuyen_mai_admin"),
+        ("kich_hoat_qua", "kich_hoat_qua"),
+        ("setup", "setup"),
+    )
+
+    for permission_key, endpoint in preferred:
+        if current_admin_can(permission_key):
+            return endpoint
+
+    return "admin_logout"
+
+
+def ensure_owner_admin_from_env():
+    """
+    Chỉ dùng 1 lần để chuyển tài khoản ADMIN_USERNAME /
+    ADMIN_PASSWORD hiện có trong .env sang bảng admin_info.
+
+    Sau khi đã thấy tài khoản Chủ trong Supabase,
+    có thể xóa ADMIN_USERNAME và ADMIN_PASSWORD khỏi .env.
+    """
+    if not ADMIN_USERNAME or not ADMIN_PASSWORD:
+        return
+
+    try:
+        existing = (
+            supabase
+            .table(ADMIN_TABLE)
+            .select("id")
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+
+        if existing:
+            return
+
+        now_iso = (
+            datetime.now(VIETNAM_TZ)
+            .isoformat()
+        )
+
+        supabase.table(
+            ADMIN_TABLE
+        ).insert({
+            "username":
+                ADMIN_USERNAME,
+
+            "email":
+                None,
+
+            "ho_va_ten":
+                "Chủ hệ thống",
+
+            "password_hash":
+                generate_password_hash(
+                    ADMIN_PASSWORD
+                ),
+
+            "active":
+                True,
+
+            "is_owner":
+                True,
+
+            "quyen_han":
+                dict(
+                    FULL_ADMIN_PERMISSIONS
+                ),
+
+            "created_at":
+                now_iso,
+
+            "updated_at":
+                now_iso,
+        }).execute()
+
+        print(
+            "[ADMIN MIGRATION] "
+            "Đã chuyển tài khoản .env "
+            "sang admin_info."
+        )
+
+    except Exception as exc:
+        print(
+            "[ADMIN MIGRATION ERROR]",
+            repr(exc)
+        )
+
+
 @app.route(
     "/admin-login",
     methods=["GET", "POST"]
 )
 def admin_login():
 
-    # Đã đăng nhập rồi
+    ensure_owner_admin_from_env()
+
     if session.get("admin_logged_in"):
-        return redirect(
-            url_for("thanh_vien")
-        )
+        admin = get_current_admin()
+
+        if admin:
+            return redirect(
+                url_for(
+                    first_allowed_admin_endpoint()
+                )
+            )
+
+        session.clear()
 
     if request.method == "POST":
 
@@ -1725,68 +2054,193 @@ def admin_login():
             or ""
         )
 
-
-        username_ok = (
-            bool(ADMIN_USERNAME)
-            and hmac.compare_digest(
-                login,
-                ADMIN_USERNAME
+        if not login or not password:
+            flash(
+                "Vui lòng nhập tài khoản và mật khẩu.",
+                "danger"
             )
-        )
-
-        password_ok = (
-            bool(ADMIN_PASSWORD)
-            and hmac.compare_digest(
-                password,
-                ADMIN_PASSWORD
+            return render_template(
+                "admin_login.html"
             )
-        )
 
+        try:
+            rows = (
+                supabase
+                .table(ADMIN_TABLE)
+                .select(
+                    "id,"
+                    "username,"
+                    "email,"
+                    "ho_va_ten,"
+                    "password_hash,"
+                    "active,"
+                    "is_owner,"
+                    "quyen_han"
+                )
+                .ilike(
+                    "username",
+                    login
+                )
+                .limit(1)
+                .execute()
+                .data
+                or []
+            )
 
-        if username_ok and password_ok:
+            if not rows:
+                rows = (
+                    supabase
+                    .table(ADMIN_TABLE)
+                    .select(
+                        "id,"
+                        "username,"
+                        "email,"
+                        "ho_va_ten,"
+                        "password_hash,"
+                        "active,"
+                        "is_owner,"
+                        "quyen_han"
+                    )
+                    .ilike(
+                        "email",
+                        login
+                    )
+                    .limit(1)
+                    .execute()
+                    .data
+                    or []
+                )
 
-            session.clear()
+            admin = (
+                rows[0]
+                if rows
+                else None
+            )
 
-            session[
-                "admin_logged_in"
-            ] = True
+            password_ok = (
+                bool(admin)
+                and bool(
+                    admin.get(
+                        "password_hash"
+                    )
+                )
+                and check_password_hash(
+                    admin.get(
+                        "password_hash"
+                    ),
+                    password
+                )
+            )
 
-            session[
-                "admin_username"
-            ] = ADMIN_USERNAME
+            if (
+                admin
+                and bool(
+                    admin.get("active")
+                )
+                and password_ok
+            ):
+
+                session.clear()
+
+                session[
+                    "admin_logged_in"
+                ] = True
+
+                session[
+                    "admin_id"
+                ] = admin.get("id")
+
+                session[
+                    "admin_username"
+                ] = admin.get(
+                    "username"
+                )
+
+                session[
+                    "admin_name"
+                ] = (
+                    admin.get("ho_va_ten")
+                    or admin.get("username")
+                )
+
+                try:
+                    supabase.table(
+                        ADMIN_TABLE
+                    ).update({
+                        "last_login_at":
+                            datetime.now(
+                                VIETNAM_TZ
+                            ).isoformat(),
+
+                        "updated_at":
+                            datetime.now(
+                                VIETNAM_TZ
+                            ).isoformat(),
+                    }).eq(
+                        "id",
+                        admin.get("id")
+                    ).execute()
+                except Exception as update_exc:
+                    print(
+                        "[ADMIN LAST LOGIN ERROR]",
+                        repr(update_exc)
+                    )
+
+                flash(
+                    "Đăng nhập thành công.",
+                    "success"
+                )
+
+                # Cache admin cho request hiện tại
+                admin[
+                    "quyen_han_chuan"
+                ] = admin_row_permissions(
+                    admin
+                )
+                g._current_admin = admin
+
+                return redirect(
+                    url_for(
+                        first_allowed_admin_endpoint()
+                    )
+                )
+
+            if (
+                admin
+                and not bool(
+                    admin.get("active")
+                )
+            ):
+                flash(
+                    "Tài khoản Admin đã bị khóa.",
+                    "danger"
+                )
+            else:
+                flash(
+                    "User/Email hoặc mật khẩu không chính xác.",
+                    "danger"
+                )
+
+        except Exception as exc:
+            print(
+                "[ADMIN LOGIN ERROR]",
+                repr(exc)
+            )
 
             flash(
-                "Đăng nhập thành công.",
-                "success"
+                "Không thể đăng nhập Admin. "
+                "Vui lòng kiểm tra bảng admin_info.",
+                "danger"
             )
-
-            return redirect(
-                url_for("thanh_vien")
-            )
-
-
-        flash(
-            "User/ID hoặc mật khẩu không chính xác.",
-            "danger"
-        )
-
 
     return render_template(
         "admin_login.html"
     )
 
+
 @app.get("/admin-logout")
 def admin_logout():
-
-    session.pop(
-        "admin_logged_in",
-        None
-    )
-
-    session.pop(
-        "admin_username",
-        None
-    )
+    session.clear()
 
     flash(
         "Đã đăng xuất khỏi hệ thống.",
@@ -1796,6 +2250,7 @@ def admin_logout():
     return redirect(
         url_for("admin_login")
     )
+
 
 @app.before_request
 def require_admin_login():
@@ -1815,23 +2270,83 @@ def require_admin_login():
         "static",
     }
 
-
     if request.endpoint in allowed_endpoints:
         return None
-
 
     if not session.get(
         "admin_logged_in"
     ):
+        return redirect(
+            url_for("admin_login")
+        )
+
+    admin = get_current_admin()
+
+    if not admin:
+        session.clear()
+
+        flash(
+            "Tài khoản Admin không còn hiệu lực "
+            "hoặc đã bị khóa.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("admin_login")
+        )
+
+    permission_key = (
+        ENDPOINT_PERMISSION_MAP.get(
+            request.endpoint
+        )
+    )
+
+    # Endpoint Admin nào chưa khai báo quyền:
+    # Chủ được vào, Admin thường bị chặn để tránh lọt quyền.
+    if not permission_key:
+        if bool(admin.get("is_owner")):
+            return None
+
+        return (
+            jsonify({
+                "ok": False,
+                "message":
+                    "Tài khoản không có quyền "
+                    "thực hiện chức năng này."
+            }),
+            403
+        ) if request.path.startswith("/api/") else (
+            render_template(
+                "403.html"
+            ),
+            403
+        )
+
+    if not current_admin_can(
+        permission_key
+    ):
+        if request.path.startswith("/api/"):
+            return jsonify({
+                "ok": False,
+                "message":
+                    "Bạn không có quyền sử dụng "
+                    "chức năng này."
+            }), 403
+
+        flash(
+            "Tài khoản của bạn không có quyền "
+            "truy cập chức năng này.",
+            "danger"
+        )
 
         return redirect(
             url_for(
-                "admin_login"
+                first_allowed_admin_endpoint()
             )
         )
 
-
     return None
+
 
 @app.route(
     "/member-login",
@@ -6840,6 +7355,76 @@ def setup():
                 "danger"
             )
 
+    admin_rows = []
+    can_manage_admin = current_admin_can(
+        "quan_tri_admin"
+    )
+
+    if can_manage_admin:
+        try:
+            admin_rows = (
+                supabase
+                .table(ADMIN_TABLE)
+                .select(
+                    "id,"
+                    "username,"
+                    "email,"
+                    "ho_va_ten,"
+                    "active,"
+                    "is_owner,"
+                    "quyen_han,"
+                    "last_login_at,"
+                    "created_at"
+                )
+                .order(
+                    "is_owner",
+                    desc=True
+                )
+                .order(
+                    "created_at"
+                )
+                .execute()
+                .data
+                or []
+            )
+
+            for admin_row in admin_rows:
+                admin_row[
+                    "quyen_han_chuan"
+                ] = admin_row_permissions(
+                    admin_row
+                )
+
+                last_login = parse_iso_datetime(
+                    admin_row.get(
+                        "last_login_at"
+                    )
+                )
+
+                admin_row[
+                    "last_login_hien_thi"
+                ] = (
+                    last_login
+                    .astimezone(
+                        VIETNAM_TZ
+                    )
+                    .strftime(
+                        "%d/%m/%Y %H:%M"
+                    )
+                    if last_login
+                    else "Chưa đăng nhập"
+                )
+
+        except Exception as exc:
+            print(
+                "[LOAD ADMIN INFO ERROR]",
+                repr(exc)
+            )
+            flash(
+                "Không tải được danh sách Admin.",
+                "danger"
+            )
+
     return render_template(
         "setup.html",
         setup_config=config,
@@ -6847,6 +7432,504 @@ def setup():
         payment_qr_url=build_payment_qr_url(
             config
         ),
+        admin_rows=admin_rows,
+        admin_permission_labels=
+            ADMIN_PERMISSION_LABELS,
+        can_manage_admin=
+            can_manage_admin,
+    )
+
+
+
+# ==========================================================
+# SETUP - PHÂN QUYỀN ADMIN
+# ==========================================================
+@app.post("/setup/admin/them")
+def them_admin():
+    current_admin = get_current_admin()
+
+    if not current_admin:
+        return redirect(
+            url_for("admin_login")
+        )
+
+    username = clean_text(
+        request.form.get("username")
+    )
+
+    email = clean_text(
+        request.form.get("email")
+    ) or None
+
+    full_name = clean_text(
+        request.form.get("ho_va_ten")
+    )
+
+    password = str(
+        request.form.get("password")
+        or ""
+    )
+
+    active = (
+        request.form.get("active")
+        == "1"
+    )
+
+    requested_owner = (
+        request.form.get("is_owner")
+        == "1"
+    )
+
+    permissions = (
+        admin_permissions_from_form(
+            request.form
+        )
+    )
+
+    if not username:
+        flash(
+            "Username Admin không được để trống.",
+            "danger"
+        )
+        return redirect(
+            url_for("setup") + "#admin"
+        )
+
+    if not full_name:
+        flash(
+            "Họ tên Admin không được để trống.",
+            "danger"
+        )
+        return redirect(
+            url_for("setup") + "#admin"
+        )
+
+    if len(password) < 6:
+        flash(
+            "Mật khẩu Admin phải có ít nhất 6 ký tự.",
+            "danger"
+        )
+        return redirect(
+            url_for("setup") + "#admin"
+        )
+
+    # Chỉ Chủ hệ thống mới được tạo thêm Chủ.
+    is_owner = (
+        requested_owner
+        and bool(
+            current_admin.get("is_owner")
+        )
+    )
+
+    if is_owner:
+        permissions = dict(
+            FULL_ADMIN_PERMISSIONS
+        )
+
+    now_iso = (
+        datetime.now(
+            VIETNAM_TZ
+        ).isoformat()
+    )
+
+    try:
+        (
+            supabase
+            .table(ADMIN_TABLE)
+            .insert({
+                "username":
+                    username,
+
+                "email":
+                    email,
+
+                "ho_va_ten":
+                    full_name,
+
+                "password_hash":
+                    generate_password_hash(
+                        password
+                    ),
+
+                "active":
+                    active,
+
+                "is_owner":
+                    is_owner,
+
+                "quyen_han":
+                    permissions,
+
+                "created_by":
+                    current_admin.get("id"),
+
+                "created_at":
+                    now_iso,
+
+                "updated_at":
+                    now_iso,
+            })
+            .execute()
+        )
+
+        flash(
+            "Đã tạo tài khoản Admin.",
+            "success"
+        )
+
+    except Exception as exc:
+        print(
+            "[ADD ADMIN ERROR]",
+            repr(exc)
+        )
+
+        message = str(exc)
+
+        if (
+            "duplicate" in message.lower()
+            or "unique" in message.lower()
+        ):
+            message = (
+                "Username hoặc Email đã tồn tại."
+            )
+
+        flash(
+            f"Không tạo được Admin: {message}",
+            "danger"
+        )
+
+    return redirect(
+        url_for("setup") + "#admin"
+    )
+
+
+@app.post(
+    "/setup/admin/<int:admin_id>/cap-nhat"
+)
+def cap_nhat_admin(admin_id):
+    current_admin = get_current_admin()
+
+    if not current_admin:
+        return redirect(
+            url_for("admin_login")
+        )
+
+    try:
+        rows = (
+            supabase
+            .table(ADMIN_TABLE)
+            .select(
+                "id,"
+                "username,"
+                "email,"
+                "ho_va_ten,"
+                "active,"
+                "is_owner,"
+                "quyen_han"
+            )
+            .eq("id", admin_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+
+        if not rows:
+            raise ValueError(
+                "Không tìm thấy tài khoản Admin."
+            )
+
+        target = rows[0]
+
+        # Admin thường không được sửa tài khoản Chủ.
+        if (
+            bool(target.get("is_owner"))
+            and not bool(
+                current_admin.get(
+                    "is_owner"
+                )
+            )
+        ):
+            raise PermissionError(
+                "Chỉ Chủ hệ thống mới được "
+                "chỉnh tài khoản Chủ."
+            )
+
+        username = clean_text(
+            request.form.get("username")
+        )
+
+        email = clean_text(
+            request.form.get("email")
+        ) or None
+
+        full_name = clean_text(
+            request.form.get("ho_va_ten")
+        )
+
+        password = str(
+            request.form.get("password")
+            or ""
+        )
+
+        active = (
+            request.form.get("active")
+            == "1"
+        )
+
+        requested_owner = (
+            request.form.get("is_owner")
+            == "1"
+        )
+
+        if not username:
+            raise ValueError(
+                "Username không được để trống."
+            )
+
+        if not full_name:
+            raise ValueError(
+                "Họ tên Admin không được để trống."
+            )
+
+        # Không cho tự khóa chính mình.
+        if (
+            int(current_admin.get("id") or 0)
+            == int(admin_id)
+            and not active
+        ):
+            raise ValueError(
+                "Không thể tự khóa tài khoản "
+                "đang đăng nhập."
+            )
+
+        if bool(
+            current_admin.get("is_owner")
+        ):
+            is_owner = requested_owner
+        else:
+            is_owner = bool(
+                target.get("is_owner")
+            )
+
+        permissions = (
+            dict(FULL_ADMIN_PERMISSIONS)
+            if is_owner
+            else admin_permissions_from_form(
+                request.form
+            )
+        )
+
+        payload = {
+            "username":
+                username,
+
+            "email":
+                email,
+
+            "ho_va_ten":
+                full_name,
+
+            "active":
+                active,
+
+            "is_owner":
+                is_owner,
+
+            "quyen_han":
+                permissions,
+
+            "updated_at":
+                datetime.now(
+                    VIETNAM_TZ
+                ).isoformat(),
+        }
+
+        # Để trống mật khẩu = giữ nguyên.
+        if password:
+            if len(password) < 6:
+                raise ValueError(
+                    "Mật khẩu mới phải có "
+                    "ít nhất 6 ký tự."
+                )
+
+            payload[
+                "password_hash"
+            ] = generate_password_hash(
+                password
+            )
+
+        (
+            supabase
+            .table(ADMIN_TABLE)
+            .update(payload)
+            .eq("id", admin_id)
+            .execute()
+        )
+
+        # Nếu tự sửa chính mình, cập nhật session.
+        if (
+            int(current_admin.get("id") or 0)
+            == int(admin_id)
+        ):
+            session[
+                "admin_username"
+            ] = username
+
+            session[
+                "admin_name"
+            ] = full_name
+
+            if hasattr(
+                g,
+                "_current_admin"
+            ):
+                delattr(
+                    g,
+                    "_current_admin"
+                )
+
+        flash(
+            "Đã cập nhật quyền Admin.",
+            "success"
+        )
+
+    except Exception as exc:
+        print(
+            "[UPDATE ADMIN ERROR]",
+            repr(exc)
+        )
+
+        message = str(exc)
+
+        if (
+            "duplicate" in message.lower()
+            or "unique" in message.lower()
+        ):
+            message = (
+                "Username hoặc Email đã tồn tại."
+            )
+
+        flash(
+            f"Không cập nhật được Admin: {message}",
+            "danger"
+        )
+
+    return redirect(
+        url_for("setup") + "#admin"
+    )
+
+
+@app.post(
+    "/setup/admin/<int:admin_id>/xoa"
+)
+def xoa_admin(admin_id):
+    current_admin = get_current_admin()
+
+    if not current_admin:
+        return redirect(
+            url_for("admin_login")
+        )
+
+    if (
+        int(current_admin.get("id") or 0)
+        == int(admin_id)
+    ):
+        flash(
+            "Không thể xóa tài khoản "
+            "đang đăng nhập.",
+            "danger"
+        )
+
+        return redirect(
+            url_for("setup") + "#admin"
+        )
+
+    try:
+        rows = (
+            supabase
+            .table(ADMIN_TABLE)
+            .select(
+                "id,"
+                "is_owner,"
+                "username"
+            )
+            .eq("id", admin_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+
+        if not rows:
+            raise ValueError(
+                "Không tìm thấy Admin."
+            )
+
+        target = rows[0]
+
+        if bool(target.get("is_owner")):
+            if not bool(
+                current_admin.get(
+                    "is_owner"
+                )
+            ):
+                raise PermissionError(
+                    "Chỉ Chủ hệ thống mới được "
+                    "xóa tài khoản Chủ."
+                )
+
+            owner_rows = (
+                supabase
+                .table(ADMIN_TABLE)
+                .select(
+                    "id"
+                )
+                .eq(
+                    "is_owner",
+                    True
+                )
+                .eq(
+                    "active",
+                    True
+                )
+                .execute()
+                .data
+                or []
+            )
+
+            if len(owner_rows) <= 1:
+                raise ValueError(
+                    "Phải giữ lại ít nhất "
+                    "1 Admin Chủ đang hoạt động."
+                )
+
+        (
+            supabase
+            .table(ADMIN_TABLE)
+            .delete()
+            .eq("id", admin_id)
+            .execute()
+        )
+
+        flash(
+            "Đã xóa tài khoản Admin.",
+            "success"
+        )
+
+    except Exception as exc:
+        print(
+            "[DELETE ADMIN ERROR]",
+            repr(exc)
+        )
+
+        flash(
+            f"Không xóa được Admin: {exc}",
+            "danger"
+        )
+
+    return redirect(
+        url_for("setup") + "#admin"
     )
 
 

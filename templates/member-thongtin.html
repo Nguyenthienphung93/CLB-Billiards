@@ -287,11 +287,17 @@ tbody tr:hover{background:#f8fbff}
 
         <div class="info-grid">
             <div class="info-item"><span class="label">Thời gian đăng ký lần đầu</span><div class="value">{{ member.ngay_dang_ky_hien_thi or 'Chưa có' }}</div></div>
-            <div class="info-item"><span class="label">Thời gian chơi gần nhất</span><div class="value">{{ member.thoi_gian_choi_gan_nhat_hien_thi or 'Chưa có' }}</div></div>
-            <div class="info-item"><span class="label">Số tiền đã chi</span><div class="value">{{ member.so_tien_da_chi_hien_thi or '0 đ' }}</div></div>
 
             <div class="info-item"><span class="label">Số lần đã chơi</span><div class="value">{{ member.so_lan_da_choi or 0 }} lần</div></div>
+
+            <div class="info-item"><span class="label">Số tiền đã chi</span><div class="value">{{ member.so_tien_da_chi_hien_thi or '0 đ' }}</div></div>
+
+
             <div class="info-item"><span class="label">Thời gian chơi lâu nhất</span><div class="value">{{ member.thoi_gian_choi_lau_nhat_hien_thi or 'Chưa có' }}</div></div>
+
+            <div class="info-item"><span class="label">Thời gian chơi gần nhất</span><div class="value">{{ member.thoi_gian_choi_gan_nhat_hien_thi or 'Chưa có' }}</div></div>
+
+            
             <div class="info-item"><span class="label">Thời gian chơi ngắn nhất</span><div class="value">{{ member.thoi_gian_choi_ngan_nhat_hien_thi or 'Chưa có' }}</div></div>
         </div>
     </section>

@@ -7,7 +7,7 @@
 .setup-head h1{margin:0;font-size:30px;font-weight:1000;color:#102a43}
 .setup-head p{margin:6px 0 0;color:#64748b;font-weight:700}
 .setup-shell{background:#fff;border:1px solid #dce7f1;border-radius:22px;overflow:hidden;box-shadow:0 12px 28px rgba(15,37,64,.07)}
-.setup-tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #dbe7f3;background:#f8fbff}
+.setup-tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #dbe7f3;background:#f8fbff}
 .setup-tab{min-height:68px;border:0;background:transparent;padding:12px 16px;cursor:pointer;font-weight:950;color:#475569;position:relative}
 .setup-tab i{margin-right:8px;color:#2563eb}
 .setup-tab.active{color:#123a61;background:#fff}
@@ -36,6 +36,171 @@
 .qr-frame{width:min(100%,300px);aspect-ratio:1/1;margin:0 auto;border:1px dashed #bfdbfe;border-radius:18px;display:flex;align-items:center;justify-content:center;background:#f8fbff;overflow:hidden}
 .qr-frame img{width:100%;height:100%;object-fit:contain}.qr-empty{padding:24px;color:#64748b;font-weight:800;line-height:1.5}
 .json-note{margin-top:12px;padding:10px 12px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px;font-weight:750}
+
+.admin-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.admin-note{padding:11px 13px;border-radius:12px;background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;font-size:12px;font-weight:800;line-height:1.5}
+
+.admin-create-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+.admin-option{display:flex;align-items:center;gap:9px;min-height:44px;padding:10px 12px;border:1px solid #dbe7f3;border-radius:12px;background:#f8fbff;font-weight:850;color:#334155}
+.admin-option input{width:18px;height:18px;accent-color:#2563eb}
+
+.admin-table{
+    border:1px solid #dbe7f3;
+    border-radius:16px;
+    overflow:visible;
+    background:#fff;
+}
+.setup-shell,
+.setup-panel{
+    overflow:visible;
+}
+body{
+    overflow-y:auto;
+}
+.admin-table-head,.admin-row{
+    display:grid;
+    grid-template-columns:minmax(190px,1.15fr) minmax(190px,1fr) 150px minmax(180px,.9fr) 220px;
+    gap:12px;
+    align-items:center;
+}
+.admin-table-head{
+    min-height:46px;
+    padding:0 14px;
+    background:#eaf4ff;
+    border-bottom:1px solid #dbe7f3;
+    color:#123a61;
+    font-size:12px;
+    font-weight:1000;
+    text-transform:uppercase;
+}
+.admin-row-wrap{position:relative;border-bottom:1px solid #e7eef6}
+.admin-row-wrap:last-child{border-bottom:0}
+.admin-row{padding:13px 14px;min-height:70px}
+.admin-main-name{font-size:14px;font-weight:1000;color:#123a61}
+.admin-sub{margin-top:3px;font-size:11px;color:#64748b;font-weight:750;line-height:1.35}
+.admin-account{font-size:12px;color:#334155;font-weight:850;line-height:1.5}
+.admin-badges{display:flex;gap:6px;flex-wrap:wrap}
+.admin-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:950;border:1px solid #dbe7f3;background:#f8fbff;color:#334155}
+.admin-badge.owner{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+.admin-badge.active{background:#ecfdf5;border-color:#bbf7d0;color:#166534}
+.admin-badge.locked{background:#f8fafc;border-color:#cbd5e1;color:#64748b}
+
+.permission-dropdown{position:relative}
+.permission-trigger{
+    width:100%;
+    min-height:42px;
+    border:1px solid #cbd5e1;
+    border-radius:11px;
+    background:#fff;
+    padding:0 11px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    color:#123a61;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+}
+.permission-trigger:hover{border-color:#93c5fd;background:#f8fbff}
+.permission-trigger[disabled]{cursor:not-allowed;background:#f1f5f9;color:#64748b}
+.permission-trigger i.fa-chevron-down{transition:.16s ease}
+.permission-dropdown.open .permission-trigger i.fa-chevron-down{transform:rotate(180deg)}
+.permission-menu{
+    display:none;
+    position:absolute;
+    z-index:3000;
+    top:calc(100% + 7px);
+    bottom:auto;
+    right:0;
+    width:min(330px,80vw);
+    max-height:min(420px,calc(100vh - 40px));
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    padding:10px;
+    border:1px solid #cbd5e1;
+    border-radius:14px;
+    background:#fff;
+    box-shadow:0 18px 44px rgba(15,23,42,.18);
+}
+.permission-dropdown.open .permission-menu{display:block}
+.permission-dropdown.drop-up .permission-menu{
+    top:auto;
+    bottom:calc(100% + 7px);
+}
+.permission-menu-title{padding:3px 5px 8px;color:#64748b;font-size:11px;font-weight:900}
+.permission-check-list{display:flex;flex-direction:column;gap:6px}
+.permission-check{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-height:38px;
+    padding:8px 9px;
+    border:1px solid #e2e8f0;
+    border-radius:10px;
+    background:#f8fbff;
+    color:#334155;
+    font-size:12px;
+    font-weight:850;
+    cursor:pointer;
+}
+.permission-check:hover{border-color:#bfdbfe;background:#eff6ff}
+.permission-check input{width:17px;height:17px;accent-color:#2563eb}
+.permission-menu-foot{display:flex;justify-content:flex-end;margin-top:9px;padding-top:9px;border-top:1px solid #eef2f7}
+.permission-close-btn{
+    height:34px;
+    border:0;
+    border-radius:9px;
+    padding:0 13px;
+    background:#e2e8f0;
+    color:#334155;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+}
+
+.admin-row-actions{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+.admin-row-btn{
+    height:38px;
+    border:0;
+    border-radius:10px;
+    padding:0 11px;
+    font-size:11px;
+    font-weight:950;
+    cursor:pointer;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:6px;
+}
+.admin-row-btn.edit{background:#eaf2ff;color:#1d4ed8}
+.admin-row-btn.save{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff}
+.admin-row-btn.delete{background:#fee2e2;color:#b91c1c}
+
+.admin-edit-panel{display:none;padding:0 14px 14px;background:#fbfdff}
+.admin-row-wrap.editing .admin-edit-panel{display:block}
+.admin-edit-card{border:1px solid #dbe7f3;border-radius:14px;background:#f8fbff;padding:14px}
+.admin-edit-options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+
+.create-permission-wrap{margin-top:14px;max-width:430px}
+.create-permission-wrap .permission-menu{left:0;right:auto}
+
+@media(max-width:1180px){
+    .admin-table-head,.admin-row{
+        grid-template-columns:minmax(180px,1.1fr) minmax(170px,1fr) 135px minmax(165px,.9fr) 190px;
+    }
+}
+@media(max-width:900px){
+    .admin-grid,.admin-create-options,.admin-edit-options{grid-template-columns:1fr}
+    .admin-table-head{display:none}
+    .admin-row{grid-template-columns:1fr 1fr;gap:10px}
+    .admin-row > div:nth-child(4),.admin-row > div:nth-child(5){grid-column:1/-1}
+}
+@media(max-width:650px){
+    .admin-row{grid-template-columns:1fr}
+    .admin-row > div{grid-column:1/-1!important}
+    .permission-menu{left:0;right:auto;width:min(330px,calc(100vw - 60px))}
+}
 @media(max-width:900px){.setup-grid,.payment-layout{grid-template-columns:1fr}.rate-row{grid-template-columns:1fr 1fr}.service-row{grid-template-columns:1fr 160px 46px 46px}.qr-card{position:static}}
 @media(max-width:650px){.setup-tabs{grid-template-columns:1fr}.setup-panel{padding:14px}.rate-row,.service-row{grid-template-columns:1fr}.icon-btn{width:100%}}
 </style>
@@ -50,6 +215,9 @@
       <button type="button" class="setup-tab active" data-tab="club"><i class="fa-solid fa-building"></i>Thông tin CLB</button>
       <button type="button" class="setup-tab" data-tab="pricing"><i class="fa-solid fa-tags"></i>Biểu phí</button>
       <button type="button" class="setup-tab" data-tab="payment"><i class="fa-solid fa-qrcode"></i>Thanh toán</button>
+      {% if can_manage_admin %}
+      <button type="button" class="setup-tab" data-tab="admin"><i class="fa-solid fa-user-shield"></i>Phân quyền Admin</button>
+      {% endif %}
     </div>
 
     <div id="club" class="setup-panel active">
@@ -127,6 +295,310 @@
         <div class="save-row"><button class="save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu</button></div>
       </form>
     </div>
+
+    {% if can_manage_admin %}
+    <div id="admin" class="setup-panel">
+      <div class="section-title">
+        <i class="fa-solid fa-user-shield"></i>
+        Phân quyền Admin
+      </div>
+
+      <div class="admin-note">
+        Admin Chủ có toàn bộ quyền. Admin thường chỉ nhìn thấy và sử dụng những menu được bật.
+        Việc phân quyền được kiểm tra cả giao diện lẫn backend nên không thể vượt quyền bằng cách gõ URL trực tiếp.
+      </div>
+
+      <div class="setup-card" style="margin-top:16px">
+        <div class="section-title" style="font-size:17px">
+          <i class="fa-solid fa-user-plus"></i>
+          Tạo Admin mới
+        </div>
+
+        <form method="post" action="{{ url_for('them_admin') }}">
+          <div class="admin-grid">
+            <div class="field">
+              <label>Họ và tên</label>
+              <input type="text" name="ho_va_ten" placeholder="VD: Lê Trí Tâm" required>
+            </div>
+
+            <div class="field">
+              <label>Username</label>
+              <input type="text" name="username" placeholder="VD: Letritam3030" required>
+            </div>
+
+            <div class="field">
+              <label>Email</label>
+              <input type="email" name="email" placeholder="admin@example.com">
+            </div>
+
+            <div class="field">
+              <label>Mật khẩu ban đầu</label>
+              <input type="password" name="password" minlength="6" placeholder="Tối thiểu 6 ký tự" required>
+            </div>
+          </div>
+
+          <div class="admin-create-options">
+            <label class="admin-option">
+              <input type="checkbox" name="active" value="1" checked>
+              Kích hoạt tài khoản
+            </label>
+
+            {% if current_admin and current_admin.is_owner %}
+            <label class="admin-option">
+              <input
+                type="checkbox"
+                name="is_owner"
+                value="1"
+                class="js-owner-toggle"
+                onchange="syncOwnerPermissionState(this)"
+              >
+              Admin Chủ / Toàn quyền
+            </label>
+            {% endif %}
+          </div>
+
+          <div class="create-permission-wrap">
+            <div class="permission-dropdown js-permission-dropdown">
+              <button
+                type="button"
+                class="permission-trigger"
+                onclick="togglePermissionDropdown(this,event)"
+              >
+                <span>
+                  <i class="fa-solid fa-key"></i>
+                  <span class="js-permission-summary">Chọn quyền sử dụng</span>
+                </span>
+                <i class="fa-solid fa-chevron-down"></i>
+              </button>
+
+              <div class="permission-menu" onclick="event.stopPropagation()">
+                <div class="permission-menu-title">Chọn các menu Admin được phép sử dụng</div>
+
+                <div class="permission-check-list">
+                  {% for key, label in admin_permission_labels %}
+                  <label class="permission-check">
+                    <input
+                      type="checkbox"
+                      name="perm_{{ key }}"
+                      value="1"
+                      class="js-permission-check"
+                      onchange="updatePermissionSummary(this)"
+                    >
+                    {{ label }}
+                  </label>
+                  {% endfor %}
+                </div>
+
+                <div class="permission-menu-foot">
+                  <button
+                    type="button"
+                    class="permission-close-btn"
+                    onclick="closePermissionDropdown(this)"
+                  >
+                    Đóng
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="save-row">
+            <button class="save-btn" type="submit">
+              <i class="fa-solid fa-user-plus"></i> Tạo Admin
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <div class="section-title">
+        <i class="fa-solid fa-users-gear"></i>
+        Danh sách Admin
+      </div>
+
+      <div class="admin-table">
+        <div class="admin-table-head">
+          <div>Admin</div>
+          <div>Tài khoản</div>
+          <div>Trạng thái</div>
+          <div>Phân quyền</div>
+          <div style="text-align:right">Hành động</div>
+        </div>
+
+        {% for admin in admin_rows %}
+        <form
+          method="post"
+          action="{{ url_for('cap_nhat_admin', admin_id=admin.id) }}"
+          class="admin-row-wrap"
+          id="adminRow{{ admin.id }}"
+        >
+          <div class="admin-row">
+            <div>
+              <div class="admin-main-name">{{ admin.ho_va_ten }}</div>
+              <div class="admin-sub">Đăng nhập gần nhất: {{ admin.last_login_hien_thi }}</div>
+            </div>
+
+            <div class="admin-account">
+              <div>@{{ admin.username }}</div>
+              <div class="admin-sub">{{ admin.email or 'Chưa có email' }}</div>
+            </div>
+
+            <div class="admin-badges">
+              {% if admin.is_owner %}
+              <span class="admin-badge owner"><i class="fa-solid fa-crown"></i> Chủ</span>
+              {% endif %}
+
+              {% if admin.active %}
+              <span class="admin-badge active"><i class="fa-solid fa-circle-check"></i> Hoạt động</span>
+              {% else %}
+              <span class="admin-badge locked"><i class="fa-solid fa-lock"></i> Đã khóa</span>
+              {% endif %}
+            </div>
+
+            <div>
+              <div class="permission-dropdown js-permission-dropdown">
+                <button
+                  type="button"
+                  class="permission-trigger"
+                  onclick="togglePermissionDropdown(this,event)"
+                  {% if admin.is_owner %}disabled{% endif %}
+                >
+                  <span>
+                    <i class="fa-solid fa-key"></i>
+                    <span class="js-permission-summary">
+                      {% if admin.is_owner %}
+                        Toàn quyền
+                      {% else %}
+                        Chọn quyền
+                      {% endif %}
+                    </span>
+                  </span>
+                  <i class="fa-solid fa-chevron-down"></i>
+                </button>
+
+                <div class="permission-menu" onclick="event.stopPropagation()">
+                  <div class="permission-menu-title">Quyền menu của {{ admin.ho_va_ten }}</div>
+
+                  <div class="permission-check-list">
+                    {% for key, label in admin_permission_labels %}
+                    <label class="permission-check">
+                      <input
+                        type="checkbox"
+                        name="perm_{{ key }}"
+                        value="1"
+                        class="js-permission-check"
+                        {% if admin.is_owner or admin.quyen_han_chuan.get(key) %}checked{% endif %}
+                        {% if admin.is_owner %}disabled{% endif %}
+                        onchange="updatePermissionSummary(this)"
+                      >
+                      {{ label }}
+                    </label>
+                    {% endfor %}
+                  </div>
+
+                  <div class="permission-menu-foot">
+                    <button
+                      type="button"
+                      class="permission-close-btn"
+                      onclick="closePermissionDropdown(this)"
+                    >
+                      Đóng
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="admin-row-actions">
+              <button
+                type="button"
+                class="admin-row-btn edit"
+                onclick="toggleAdminEditor({{ admin.id }})"
+              >
+                <i class="fa-solid fa-pen"></i> Sửa
+              </button>
+
+              <button
+                type="submit"
+                class="admin-row-btn save"
+              >
+                <i class="fa-solid fa-floppy-disk"></i> Lưu
+              </button>
+
+              {% if not current_admin or admin.id != current_admin.id %}
+              <button
+                type="submit"
+                class="admin-row-btn delete"
+                formaction="{{ url_for('xoa_admin', admin_id=admin.id) }}"
+                onclick="return confirm('Xóa tài khoản Admin này?');"
+              >
+                <i class="fa-solid fa-trash"></i>
+              </button>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="admin-edit-panel">
+            <div class="admin-edit-card">
+              <div class="admin-grid">
+                <div class="field">
+                  <label>Họ và tên</label>
+                  <input type="text" name="ho_va_ten" value="{{ admin.ho_va_ten }}" required>
+                </div>
+
+                <div class="field">
+                  <label>Username</label>
+                  <input type="text" name="username" value="{{ admin.username }}" required>
+                </div>
+
+                <div class="field">
+                  <label>Email</label>
+                  <input type="email" name="email" value="{{ admin.email or '' }}">
+                </div>
+
+                <div class="field">
+                  <label>Đổi mật khẩu</label>
+                  <input type="password" name="password" minlength="6" placeholder="Để trống nếu giữ mật khẩu cũ">
+                </div>
+              </div>
+
+              <div class="admin-edit-options">
+                <label class="admin-option">
+                  <input
+                    type="checkbox"
+                    name="active"
+                    value="1"
+                    {% if admin.active %}checked{% endif %}
+                  >
+                  Kích hoạt tài khoản
+                </label>
+
+                {% if current_admin and current_admin.is_owner %}
+                <label class="admin-option">
+                  <input
+                    type="checkbox"
+                    name="is_owner"
+                    value="1"
+                    class="js-owner-toggle"
+                    {% if admin.is_owner %}checked{% endif %}
+                    onchange="syncOwnerPermissionState(this)"
+                  >
+                  Admin Chủ / Toàn quyền
+                </label>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </form>
+
+        {% else %}
+        <div style="padding:18px;color:#64748b;font-weight:800">
+          Chưa có dữ liệu Admin.
+        </div>
+        {% endfor %}
+      </div>
+      </div>
+    </div>
+    {% endif %}
   </div>
 </div>
 {% endblock %}
@@ -142,7 +614,7 @@
   }
   tabs.forEach(x=>x.addEventListener('click',()=>{openTab(x.dataset.tab);history.replaceState(null,'','#'+x.dataset.tab);}));
   const first=(location.hash||'#club').slice(1);
-  openTab(['club','pricing','payment'].includes(first)?first:'club');
+  openTab(['club','pricing','payment','admin'].includes(first)?first:'club');
 })();
 
 document.addEventListener('input',e=>{
@@ -199,6 +671,155 @@ function updateQrPreview(){
   const url=`https://img.vietqr.io/image/${encodeURIComponent(bank)}-${encodeURIComponent(account)}-compact2.png?accountName=${encodeURIComponent(name)}&addInfo=${encodeURIComponent(note)}`;
   frame.innerHTML=`<img src="${url}" alt="QR thanh toán">`;
 }
+
+
+function closeAllPermissionDropdowns(except=null){
+  document.querySelectorAll('.js-permission-dropdown.open').forEach(drop=>{
+    if(drop!==except){
+      drop.classList.remove('open','drop-up');
+    }
+  });
+}
+
+function positionPermissionDropdown(dropdown){
+  if(!dropdown) return;
+
+  const trigger=dropdown.querySelector('.permission-trigger');
+  const menu=dropdown.querySelector('.permission-menu');
+
+  if(!trigger || !menu) return;
+
+  dropdown.classList.remove('drop-up');
+
+  // Tạm hiển thị để đo chính xác chiều cao menu.
+  const wasOpen=dropdown.classList.contains('open');
+  if(!wasOpen) dropdown.classList.add('open');
+
+  const triggerRect=trigger.getBoundingClientRect();
+  const menuHeight=Math.min(
+    menu.scrollHeight || 0,
+    Math.max(180, window.innerHeight - 40)
+  );
+
+  const spaceBelow=window.innerHeight-triggerRect.bottom-16;
+  const spaceAbove=triggerRect.top-16;
+
+  // Nếu phía dưới không đủ chỗ nhưng phía trên rộng hơn -> xổ lên.
+  if(spaceBelow < Math.min(menuHeight, 280) && spaceAbove > spaceBelow){
+    dropdown.classList.add('drop-up');
+  }
+
+  if(!wasOpen) dropdown.classList.remove('open');
+}
+
+function togglePermissionDropdown(button,event){
+  event.stopPropagation();
+  const dropdown=button.closest('.js-permission-dropdown');
+  if(!dropdown || button.disabled) return;
+
+  const willOpen=!dropdown.classList.contains('open');
+  closeAllPermissionDropdowns(dropdown);
+
+  if(willOpen){
+    dropdown.classList.add('open');
+    positionPermissionDropdown(dropdown);
+  }else{
+    dropdown.classList.remove('open','drop-up');
+  }
+}
+
+function closePermissionDropdown(button){
+  const dropdown=button.closest('.js-permission-dropdown');
+  if(dropdown) dropdown.classList.remove('open','drop-up');
+}
+
+function updatePermissionSummary(input){
+  const dropdown=input.closest('.js-permission-dropdown');
+  if(!dropdown) return;
+
+  const all=[...dropdown.querySelectorAll('.js-permission-check')];
+  const checked=all.filter(x=>x.checked);
+  const summary=dropdown.querySelector('.js-permission-summary');
+
+  if(!summary) return;
+
+  if(checked.length===0){
+    summary.textContent='Chưa chọn quyền';
+  }else if(checked.length===all.length){
+    summary.textContent='Tất cả menu';
+  }else{
+    summary.textContent=`${checked.length} / ${all.length} quyền`;
+  }
+}
+
+function syncOwnerPermissionState(ownerInput){
+  const form=ownerInput.closest('form');
+  if(!form) return;
+
+  const dropdown=form.querySelector('.js-permission-dropdown');
+  if(!dropdown) return;
+
+  const trigger=dropdown.querySelector('.permission-trigger');
+  const checks=[...dropdown.querySelectorAll('.js-permission-check')];
+  const summary=dropdown.querySelector('.js-permission-summary');
+
+  if(ownerInput.checked){
+    checks.forEach(x=>{
+      x.checked=true;
+      x.disabled=true;
+    });
+    if(trigger) trigger.disabled=true;
+    if(summary) summary.textContent='Toàn quyền';
+    dropdown.classList.remove('open');
+  }else{
+    checks.forEach(x=>x.disabled=false);
+    if(trigger) trigger.disabled=false;
+    if(checks[0]) updatePermissionSummary(checks[0]);
+  }
+}
+
+function toggleAdminEditor(adminId){
+  const row=document.getElementById(`adminRow${adminId}`);
+  if(!row) return;
+  row.classList.toggle('editing');
+}
+
+document.addEventListener('click',function(event){
+  if(!event.target.closest('.js-permission-dropdown')){
+    closeAllPermissionDropdowns();
+  }
+});
+
+window.addEventListener('resize',function(){
+  document.querySelectorAll('.js-permission-dropdown.open').forEach(drop=>{
+    positionPermissionDropdown(drop);
+  });
+});
+
+window.addEventListener('scroll',function(){
+  document.querySelectorAll('.js-permission-dropdown.open').forEach(drop=>{
+    positionPermissionDropdown(drop);
+  });
+},{passive:true});
+
+document.addEventListener('DOMContentLoaded',function(){
+  document.querySelectorAll('.js-permission-dropdown').forEach(drop=>{
+    const first=drop.querySelector('.js-permission-check');
+    const trigger=drop.querySelector('.permission-trigger');
+    const summary=drop.querySelector('.js-permission-summary');
+
+    if(trigger && trigger.disabled){
+      if(summary) summary.textContent='Toàn quyền';
+    }else if(first){
+      updatePermissionSummary(first);
+    }
+  });
+
+  document.querySelectorAll('.js-owner-toggle').forEach(owner=>{
+    if(owner.checked) syncOwnerPermissionState(owner);
+  });
+});
+
 
 document.addEventListener('DOMContentLoaded',refreshServiceButtons);
 </script>

@@ -1,0 +1,116 @@
+{
+  "club": {
+    "title": "Câu Lạc Bộ Billiards",
+    "name": "LÊ THANH TRUNG",
+    "table_count": 10
+  },
+  "pricing": [
+    {
+      "label": "Buổi sáng",
+      "start": "00:00",
+      "end": "11:00",
+      "price_per_hour": 40000
+    },
+    {
+      "label": "Buổi trưa – chiều",
+      "start": "11:00",
+      "end": "18:00",
+      "price_per_hour": 60000
+    },
+    {
+      "label": "Buổi tối",
+      "start": "18:00",
+      "end": "24:00",
+      "price_per_hour": 90000
+    }
+  ],
+  "services": [
+    {
+      "code": "nuoc_loc",
+      "name": "Nước lọc",
+      "price": 8000
+    },
+    {
+      "code": "tra_da",
+      "name": "Trà đá",
+      "price": 2000
+    },
+    {
+      "code": "ca_phe_den",
+      "name": "Cà phê đen",
+      "price": 15000
+    },
+    {
+      "code": "ca_phe_sua",
+      "name": "Cà phê sữa",
+      "price": 20000
+    },
+    {
+      "code": "sting",
+      "name": "Sting",
+      "price": 15000
+    },
+    {
+      "code": "coca",
+      "name": "Coca Cola",
+      "price": 15000
+    },
+    {
+      "code": "pepsi",
+      "name": "Pepsi",
+      "price": 15000
+    },
+    {
+      "code": "7up",
+      "name": "7Up",
+      "price": 15000
+    },
+    {
+      "code": "mi_goi",
+      "name": "Mì gói",
+      "price": 10000
+    },
+    {
+      "code": "my_trung",
+      "name": "Mỳ trứng",
+      "price": 25000
+    },
+    {
+      "code": "xuc_xich",
+      "name": "Xúc xích",
+      "price": 15000
+    },
+    {
+      "code": "banh_mi",
+      "name": "Bánh mì",
+      "price": 20000
+    },
+    {
+      "code": "khoai_tay",
+      "name": "Khoai tây chiên",
+      "price": 30000
+    },
+    {
+      "code": "dv_34dbe3c1",
+      "name": "Cá viên chiên",
+      "price": 25000
+    },
+    {
+      "code": "dv_24ae10ae",
+      "name": "Bánh snack",
+      "price": 12000
+    },
+    {
+      "code": "dv_3a6e418a",
+      "name": "Bánh mì ngọt",
+      "price": 15000
+    }
+  ],
+  "payment": {
+    "account_name": "NGUYEN THIEN PHUNG",
+    "bank_code": "ACB",
+    "bank_name": "ACB",
+    "account_number": "682657",
+    "note_template": "Khách lẻ hoặc mã Thành Viên"
+  }
+}

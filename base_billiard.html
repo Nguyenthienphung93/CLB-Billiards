@@ -1,0 +1,981 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quản lý CLB Billiard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet"
+    href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+    /* =========================
+       ADMIN FOOTER TRONG SIDEBAR
+    ========================= */
+    .sidebar-admin-divider{
+        height:1px;
+        margin:14px 12px 12px;
+        background:linear-gradient(
+            90deg,
+            transparent,
+            rgba(148,163,184,.45),
+            transparent
+        );
+    }
+
+    .sidebar-admin-footer{
+        margin:0 10px 12px;
+        padding:10px;
+        border-radius:16px;
+        background:rgba(15,23,42,.72);
+        border:1px solid rgba(148,163,184,.22);
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:10px;
+    }
+
+    .sidebar-admin-user{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        min-width:0;
+    }
+
+    .sidebar-admin-avatar{
+        width:34px;
+        height:34px;
+        border-radius:12px;
+        background:linear-gradient(135deg,#0a58ca,#1d4ed8);
+        color:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        flex:0 0 auto;
+        box-shadow:0 8px 16px rgba(37,99,235,.24);
+    }
+
+    .sidebar-admin-text{
+        min-width:0;
+        line-height:1.15;
+    }
+
+    .sidebar-admin-text span{
+        display:block;
+        font-size:10px;
+        font-weight:950;
+        color:#facc15;
+        letter-spacing:.7px;
+    }
+
+    .sidebar-admin-text b{
+        display:block;
+        max-width:112px;
+        margin-top:3px;
+        color:#e5e7eb;
+        font-size:12px;
+        font-weight:900;
+        white-space:nowrap;
+        overflow:hidden;
+        text-overflow:ellipsis;
+    }
+
+    .sidebar-power-btn{
+        width:38px;
+        height:38px;
+        border-radius:14px;
+        background:linear-gradient(135deg,#ef4444,#b91c1c);
+        color:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        text-decoration:none;
+        flex:0 0 auto;
+        box-shadow:0 10px 20px rgba(239,68,68,.28);
+        transition:.16s ease;
+    }
+
+    .sidebar-power-btn i{
+        font-size:16px;
+    }
+
+    .sidebar-power-btn:hover{
+        transform:translateY(-1px);
+        filter:brightness(1.03);
+    }
+
+    /* Khi sidebar thu gọn */
+    .sidebar.collapsed .sidebar-admin-divider{
+        margin:12px 8px;
+    }
+
+    .sidebar.collapsed .sidebar-admin-footer{
+        margin:0;
+        padding:0;
+        border:0;
+        background:transparent;
+        box-shadow:none;
+        display:flex;
+        justify-content:center;
+    }
+
+    .sidebar.collapsed .sidebar-admin-user{
+        display:none;
+    }
+
+    .sidebar.collapsed .sidebar-power-btn{
+        width:42px;
+        height:42px;
+        border-radius:13px;
+        margin:0 auto 12px;
+    }
+
+
+    /* =========================
+       SIDEBAR ACTIVE + GIỮ TRẠNG THÁI THU GỌN
+       Desktop: khi menu đang thu gọn, bấm icon chỉ chuyển trang, không tự mở menu.
+    ========================= */
+    .sidebar a.active,
+    .sidebar a.admin-nav-active {
+        background: linear-gradient(135deg, #1d4ed8, #0a58ca) !important;
+        color: #ffffff !important;
+        box-shadow: inset 4px 0 0 #facc15, 0 8px 18px rgba(29, 78, 216, .26);
+    }
+
+    .sidebar a.active .mi,
+    .sidebar a.admin-nav-active .mi {
+        filter: drop-shadow(0 0 8px rgba(250,204,21,.45));
+    }
+
+    .sidebar.collapsed a.active,
+    .sidebar.collapsed a.admin-nav-active {
+        position: relative;
+        background: #1d4ed8 !important;
+        box-shadow: inset 0 0 0 2px rgba(250,204,21,.82), 0 8px 18px rgba(29,78,216,.24);
+    }
+
+    .sidebar.collapsed a.active::after,
+    .sidebar.collapsed a.admin-nav-active::after {
+        content: "";
+        position: absolute;
+        right: 5px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 6px;
+        height: 24px;
+        border-radius: 999px;
+        background: #facc15;
+    }
+
+    
+
+    /* =========================================================
+       ADMIN HEADER RIÊNG — SAO CHÉP CHUẨN TỪ STUDENT
+       Dùng class riêng để không còn bị style.css cũ ghi đè.
+    ========================================================= */
+    .admin-student-header {
+        width: 100%;
+        height: 120px;
+        min-height: 120px;
+        padding: 0 215px;
+        background: linear-gradient(90deg, #071426, #0f2a4a);
+        color: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: visible;
+        box-sizing: border-box;
+    }
+
+    .admin-student-logo {
+        position: absolute;
+        left: 22px;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 100px;
+        height: 100px;
+        padding: 8px;
+        border-radius: 18px;
+        background: #fff;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-sizing: border-box;
+    }
+
+    .admin-student-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    .admin-student-title-wrap {
+        width: min(920px, 62vw);
+        max-width: min(920px, 62vw);
+        min-width: 0;
+        margin: 0 auto;
+        text-align: center;
+        line-height: 1.12;
+    }
+
+    .admin-student-title-small {
+        color: #fff;
+        font-family: "Segoe UI", Arial, Tahoma, sans-serif;
+        font-size: 35px;
+        font-weight: 800;
+        line-height: 1.04;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .admin-student-title-big {
+        display: inline-block;
+        max-width: 100%;
+        margin-top: 5px;
+        padding: 1px 10px 3px;
+        border-radius: 8px;
+        background: rgba(250, 204, 21, .08);
+        box-shadow: 0 4px 12px rgba(250, 204, 21, .18);
+        color: #facc15;
+        font-family: "Segoe UI", Arial, Tahoma, sans-serif;
+        font-size: 55px;
+        font-weight: 800;
+        line-height: 1.02;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    .admin-student-clock {
+        position: absolute;
+        right: 22px;
+        top: 50%;
+        transform: translateY(-50%);
+        min-width: 170px;
+        min-height: 58px;
+        padding: 8px 14px;
+        border: 1px solid rgba(250, 204, 21, .55);
+        border-radius: 14px;
+        background: rgba(15, 23, 42, .55);
+        box-shadow: 0 8px 22px rgba(0, 0, 0, .22);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        box-sizing: border-box;
+        visibility: visible;
+        opacity: 1;
+    }
+
+    .admin-student-clock-time {
+        color: #facc15;
+        font-size: 22px;
+        line-height: 1;
+        font-weight: 900;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .admin-student-clock-date {
+        margin-top: 6px;
+        color: #e5e7eb;
+        font-size: 12px;
+        line-height: 1.15;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+
+    .layout {
+        min-height: calc(100vh - 120px) !important;
+    }
+
+    @media (max-width: 1050px) and (min-width: 761px) {
+        .admin-student-header {
+            height: 96px;
+            min-height: 96px;
+            padding: 0 165px;
+        }
+
+        .admin-student-logo {
+            left: 12px;
+            width: 76px;
+            height: 76px;
+            padding: 7px;
+            border-radius: 16px;
+        }
+
+        .admin-student-title-small {
+            font-size: 24px;
+        }
+
+        .admin-student-title-big {
+            font-size: 34px;
+        }
+
+        .admin-student-clock {
+            right: 12px;
+            min-width: 135px;
+            min-height: 54px;
+            padding: 7px 10px;
+            display: flex;
+        }
+
+        .admin-student-clock-time {
+            font-size: 18px;
+        }
+
+        .admin-student-clock-date {
+            font-size: 11px;
+        }
+
+        .layout {
+            min-height: calc(100vh - 96px) !important;
+        }
+    }
+
+    @media (max-width: 760px) {
+        .admin-student-header {
+            height: 86px;
+            min-height: 86px;
+            padding: 0 70px;
+        }
+
+        .admin-student-logo {
+            left: 10px;
+            width: 56px;
+            height: 56px;
+            padding: 5px;
+            border-radius: 14px;
+        }
+
+        .admin-student-title-wrap {
+            width: 62vw;
+            max-width: 62vw;
+        }
+
+        .admin-student-title-small {
+            font-size: 14px;
+        }
+
+        .admin-student-title-big {
+            margin-top: 3px;
+            font-size: 22px;
+        }
+
+        .admin-student-clock {
+            display: none;
+        }
+
+        .layout {
+            min-height: calc(100vh - 86px) !important;
+        }
+    }
+
+
+        /* TOOLTIP MENU THU GỌN - HIỆN SAU 3 GIÂY */
+        .sidebar-delay-tooltip{
+            position:fixed;z-index:999999;max-width:240px;padding:9px 12px;
+            border-radius:10px;background:rgba(15,23,42,.96);color:#fff;
+            border:1px solid rgba(250,204,21,.45);
+            box-shadow:0 10px 26px rgba(0,0,0,.28);
+            font-size:13px;font-weight:850;line-height:1.3;white-space:nowrap;
+            pointer-events:none;opacity:0;
+            transform:translateY(-50%) translateX(-4px);
+            transition:opacity .16s ease,transform .16s ease;
+        }
+        .sidebar-delay-tooltip.show{
+            opacity:1;transform:translateY(-50%) translateX(0);
+        }
+
+
+    /* =========================
+       ADMIN SIDEBAR RỘNG + THẺ TÀI KHOẢN KIỂU STUDENT
+    ========================= */
+    .layout{
+        display:grid !important;
+        grid-template-columns:300px minmax(0,1fr) !important;
+    }
+
+    .layout.collapsed{
+        grid-template-columns:72px minmax(0,1fr) !important;
+    }
+
+    .sidebar{
+        width:auto !important;
+        min-width:0 !important;
+        display:flex !important;
+        flex-direction:column !important;
+    }
+
+    .admin-profile-card{
+        display:flex;
+        align-items:center;
+        gap:11px;
+        margin:0 8px 14px;
+        padding:10px;
+        border-radius:15px;
+        background:#111c2f;
+        border:1px solid #23324a;
+        min-width:0;
+    }
+
+    .admin-profile-avatar{
+        width:44px;
+        height:44px;
+        border-radius:50%;
+        background:linear-gradient(135deg,#2563eb,#0a58ca);
+        color:#fff;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        flex:0 0 auto;
+        box-shadow:0 8px 16px rgba(37,99,235,.25);
+    }
+
+    .admin-profile-info{
+        min-width:0;
+        line-height:1.18;
+    }
+
+    .admin-profile-info b{
+        display:block;
+        color:#fff;
+        font-size:15px;
+        font-weight:950;
+        white-space:normal;
+        overflow-wrap:anywhere;
+    }
+
+    .admin-profile-info span{
+        display:block;
+        margin-top:4px;
+        color:#facc15;
+        font-size:10px;
+        font-weight:900;
+        letter-spacing:.5px;
+    }
+
+    .admin-logout-wrap{
+        margin-top:12px;
+        padding-top:0;
+    }
+
+    .admin-logout-btn{
+        margin:0 8px 12px;
+        min-height:44px;
+        border-radius:12px;
+        background:#3b1d2c;
+        color:#fff;
+        display:flex;
+        align-items:center;
+        gap:11px;
+        padding:0 13px;
+        text-decoration:none;
+        font-weight:950;
+    }
+
+    .admin-logout-btn i{
+        width:20px;
+        text-align:center;
+        color:#fff;
+    }
+
+    .sidebar.collapsed .admin-profile-card{
+        display:none;
+    }
+
+    .sidebar.collapsed .admin-logout-btn{
+        width:44px;
+        height:44px;
+        min-height:44px;
+        margin:0 auto 12px;
+        padding:0;
+        justify-content:center;
+        border-radius:13px;
+        background:linear-gradient(135deg,#ef4444,#b91c1c);
+    }
+
+    .sidebar.collapsed .admin-logout-btn span{
+        display:none;
+    }
+
+    .sidebar.collapsed .sidebar-admin-divider,
+    .sidebar.collapsed .sidebar-admin-footer{
+        display:none !important;
+    }
+
+
+    /* GẠCH NGANG PHÂN CÁCH TRƯỚC NÚT ĐĂNG XUẤT */
+    .admin-logout-wrap{
+        position:relative;
+        margin-top:22px;
+        padding-top:10px;
+    }
+
+    .admin-logout-wrap::before{
+        content:"";
+        position:absolute;
+        left:18px;
+        right:18px;
+        top:0;
+        height:1px;
+        border-radius:999px;
+        background:linear-gradient(
+            90deg,
+            transparent,
+            rgba(250,204,21,.55),
+            rgba(148,163,184,.65),
+            rgba(250,204,21,.55),
+            transparent
+        );
+        box-shadow:0 0 8px rgba(250,204,21,.12);
+    }
+
+    .sidebar.collapsed .admin-logout-wrap{
+        margin-top:22px;
+        padding-top:10px;
+    }
+
+    .sidebar.collapsed .admin-logout-wrap::before{
+        left:8px;
+        right:8px;
+    }
+
+</style>
+</head>
+<body>
+
+<header class="admin-student-header">
+    <div class="admin-student-logo">
+        <img src="{{ app_settings.header.logo_url }}" alt="Logo CLB">
+    </div>
+
+    <div class="admin-student-title-wrap">
+        <div class="admin-student-title-small">
+            {{ app_settings.header.club_small_title }}
+        </div>
+
+        <div class="admin-student-title-big">
+            {{ app_settings.header.club_name }}
+        </div>
+    </div>
+
+    <div class="admin-student-clock">
+        <div id="headerClockTime" class="admin-student-clock-time">--:--:--</div>
+        <div id="headerClockDate" class="admin-student-clock-date">--/--/----</div>
+    </div>
+</header>
+
+<div class="layout">
+    <aside id="sidebar" class="sidebar">
+        <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+
+        {% if admin_logged_in %}
+        <div class="admin-profile-card">
+            <div class="admin-profile-avatar">
+                <i class="fa-solid fa-user-shield"></i>
+            </div>
+
+            <div class="admin-profile-info">
+                <b>{{ admin_username }}</b>
+                <span>QUẢN TRỊ VIÊN</span>
+            </div>
+        </div>
+        {% endif %}
+
+        
+        <a href="/thanhvien"><span class="mi">👤</span><span>Thành viên</span></a>
+        <a href="/fees"><span class="mi">💰</span><span>Nhập học phí</span></a>
+        <a href="/tracking"><span class="mi">📈</span><span>Theo dõi học phí</span></a>
+        <a href="/unpaid"><span class="mi">📋</span><span>Chưa đóng phí</span></a>
+        <a href="/exam-tracking"><span class="mi">⭐</span><span>Theo dõi thi cấp đẳng</span></a>
+        <a href="/exam-list"><span class="mi">🗓️</span><span>Danh sách thi cấp</span></a>
+        <a href="/dan-list"><span class="mi">🥋</span><span>Danh sách thi đẳng</span></a>
+        <a href="/results"><span class="mi">🏅</span><span>Kết quả thi cấp đẳng</span></a>
+        <a href="/activities"><span class="mi">📅</span><span>Hoạt động</span></a>
+        <a href="/reports"><span class="mi">📊</span><span>Báo cáo</span></a>
+        <a href="/notifications"><span class="mi">🔔</span><span>Thông báo</span></a>
+        <a href="{{ url_for('admin_feedback') }}" data-tooltip="Phản hồi">
+            <span class="mi">📨</span>
+            <span>Phản hồi</span>
+        </a>
+
+        <div class="sidebar-section"></div>
+        <a href="/setup">
+            <span class="mi">⚙️</span>
+            <span>Setup</span>
+        </a>
+
+        <a href="{{ url_for('federation_compare') }}"
+           data-tooltip="Kiểm tra Liên đoàn">
+            <span class="mi">🔍</span>
+            <span>Kiểm tra Liên đoàn</span>
+        </a>
+
+        <a href="{{ url_for('backup_restore') }}"
+           data-tooltip="Sao lưu & Phục hồi">
+            <span class="mi">🛡️</span>
+            <span>Sao lưu & Phục hồi</span>
+        </a>
+
+        <a href="/information">
+            <span class="mi">ℹ️</span>
+            <span>Information</span>
+        </a>
+
+        {% if admin_logged_in %}
+        <div class="admin-logout-wrap">
+            <a href="{{ url_for('admin_logout') }}"
+               class="admin-logout-btn"
+               data-tooltip="Đăng xuất Admin"
+               title="Đăng xuất Admin">
+                <i class="fa-solid fa-power-off"></i>
+                <span>Đăng xuất</span>
+            </a>
+        </div>
+        {% endif %}
+    </aside>
+
+    <main id="content" class="content">
+        {% with messages=get_flashed_messages() %}
+            {% if messages %}
+                <div id="toastPopup" class="toast-popup">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+
+function initDelayedSidebarTooltips(options){
+    const tooltip=document.createElement("div");
+    tooltip.className="sidebar-delay-tooltip";
+    document.body.appendChild(tooltip);
+
+    let timer=null;
+    let currentTarget=null;
+
+    function isCollapsed(){
+        try{return options.isCollapsed();}catch(e){return false;}
+    }
+
+    function getText(target){
+        const explicit=(target.getAttribute("data-tooltip")||"").trim();
+        if(explicit)return explicit;
+        const label=target.querySelector(options.textSelector);
+        return (label?.textContent||"").trim();
+    }
+
+    function hideTooltip(){
+        clearTimeout(timer);
+        timer=null;
+        currentTarget=null;
+        tooltip.classList.remove("show");
+    }
+
+    function showTooltip(target){
+        if(!target||!isCollapsed())return;
+        const text=getText(target);
+        if(!text)return;
+
+        const rect=target.getBoundingClientRect();
+        tooltip.textContent=text;
+        tooltip.style.left=Math.min(rect.right+12,window.innerWidth-250)+"px";
+        tooltip.style.top=(rect.top+rect.height/2)+"px";
+        tooltip.classList.add("show");
+    }
+
+    document.querySelectorAll(options.itemSelector).forEach(function(item){
+        item.addEventListener("mouseenter",function(){
+            hideTooltip();
+            if(!isCollapsed())return;
+            currentTarget=item;
+            timer=setTimeout(function(){
+                if(currentTarget===item&&isCollapsed())showTooltip(item);
+            },1500);
+        });
+
+        item.addEventListener("mouseleave",hideTooltip);
+        item.addEventListener("mousedown",hideTooltip);
+        item.addEventListener("click",hideTooltip);
+        item.addEventListener("blur",hideTooltip);
+    });
+
+    window.addEventListener("scroll",hideTooltip,true);
+    window.addEventListener("resize",hideTooltip);
+}
+
+
+
+/* =========================
+   GIỮ ĐÚNG TRANG SAU KHI POST
+   - Tự gắn input next vào mọi form POST.
+   - Chỉ khôi phục scroll/phân trang sau thao tác POST.
+   - Chuyển menu bằng icon là GET bình thường: luôn mở ở đầu trang.
+========================= */
+(function () {
+    const currentUrlKey = window.location.pathname + window.location.search;
+    const postReturnKey = "tkd_after_post_url";
+
+    window.tkdIsAfterPostReload = function () {
+        try {
+            return sessionStorage.getItem(postReturnKey) === currentUrlKey;
+        } catch (e) {
+            return false;
+        }
+    };
+
+    window.tkdClearAfterPostReload = function () {
+        try {
+            if (sessionStorage.getItem(postReturnKey) === currentUrlKey) {
+                sessionStorage.removeItem(postReturnKey);
+            }
+        } catch (e) {}
+    };
+
+    function getScrollKey() {
+        return "tkd_scroll_position:" + currentUrlKey;
+    }
+
+    function saveScrollPosition() {
+        try {
+            sessionStorage.setItem(
+                getScrollKey(),
+                JSON.stringify({
+                    x: window.scrollX || 0,
+                    y: window.scrollY || 0
+                })
+            );
+        } catch (e) {}
+    }
+
+    function restoreScrollPositionOnlyAfterPost() {
+        try {
+            if (!window.tkdIsAfterPostReload()) return;
+
+            const raw = sessionStorage.getItem(getScrollKey());
+            if (!raw) return;
+
+            const data = JSON.parse(raw);
+            const x = parseInt(data.x || 0, 10) || 0;
+            const y = parseInt(data.y || 0, 10) || 0;
+
+            requestAnimationFrame(function () {
+                window.scrollTo(x, y);
+            });
+
+            setTimeout(function () {
+                window.scrollTo(x, y);
+            }, 120);
+
+            setTimeout(function () {
+                sessionStorage.removeItem(getScrollKey());
+                window.tkdClearAfterPostReload();
+            }, 650);
+        } catch (e) {}
+    }
+
+    document.addEventListener("submit", function (e) {
+        const form = e.target;
+
+        if (!form || String(form.method || "").toLowerCase() !== "post") {
+            return;
+        }
+
+        if (!form.querySelector('input[name="next"]')) {
+            const input = document.createElement("input");
+            input.type = "hidden";
+            input.name = "next";
+            input.value = currentUrlKey;
+            form.appendChild(input);
+        }
+
+        try {
+            sessionStorage.setItem(postReturnKey, currentUrlKey);
+        } catch (err) {}
+
+        saveScrollPosition();
+    });
+
+    document.addEventListener("DOMContentLoaded", function () {
+        restoreScrollPositionOnlyAfterPost();
+    });
+})();
+
+
+function setAdminSidebarCollapsed(collapsed) {
+    const layout = document.querySelector(".layout");
+    const sidebar = document.getElementById("sidebar");
+
+    if (!layout || !sidebar) return;
+
+    layout.classList.toggle("collapsed", collapsed);
+    sidebar.classList.toggle("collapsed", collapsed);
+
+    try {
+        localStorage.setItem("admin_sidebar_collapsed", collapsed ? "1" : "0");
+    } catch (e) {}
+}
+
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const collapsed = !(sidebar && sidebar.classList.contains("collapsed"));
+    setAdminSidebarCollapsed(collapsed);
+}
+
+function initAdminSidebarState() {
+    try {
+        setAdminSidebarCollapsed(localStorage.getItem("admin_sidebar_collapsed") === "1");
+    } catch (e) {}
+}
+
+function initAdminActiveNav() {
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+
+    const currentPath = window.location.pathname.replace(/\/+$/, "") || "/";
+
+    const routeGroups = [
+        ["/thanhvien", ["/thanhvien", "/students"]],
+        ["/fees", ["/fees"]],
+        ["/tracking", ["/tracking"]],
+        ["/unpaid", ["/unpaid"]],
+        ["/exam-tracking", ["/exam-tracking"]],
+        ["/exam-list", ["/exam-list"]],
+        ["/dan-list", ["/dan-list"]],
+        ["/results", ["/results"]],
+        ["/activities", ["/activities"]],
+        ["/reports", ["/reports"]],
+        ["/notifications", ["/notifications"]],
+        ["/feedback", ["/feedback"]],
+        ["/setup", ["/setup"]],
+        ["/federation-compare", ["/federation-compare"]],
+        ["/backup-restore", ["/backup-restore"]],
+        ["/information", ["/information"]]
+    ];
+
+    sidebar.querySelectorAll("a").forEach(function (link) {
+        const hrefRaw = link.getAttribute("href") || "";
+
+        if (!hrefRaw || hrefRaw === "#") {
+            link.addEventListener("click", function (e) {
+                e.preventDefault();
+            });
+            return;
+        }
+
+        const hrefPath = hrefRaw.split("?")[0].replace(/\/+$/, "") || "/";
+        const matched = routeGroups.some(function (group) {
+            return group[0] === hrefPath && group[1].some(function (path) {
+                return currentPath === path || currentPath.startsWith(path + "/");
+            });
+        });
+
+        link.classList.toggle("active", matched);
+    });
+}
+
+initAdminSidebarState();
+initAdminActiveNav();
+setTimeout(() => {
+    const toast = document.getElementById("toastPopup");
+    if (toast) {
+        toast.classList.add("hide");
+        setTimeout(() => toast.remove(), 400);
+    }
+}, 3000);
+
+let headerClockTimer = null;
+let lastClockTimeText = "";
+let lastClockDateText = "";
+
+function updateHeaderClock() {
+    const timeEl = document.getElementById("headerClockTime");
+    const dateEl = document.getElementById("headerClockDate");
+
+    if (!timeEl || !dateEl) return;
+
+    const now = new Date();
+
+    const days = [
+        "Chủ Nhật",
+        "Thứ Hai",
+        "Thứ Ba",
+        "Thứ Tư",
+        "Thứ Năm",
+        "Thứ Sáu",
+        "Thứ Bảy"
+    ];
+
+    const pad = n => String(n).padStart(2, "0");
+
+    const timeText =
+        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+    const dateText =
+        `${days[now.getDay()]}, ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+
+    // Chỉ cập nhật DOM khi nội dung thật sự đổi
+    if (timeText !== lastClockTimeText) {
+        timeEl.textContent = timeText;
+        lastClockTimeText = timeText;
+    }
+
+    if (dateText !== lastClockDateText) {
+        dateEl.textContent = dateText;
+        lastClockDateText = dateText;
+    }
+}
+
+function scheduleHeaderClock() {
+    clearTimeout(headerClockTimer);
+
+    if (document.hidden) {
+        return;
+    }
+
+    updateHeaderClock();
+
+    // Canh đúng nhịp sang giây tiếp theo, tránh lệch nhịp và tránh chạy dồn
+    const now = new Date();
+    const delay = 1000 - now.getMilliseconds() + 20;
+
+    headerClockTimer = setTimeout(scheduleHeaderClock, delay);
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", scheduleHeaderClock);
+} else {
+    scheduleHeaderClock();
+}
+
+document.addEventListener("visibilitychange", function () {
+    if (document.hidden) {
+        clearTimeout(headerClockTimer);
+    } else {
+        scheduleHeaderClock();
+    }
+});
+
+document.addEventListener("DOMContentLoaded",function(){
+    initDelayedSidebarTooltips({
+        itemSelector:"#sidebar > a, .admin-logout-btn",
+        textSelector:"span:not(.mi)",
+        isCollapsed:function(){
+            const sidebar=document.getElementById("sidebar");
+            return !!sidebar&&sidebar.classList.contains("collapsed");
+        }
+    });
+});
+</script>
+</body>
+</html>

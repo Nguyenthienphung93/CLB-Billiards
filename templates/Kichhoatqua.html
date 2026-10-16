@@ -1,0 +1,998 @@
+{% extends "base.html" %}
+
+{% block title %}Kích hoạt Quà/Voucher{% endblock %}
+
+{% block page_style %}
+<style>
+.activation-page{display:flex;flex-direction:column;gap:18px}
+.activation-head h1{margin:0;color:#123a61;font-size:28px;font-weight:950}
+.activation-head p{margin:6px 0 0;color:#64748b;font-size:14px;font-weight:650}
+.activation-search{display:grid;grid-template-columns:minmax(260px,520px) auto auto;gap:10px;width:min(100%,900px)}
+.activation-search input{width:100%;height:48px;padding:0 15px;border:1px solid #cbd9ea;border-radius:14px;outline:none;color:#123a61;background:#fff;font-weight:800}
+.activation-search input:focus{border-color:#4c8df6;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+.activation-search button{height:48px;padding:0 20px;border:0;border-radius:14px;font-weight:900;cursor:pointer}
+.activation-search .search-submit-btn{background:#2563eb;color:#fff}
+.activation-search .scan-open-btn{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;box-shadow:0 8px 18px rgba(22,163,74,.16)}
+.activation-summary{padding:12px 15px;border:1px solid #dbe7f2;border-radius:14px;background:#f8fbff;color:#516981;font-size:13px;font-weight:750}
+.activation-grid{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:16px}
+.activation-card{border:1px solid #dbe7f2;border-radius:18px;background:#fff;overflow:hidden;box-shadow:0 10px 24px rgba(15,44,76,.06)}
+.activation-card.is-confirmed{background:#f8fafc}
+.activation-card-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px;background:#f4f8fd;border-bottom:1px solid #e5edf5}
+.type-badge{display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;font-size:12px;font-weight:950}
+.type-badge.reward{background:#dcfce7;color:#166534}
+.type-badge.voucher{background:#dbeafe;color:#1d4ed8}
+.card-status-wrap{
+    display:flex;
+    flex-direction:column;
+    align-items:flex-end;
+    gap:4px;
+    text-align:right;
+}
+
+.card-status{
+    font-size:12px;
+    font-weight:900;
+    color:#64748b;
+}
+
+.card-status-time{
+    font-size:11px;
+    font-weight:800;
+    color:#94a3b8;
+}
+.activation-card-body{padding:16px}
+.info-row{display:grid;grid-template-columns:130px 1fr;gap:12px;padding:7px 0;border-bottom:1px dashed #e4edf6}
+.info-row:last-of-type{border-bottom:0}
+.info-label{color:#64748b;font-size:12px;font-weight:800}
+.info-value{color:#173b61;font-size:13px;font-weight:900;word-break:break-word}
+.activation-actions{margin-top:16px;display:flex;justify-content:flex-end}
+.activate-btn{min-width:150px;height:42px;padding:0 17px;border:0;border-radius:12px;font-weight:950}
+.activate-btn.ready{background:#16a34a;color:#fff;cursor:pointer;box-shadow:0 8px 18px rgba(22,163,74,.18)}
+.activate-btn.done{background:#e2e8f0;color:#475569;cursor:default}
+.empty-state{grid-column:1/-1;padding:44px 18px;text-align:center;border:1px dashed #cbd5e1;border-radius:18px;background:#f8fafc;color:#64748b;font-weight:800}
+.confirm-overlay{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.45);backdrop-filter:blur(3px)}
+.confirm-overlay.show{display:flex}
+.confirm-modal{width:min(100%,460px);padding:24px;border-radius:20px;background:#fff;box-shadow:0 28px 70px rgba(15,23,42,.30)}
+.confirm-modal h3{margin:0;color:#123a61;font-size:20px;font-weight:950}
+.confirm-modal p{margin:10px 0 0;color:#64748b;line-height:1.55;font-weight:650}
+.confirm-code{margin-top:14px;padding:11px 13px;border:1px dashed #93c5fd;border-radius:12px;background:#eff6ff;color:#1d4ed8;font-weight:950;word-break:break-all}
+.confirm-actions{margin-top:20px;display:flex;justify-content:flex-end;gap:10px}
+.confirm-actions button{height:42px;padding:0 17px;border-radius:12px;font-weight:900;cursor:pointer}
+.btn-cancel{border:1px solid #cbd5e1;background:#fff;color:#475569}
+.btn-confirm{border:0;background:#16a34a;color:#fff}
+@media(max-width:850px){.activation-grid{grid-template-columns:1fr}}
+@media(max-width:620px){.activation-search{grid-template-columns:1fr 1fr}.activation-search input{grid-column:1/-1}.activation-head h1{font-size:22px}.info-row{grid-template-columns:1fr;gap:4px}}
+
+.condition-box{
+    margin-top:10px;
+    padding:10px 12px;
+    border:1px solid #f5c36a;
+    border-radius:12px;
+    background:#fff8e8;
+    color:#9a5a00;
+    font-size:12px;
+    line-height:1.5;
+    font-weight:750;
+}
+.condition-box strong{
+    display:block;
+    margin-bottom:4px;
+    color:#7c4700;
+    font-weight:950;
+}
+.activate-btn.condition-only{
+    background:#fff3cd;
+    color:#8a5a00;
+    border:1px solid #f0c36d;
+    cursor:default;
+}
+
+/* =========================
+   QR SCANNER
+========================= */
+.qr-scan-overlay{
+    position:fixed;inset:0;z-index:6500;display:none;align-items:center;justify-content:center;
+    padding:18px;background:rgba(15,23,42,.62);backdrop-filter:blur(4px);
+}
+.qr-scan-overlay.show{display:flex}
+.qr-scan-modal{
+    width:min(100%,620px);max-height:94vh;overflow:auto;background:#fff;border-radius:22px;
+    box-shadow:0 30px 80px rgba(15,23,42,.34);
+}
+.qr-scan-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #e5edf5}
+.qr-scan-head h3{margin:0;color:#123a61;font-size:20px;font-weight:950}
+.qr-scan-close{width:38px;height:38px;border:0;border-radius:11px;background:#eef2f7;color:#475569;font-size:20px;cursor:pointer}
+.qr-scan-body{padding:16px 18px 20px}
+.qr-camera-shell{padding:10px;border:1px solid #dbe7f2;border-radius:18px;background:#0f172a;overflow:hidden}
+#qrReader{width:100%;min-height:300px;border-radius:12px;overflow:hidden;background:#0f172a}
+#qrReader video{border-radius:12px}
+.qr-scan-help{margin-top:9px;color:#64748b;font-size:11px;line-height:1.5;font-weight:700}
+
+.qr-source-panel{
+    margin-bottom:12px;
+    padding:12px;
+    border:1px solid #dbe7f2;
+    border-radius:15px;
+    background:#f8fbff;
+}
+.qr-source-title{
+    margin-bottom:8px;
+    color:#123a61;
+    font-size:12px;
+    font-weight:950;
+}
+.qr-source-tabs{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px;
+}
+.qr-source-btn{
+    min-height:42px;
+    padding:7px 10px;
+    border:1px solid #cbd5e1;
+    border-radius:11px;
+    background:#fff;
+    color:#475569;
+    font-size:11px;
+    font-weight:900;
+    cursor:pointer;
+}
+.qr-source-btn.active{
+    border-color:#60a5fa;
+    background:#eaf4ff;
+    color:#1d4ed8;
+    box-shadow:0 0 0 2px rgba(37,99,235,.08);
+}
+.qr-source-content{display:none;margin-top:10px}
+.qr-source-content.active{display:block}
+.qr-device-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px;
+}
+.qr-device-row select,
+.qr-code-input{
+    width:100%;
+    height:42px;
+    border:1px solid #cbd5e1;
+    border-radius:11px;
+    background:#fff;
+    padding:0 11px;
+    color:#123a61;
+    font-size:12px;
+    font-weight:800;
+    outline:none;
+}
+.qr-device-row select:focus,
+.qr-code-input:focus{
+    border-color:#60a5fa;
+    box-shadow:0 0 0 3px rgba(37,99,235,.09);
+}
+.qr-start-camera-btn,
+.qr-code-submit{
+    height:42px;
+    padding:0 13px;
+    border:0;
+    border-radius:11px;
+    background:#2563eb;
+    color:#fff;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+    white-space:nowrap;
+}
+.qr-input-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:8px;
+}
+.qr-source-note{
+    margin-top:7px;
+    color:#64748b;
+    font-size:10px;
+    line-height:1.45;
+    font-weight:700;
+}
+.qr-usb-ready{
+    margin-top:8px;
+    padding:8px 10px;
+    border-radius:10px;
+    background:#ecfdf5;
+    border:1px solid #a7f3d0;
+    color:#047857;
+    font-size:11px;
+    font-weight:850;
+}
+.qr-scan-error{display:none;margin-top:10px;padding:10px 12px;border-radius:12px;background:#fff1f2;border:1px solid #fecdd3;color:#be123c;font-size:12px;font-weight:800;line-height:1.45}
+.qr-scan-error.show{display:block}
+.qr-fallback-row{display:flex;gap:9px;margin-top:10px;flex-wrap:wrap}
+.qr-file-btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;height:40px;padding:0 13px;border:1px solid #cbd5e1;border-radius:11px;background:#fff;color:#334155;font-size:12px;font-weight:900;cursor:pointer}
+.qr-result{display:none;margin-top:14px;border:1px solid #cfe0f7;border-radius:16px;background:#f8fbff;overflow:hidden}
+.qr-result.show{display:block}
+.qr-result-title{padding:11px 13px;background:#eaf4ff;color:#123a61;font-size:13px;font-weight:950;border-bottom:1px solid #d8e6f7}
+.qr-result-body{padding:12px 13px}
+.qr-result-code{padding:9px 11px;border-radius:10px;background:#fff;border:1px dashed #93c5fd;color:#1d4ed8;font-size:13px;font-weight:950;word-break:break-all}
+.qr-result-grid{display:grid;grid-template-columns:130px minmax(0,1fr);gap:0;margin-top:9px}
+.qr-result-grid>div{padding:7px 0;border-bottom:1px dashed #e2e8f0;font-size:12px}
+.qr-result-label{color:#64748b;font-weight:800}
+.qr-result-value{color:#123a61;font-weight:900;word-break:break-word}
+.qr-result-condition{margin-top:10px;padding:10px 11px;border:1px solid #f5c36a;border-radius:11px;background:#fff8e8;color:#8a5a00;font-size:12px;line-height:1.5;font-weight:800}
+.qr-result-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:13px;flex-wrap:wrap}
+.qr-action-btn{height:42px;padding:0 15px;border:0;border-radius:11px;font-weight:950;cursor:pointer}
+.qr-action-btn.activate{background:#16a34a;color:#fff}
+.qr-action-btn.activity{background:#f59e0b;color:#fff}
+.qr-action-btn.disabled{background:#e2e8f0;color:#64748b;cursor:default}
+@media(max-width:620px){
+    #qrReader{min-height:260px}
+    .qr-source-tabs{grid-template-columns:1fr}
+    .qr-device-row,.qr-input-row{grid-template-columns:1fr}
+    .qr-result-grid{grid-template-columns:1fr}
+    .qr-result-grid>div:nth-child(odd){padding-bottom:2px;border-bottom:0}
+    .qr-result-grid>div:nth-child(even){padding-top:2px}
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="activation-page">
+
+    <div class="activation-head">
+        <h1>Kích hoạt Quà/Voucher</h1>
+        <p>Tìm theo Mã Quà hoặc Mã Voucher và xác nhận khi khách sử dụng quyền lợi.</p>
+    </div>
+
+    <form class="activation-search" method="get" action="{{ url_for('kich_hoat_qua') }}">
+        <input type="text" name="q" value="{{ q or '' }}" placeholder="Nhập mã Quà hoặc Voucher..." autocomplete="off" autofocus>
+        <button type="submit" class="search-submit-btn"><i class="fa-solid fa-magnifying-glass"></i> Tìm kiếm</button>
+        <button type="button" id="openQrScannerBtn" class="scan-open-btn"><i class="fa-solid fa-qrcode"></i> Quét mã</button>
+    </form>
+
+    <div class="activation-summary">
+        Đang hiển thị <strong>{{ items|length }}</strong> Quà/Voucher.
+        Mục đã xác nhận được giữ 3 ngày trước khi Supabase tự xóa.
+    </div>
+
+    <div class="activation-grid">
+        {% for item in items %}
+        <article class="activation-card {% if item.da_xac_nhan %}is-confirmed{% endif %}" data-type="{{ item.loai }}" data-code="{{ item.ma }}">
+
+            <div class="activation-card-top">
+                <div class="type-badge {% if item.loai == 'QUA' %}reward{% else %}voucher{% endif %}">
+                    {% if item.loai == 'QUA' %}
+                        <i class="fa-solid fa-gift"></i>
+                    {% else %}
+                        <i class="fa-solid fa-ticket"></i>
+                    {% endif %}
+                    {{ item.loai_hien_thi }}
+                </div>
+
+                <div class="card-status-wrap">
+                    <div class="card-status js-card-status">
+                        {{ item.trang_thai }}
+                    </div>
+
+                    <div class="card-status-time js-card-time">
+                        {% if item.da_xac_nhan and item.kich_hoat_at_hien_thi %}
+                            Xác nhận: {{ item.kich_hoat_at_hien_thi }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="activation-card-body">
+                <div class="info-row">
+                    <div class="info-label">Mã thành viên</div>
+                    <div class="info-value">{{ item.ma_thanh_vien or '—' }}</div>
+                </div>
+
+                <div class="info-row">
+                    <div class="info-label">Họ và tên</div>
+                    <div class="info-value">{{ item.ho_va_ten or '—' }}</div>
+                </div>
+
+                <div class="info-row">
+                    <div class="info-label">{% if item.loai == 'QUA' %}Mã quà{% else %}Mã Voucher{% endif %}</div>
+                    <div class="info-value">{{ item.ma }}</div>
+                </div>
+
+                {% if item.loai == 'VOUCHER' and item.dieu_kien_dong %}
+                <div class="condition-box">
+                    <strong>⚠ Điều kiện sử dụng</strong>
+                    {% for line in item.dieu_kien_dong %}
+                        <div>• {{ line }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <div class="activation-actions">
+                    {% if item.da_xac_nhan %}
+                    <button type="button" class="activate-btn done" disabled>
+                        <i class="fa-solid fa-circle-check"></i> Đã xác nhận
+                    </button>
+
+                    {% elif item.loai == 'VOUCHER' and item.dieu_kien_dong %}
+                    <button type="button" class="activate-btn condition-only" disabled>
+                        <i class="fa-solid fa-receipt"></i> Áp dụng tại Hoạt Động
+                    </button>
+
+                    {% else %}
+                    <button type="button" class="activate-btn ready js-activate-btn" data-type="{{ item.loai }}" data-code="{{ item.ma }}">
+                        <i class="fa-solid fa-check"></i> Kích hoạt
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </article>
+        {% else %}
+        <div class="empty-state">Không tìm thấy Quà/Voucher phù hợp.</div>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="confirmOverlay" class="confirm-overlay">
+    <div class="confirm-modal">
+        <h3>Xác nhận kích hoạt</h3>
+        <p>Sau khi xác nhận, trạng thái sẽ cập nhật cho thành viên và dữ liệu sẽ tự xóa sau 3 ngày.</p>
+        <div id="confirmCode" class="confirm-code"></div>
+
+        <div class="confirm-actions">
+            <button type="button" id="cancelConfirm" class="btn-cancel">Hủy</button>
+            <button type="button" id="acceptConfirm" class="btn-confirm">Xác nhận</button>
+        </div>
+    </div>
+</div>
+
+<!-- POPUP QUÉT QR -->
+<div id="qrScanOverlay" class="qr-scan-overlay" aria-hidden="true">
+    <div class="qr-scan-modal">
+        <div class="qr-scan-head">
+            <h3><i class="fa-solid fa-qrcode"></i> Quét mã Quà/Voucher</h3>
+            <button type="button" id="closeQrScannerBtn" class="qr-scan-close">×</button>
+        </div>
+        <div class="qr-scan-body">
+
+            <div class="qr-source-panel">
+                <div class="qr-source-title">Chọn nguồn quét</div>
+
+                <div class="qr-source-tabs">
+                    <button type="button" class="qr-source-btn active" data-source="camera">
+                        <i class="fa-solid fa-camera"></i> Camera / Webcam
+                    </button>
+                    <button type="button" class="qr-source-btn" data-source="usb">
+                        <i class="fa-solid fa-barcode"></i> Máy quét USB
+                    </button>
+                    <button type="button" class="qr-source-btn" data-source="manual">
+                        <i class="fa-solid fa-keyboard"></i> Nhập mã thủ công
+                    </button>
+                </div>
+
+                <div id="qrSourceCamera" class="qr-source-content active">
+                    <div class="qr-device-row">
+                        <select id="qrCameraSelect">
+                            <option value="">Đang tải danh sách Camera / Webcam...</option>
+                        </select>
+                        <button type="button" id="startSelectedCameraBtn" class="qr-start-camera-btn">
+                            <i class="fa-solid fa-play"></i> Bắt đầu quét
+                        </button>
+                    </div>
+                    <div class="qr-source-note">
+                        Trên Laptop có thể chọn camera tích hợp hoặc webcam USB. Camera trình duyệt cần HTTPS hoặc localhost.
+                    </div>
+                </div>
+
+                <div id="qrSourceUsb" class="qr-source-content">
+                    <div class="qr-input-row">
+                        <input
+                            id="qrUsbScannerInput"
+                            class="qr-code-input"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="Bấm vào đây rồi quét bằng máy quét QR/Barcode USB..."
+                        >
+                        <button type="button" id="qrUsbSubmitBtn" class="qr-code-submit">
+                            Tra cứu
+                        </button>
+                    </div>
+                    <div class="qr-usb-ready">
+                        <i class="fa-solid fa-circle-check"></i>
+                        Máy quét USB dạng HID/Keyboard: quét xong hệ thống sẽ tự nhận mã khi thiết bị gửi Enter.
+                    </div>
+                </div>
+
+                <div id="qrSourceManual" class="qr-source-content">
+                    <div class="qr-input-row">
+                        <input
+                            id="qrManualInput"
+                            class="qr-code-input"
+                            type="text"
+                            autocomplete="off"
+                            placeholder="Nhập Mã Quà hoặc Mã Voucher..."
+                        >
+                        <button type="button" id="qrManualSubmitBtn" class="qr-code-submit">
+                            Tra cứu
+                        </button>
+                    </div>
+                    <div class="qr-source-note">
+                        Dùng khi Camera hoặc máy quét gặp lỗi. Có thể nhập trực tiếp mã in bên dưới QR.
+                    </div>
+                </div>
+            </div>
+
+            <div class="qr-camera-shell">
+                <div id="qrReader"></div>
+            </div>
+
+            <div class="qr-scan-help">
+                Khi dùng Camera/Webcam, đưa mã QR vào giữa khung. Với máy quét USB hoặc nhập thủ công, mã sẽ được tra cứu trực tiếp.
+            </div>
+
+            <div id="qrScanError" class="qr-scan-error"></div>
+
+            <div class="qr-fallback-row">
+                <label class="qr-file-btn" for="qrImageInput">
+                    <i class="fa-solid fa-image"></i> Chọn ảnh QR
+                </label>
+                <input id="qrImageInput" type="file" accept="image/*" hidden>
+            </div>
+
+            <div id="qrScanResult" class="qr-result">
+                <div class="qr-result-title">Kết quả quét</div>
+                <div class="qr-result-body">
+                    <div id="qrScannedCode" class="qr-result-code">—</div>
+                    <div class="qr-result-grid">
+                        <div class="qr-result-label">Loại</div><div id="qrResultType" class="qr-result-value">—</div>
+                        <div class="qr-result-label">Chương trình / Quà</div><div id="qrResultName" class="qr-result-value">—</div>
+                        <div class="qr-result-label">Thành viên</div><div id="qrResultMember" class="qr-result-value">—</div>
+                        <div class="qr-result-label">Giá trị</div><div id="qrResultValue" class="qr-result-value">—</div>
+                        <div class="qr-result-label">Trạng thái</div><div id="qrResultStatus" class="qr-result-value">—</div>
+                    </div>
+                    <div id="qrResultConditions" class="qr-result-condition" style="display:none"></div>
+                    <div id="qrResultActions" class="qr-result-actions"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+(function(){
+    const overlay = document.getElementById('confirmOverlay');
+    const codeBox = document.getElementById('confirmCode');
+    const cancelBtn = document.getElementById('cancelConfirm');
+    const acceptBtn = document.getElementById('acceptConfirm');
+
+    let selectedButton = null;
+    let selectedType = '';
+    let selectedCode = '';
+
+    function closeModal(){
+        overlay.classList.remove('show');
+        selectedButton = null;
+        selectedType = '';
+        selectedCode = '';
+    }
+
+    document.querySelectorAll('.js-activate-btn').forEach(function(button){
+        button.addEventListener('click', function(){
+            selectedButton = button;
+            selectedType = button.dataset.type || '';
+            selectedCode = button.dataset.code || '';
+
+            codeBox.textContent =
+                (selectedType === 'QUA' ? 'Mã quà: ' : 'Mã Voucher: ')
+                + selectedCode;
+
+            overlay.classList.add('show');
+        });
+    });
+
+    cancelBtn.addEventListener('click', closeModal);
+
+    overlay.addEventListener('click', function(event){
+        if(event.target === overlay){
+            closeModal();
+        }
+    });
+
+    acceptBtn.addEventListener('click', async function(){
+        if(!selectedCode || !selectedType){
+            return;
+        }
+
+        acceptBtn.disabled = true;
+        acceptBtn.textContent = 'Đang xác nhận...';
+
+        try{
+            const response = await fetch(
+                "{{ url_for('xac_nhan_kich_hoat_qua') }}",
+                {
+                    method: "POST",
+                    headers: {"Content-Type": "application/json"},
+                    body: JSON.stringify({
+                        loai: selectedType,
+                        ma: selectedCode
+                    })
+                }
+            );
+
+            const result = await response.json();
+
+            if(!response.ok || !result.ok){
+                alert(result.message || "Không xác nhận được.");
+                return;
+            }
+
+            const card = selectedButton.closest('.activation-card');
+            card.classList.add('is-confirmed');
+
+            const status = card.querySelector('.js-card-status');
+            if(status){
+                status.textContent = result.trang_thai || 'Đã xác nhận';
+            }
+
+            const timeBox = card.querySelector('.js-card-time');
+            if(timeBox){
+                let textTime = '';
+
+                if(result.kich_hoat_at){
+                    const dt = new Date(result.kich_hoat_at);
+
+                    const pad = (n) => String(n).padStart(2, '0');
+
+                    textTime =
+                        pad(dt.getDate()) + '/' +
+                        pad(dt.getMonth() + 1) + '/' +
+                        dt.getFullYear() + ' ' +
+                        pad(dt.getHours()) + ':' +
+                        pad(dt.getMinutes()) + ':' +
+                        pad(dt.getSeconds());
+                }
+
+                timeBox.textContent = textTime ? ('Xác nhận: ' + textTime) : '';
+            }
+
+            selectedButton.className = 'activate-btn done';
+            selectedButton.innerHTML = '<i class="fa-solid fa-circle-check"></i> Đã xác nhận';
+            selectedButton.disabled = true;
+
+            closeModal();
+
+        }catch(error){
+            console.error(error);
+            alert("Không thể kết nối máy chủ.");
+        }finally{
+            acceptBtn.disabled = false;
+            acceptBtn.textContent = 'Xác nhận';
+        }
+    });
+})();
+
+/* ==========================================================
+   QR SCANNER - QUÀ / VOUCHER
+========================================================== */
+(function(){
+    const overlay = document.getElementById('qrScanOverlay');
+    const openBtn = document.getElementById('openQrScannerBtn');
+    const closeBtn = document.getElementById('closeQrScannerBtn');
+    const errorBox = document.getElementById('qrScanError');
+    const resultBox = document.getElementById('qrScanResult');
+    const imageInput = document.getElementById('qrImageInput');
+
+    const sourceButtons = Array.from(document.querySelectorAll('.qr-source-btn'));
+    const cameraSource = document.getElementById('qrSourceCamera');
+    const usbSource = document.getElementById('qrSourceUsb');
+    const manualSource = document.getElementById('qrSourceManual');
+    const cameraSelect = document.getElementById('qrCameraSelect');
+    const startSelectedCameraBtn = document.getElementById('startSelectedCameraBtn');
+    const usbInput = document.getElementById('qrUsbScannerInput');
+    const usbSubmitBtn = document.getElementById('qrUsbSubmitBtn');
+    const manualInput = document.getElementById('qrManualInput');
+    const manualSubmitBtn = document.getElementById('qrManualSubmitBtn');
+
+    let qrScanner = null;
+    let scanningLocked = false;
+    let currentItem = null;
+
+    function showError(message){
+        errorBox.textContent = message || '';
+        errorBox.classList.toggle('show', Boolean(message));
+    }
+
+    function resetResult(){
+        currentItem = null;
+        resultBox.classList.remove('show');
+        document.getElementById('qrScannedCode').textContent = '—';
+        document.getElementById('qrResultType').textContent = '—';
+        document.getElementById('qrResultName').textContent = '—';
+        document.getElementById('qrResultMember').textContent = '—';
+        document.getElementById('qrResultValue').textContent = '—';
+        document.getElementById('qrResultStatus').textContent = '—';
+        document.getElementById('qrResultConditions').style.display = 'none';
+        document.getElementById('qrResultConditions').innerHTML = '';
+        document.getElementById('qrResultActions').innerHTML = '';
+    }
+
+    async function stopCamera(){
+        if(!qrScanner) return;
+        try{ await qrScanner.stop(); }catch(e){}
+        try{ qrScanner.clear(); }catch(e){}
+        qrScanner = null;
+    }
+
+    async function closeScanner(){
+        await stopCamera();
+        overlay.classList.remove('show');
+        overlay.setAttribute('aria-hidden','true');
+        document.body.style.overflow = '';
+        scanningLocked = false;
+        showError('');
+        resetResult();
+        if(imageInput) imageInput.value = '';
+        if(usbInput) usbInput.value = '';
+        if(manualInput) manualInput.value = '';
+    }
+
+    function renderLookup(item){
+        currentItem = item;
+        resultBox.classList.add('show');
+
+        document.getElementById('qrScannedCode').textContent =
+            (item.loai === 'QUA' ? 'Mã quà: ' : 'Mã Voucher: ') + (item.ma || '—');
+        document.getElementById('qrResultType').textContent = item.loai_hien_thi || item.loai || '—';
+        document.getElementById('qrResultName').textContent = item.ten || '—';
+        document.getElementById('qrResultMember').textContent =
+            (item.ho_va_ten || '—') + (item.ma_thanh_vien ? ' · ' + item.ma_thanh_vien : '');
+        document.getElementById('qrResultValue').textContent = item.gia_tri_hien_thi || '—';
+        document.getElementById('qrResultStatus').textContent = item.trang_thai || '—';
+
+        const conditionBox = document.getElementById('qrResultConditions');
+        const conditions = Array.isArray(item.dieu_kien_dong) ? item.dieu_kien_dong : [];
+        if(conditions.length){
+            conditionBox.style.display = 'block';
+            conditionBox.innerHTML = '<strong>⚠ Điều kiện sử dụng</strong><br>' +
+                conditions.map(line => '• ' + escapeHtmlQr(line)).join('<br>');
+        }else{
+            conditionBox.style.display = 'none';
+            conditionBox.innerHTML = '';
+        }
+
+        const actions = document.getElementById('qrResultActions');
+        actions.innerHTML = '';
+
+        if(item.da_xac_nhan){
+            const done = document.createElement('button');
+            done.type = 'button';
+            done.className = 'qr-action-btn disabled';
+            done.disabled = true;
+            done.innerHTML = '<i class="fa-solid fa-circle-check"></i> Đã xác nhận';
+            actions.appendChild(done);
+            return;
+        }
+
+        if(item.loai === 'VOUCHER' && item.co_dieu_kien){
+            const activityBtn = document.createElement('button');
+            activityBtn.type = 'button';
+            activityBtn.className = 'qr-action-btn activity';
+            activityBtn.innerHTML = '<i class="fa-solid fa-receipt"></i> Áp dụng tại Hoạt Động';
+            activityBtn.addEventListener('click', function(){
+                window.location.href = "{{ url_for('hoat_dong') }}";
+            });
+            actions.appendChild(activityBtn);
+            return;
+        }
+
+        if(item.can_kich_hoat_truc_tiep){
+            const activateBtn = document.createElement('button');
+            activateBtn.type = 'button';
+            activateBtn.className = 'qr-action-btn activate';
+            activateBtn.innerHTML = '<i class="fa-solid fa-check"></i> Kích hoạt';
+            activateBtn.addEventListener('click', function(){
+                activateScannedItem(activateBtn);
+            });
+            actions.appendChild(activateBtn);
+        }
+    }
+
+    function escapeHtmlQr(value){
+        return String(value || '')
+            .replace(/&/g,'&amp;')
+            .replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;')
+            .replace(/'/g,'&#039;');
+    }
+
+    async function lookupCode(rawCode){
+        const code = String(rawCode || '').trim().toUpperCase();
+        if(!code){
+            showError('Không đọc được mã QR. Vui lòng thử lại.');
+            scanningLocked = false;
+            return;
+        }
+
+        document.getElementById('qrScannedCode').textContent = code;
+        resultBox.classList.add('show');
+        showError('');
+
+        try{
+            const response = await fetch(
+                `/api/kich-hoat-qua/tra-cuu/${encodeURIComponent(code)}`,
+                {headers:{'Accept':'application/json'}}
+            );
+            const data = await response.json();
+
+            if(!response.ok || !data.ok || !data.item){
+                currentItem = null;
+                showError(data.message || 'Không tìm thấy Quà/Voucher tương ứng với mã QR.');
+                document.getElementById('qrResultActions').innerHTML = '';
+                return;
+            }
+
+            renderLookup(data.item);
+        }catch(error){
+            console.error(error);
+            showError('Không thể kết nối máy chủ để tra cứu mã QR.');
+        }
+    }
+
+    async function onScanSuccess(decodedText){
+        if(scanningLocked) return;
+        scanningLocked = true;
+        await stopCamera();
+        await lookupCode(decodedText);
+    }
+
+    async function loadCameraDevices(){
+        if(!cameraSelect) return;
+
+        cameraSelect.innerHTML = '<option value="">Đang tải danh sách Camera / Webcam...</option>';
+
+        if(typeof Html5Qrcode === 'undefined'){
+            cameraSelect.innerHTML = '<option value="">Không tải được thư viện quét QR</option>';
+            return;
+        }
+
+        try{
+            const cameras = await Html5Qrcode.getCameras();
+
+            if(!cameras || !cameras.length){
+                cameraSelect.innerHTML = '<option value="">Không tìm thấy Camera / Webcam</option>';
+                return;
+            }
+
+            cameraSelect.innerHTML = cameras.map(function(camera, index){
+                const label = camera.label || ('Camera ' + (index + 1));
+                return '<option value="' + escapeHtmlQr(camera.id) + '">' + escapeHtmlQr(label) + '</option>';
+            }).join('');
+        }catch(error){
+            console.error(error);
+            cameraSelect.innerHTML = '<option value="">Không lấy được danh sách Camera</option>';
+
+            if(!window.isSecureContext){
+                showError(
+                    'Camera bị trình duyệt chặn vì trang hiện tại chưa dùng HTTPS. '
+                    + 'Ken vẫn có thể dùng Máy quét USB, Nhập mã thủ công hoặc Chọn ảnh QR.'
+                );
+            }
+        }
+    }
+
+    async function startCamera(deviceId){
+        resetResult();
+        showError('');
+        scanningLocked = false;
+
+        if(typeof Html5Qrcode === 'undefined'){
+            showError('Không tải được thư viện quét QR. Kiểm tra kết nối Internet rồi thử lại.');
+            return;
+        }
+
+        if(!window.isSecureContext){
+            showError(
+                'Camera trình duyệt cần HTTPS hoặc localhost. '
+                + 'Nếu đang chạy IP nội bộ HTTP, hãy dùng Máy quét USB / Nhập mã thủ công / Chọn ảnh QR.'
+            );
+            return;
+        }
+
+        try{
+            await stopCamera();
+
+            qrScanner = new Html5Qrcode('qrReader');
+
+            const cameraConfig = deviceId
+                ? {deviceId:{exact:deviceId}}
+                : {facingMode:'environment'};
+
+            await qrScanner.start(
+                cameraConfig,
+                {
+                    fps:10,
+                    qrbox:function(viewfinderWidth, viewfinderHeight){
+                        const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.72);
+                        return {width:size, height:size};
+                    },
+                    aspectRatio:1.0
+                },
+                onScanSuccess,
+                function(){}
+            );
+        }catch(error){
+            console.error(error);
+            try{ if(qrScanner) qrScanner.clear(); }catch(e){}
+            qrScanner = null;
+            showError(
+                'Không mở được Camera / Webcam đã chọn. Hãy kiểm tra quyền Camera hoặc chọn thiết bị khác. '
+                + 'Ken vẫn có thể dùng Máy quét USB hoặc Nhập mã thủ công.'
+            );
+        }
+    }
+
+    async function activateScannedItem(button){
+        if(!currentItem || !currentItem.ma || !currentItem.loai) return;
+
+        if(!confirm(
+            'Xác nhận kích hoạt ' + (currentItem.loai === 'QUA' ? 'Quà tặng' : 'Voucher') +
+            ':\n\n' + currentItem.ten + '\nMã: ' + currentItem.ma + '?'
+        )) return;
+
+        button.disabled = true;
+        button.textContent = 'Đang kích hoạt...';
+
+        try{
+            const response = await fetch(
+                "{{ url_for('xac_nhan_kich_hoat_qua') }}",
+                {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({
+                        loai:currentItem.loai,
+                        ma:currentItem.ma
+                    })
+                }
+            );
+            const data = await response.json();
+
+            if(!response.ok || !data.ok){
+                alert(data.message || 'Không kích hoạt được.');
+                button.disabled = false;
+                button.innerHTML = '<i class="fa-solid fa-check"></i> Kích hoạt';
+                return;
+            }
+
+            alert(data.already ? data.message : 'Kích hoạt thành công.');
+            window.location.href = "{{ url_for('kich_hoat_qua') }}?q=" + encodeURIComponent(currentItem.ma);
+        }catch(error){
+            console.error(error);
+            alert('Không thể kết nối máy chủ.');
+            button.disabled = false;
+            button.innerHTML = '<i class="fa-solid fa-check"></i> Kích hoạt';
+        }
+    }
+
+    function setSource(source){
+        sourceButtons.forEach(function(btn){
+            btn.classList.toggle('active', btn.dataset.source === source);
+        });
+
+        cameraSource.classList.toggle('active', source === 'camera');
+        usbSource.classList.toggle('active', source === 'usb');
+        manualSource.classList.toggle('active', source === 'manual');
+
+        if(source !== 'camera'){
+            stopCamera();
+        }
+
+        showError('');
+
+        if(source === 'usb'){
+            setTimeout(function(){
+                usbInput.focus();
+                usbInput.select();
+            }, 80);
+        }
+
+        if(source === 'manual'){
+            setTimeout(function(){
+                manualInput.focus();
+                manualInput.select();
+            }, 80);
+        }
+    }
+
+    sourceButtons.forEach(function(button){
+        button.addEventListener('click', function(){
+            setSource(button.dataset.source || 'camera');
+        });
+    });
+
+    startSelectedCameraBtn.addEventListener('click', function(){
+        startCamera(cameraSelect.value || '');
+    });
+
+    function submitUsbCode(){
+        const code = (usbInput.value || '').trim();
+        if(!code) return;
+        usbInput.value = '';
+        lookupCode(code);
+        setTimeout(function(){ usbInput.focus(); }, 100);
+    }
+
+    usbSubmitBtn.addEventListener('click', submitUsbCode);
+    usbInput.addEventListener('keydown', function(event){
+        if(event.key === 'Enter'){
+            event.preventDefault();
+            submitUsbCode();
+        }
+    });
+
+    function submitManualCode(){
+        const code = (manualInput.value || '').trim();
+        if(!code){
+            showError('Vui lòng nhập Mã Quà hoặc Mã Voucher.');
+            manualInput.focus();
+            return;
+        }
+        lookupCode(code);
+    }
+
+    manualSubmitBtn.addEventListener('click', submitManualCode);
+    manualInput.addEventListener('keydown', function(event){
+        if(event.key === 'Enter'){
+            event.preventDefault();
+            submitManualCode();
+        }
+    });
+
+    openBtn.addEventListener('click', function(){
+        overlay.classList.add('show');
+        overlay.setAttribute('aria-hidden','false');
+        document.body.style.overflow = 'hidden';
+
+        resetResult();
+        showError('');
+        setSource('camera');
+        loadCameraDevices();
+    });
+
+    closeBtn.addEventListener('click', closeScanner);
+    overlay.addEventListener('click', function(event){
+        if(event.target === overlay) closeScanner();
+    });
+
+    document.addEventListener('keydown', function(event){
+        if(event.key === 'Escape' && overlay.classList.contains('show')){
+            closeScanner();
+        }
+    });
+
+    imageInput.addEventListener('change', async function(){
+        const file = imageInput.files && imageInput.files[0];
+        if(!file) return;
+
+        await stopCamera();
+        resetResult();
+        showError('');
+        scanningLocked = true;
+
+        try{
+            if(typeof Html5Qrcode === 'undefined'){
+                throw new Error('QR library unavailable');
+            }
+            qrScanner = new Html5Qrcode('qrReader');
+            const decodedText = await qrScanner.scanFile(file, true);
+            try{ qrScanner.clear(); }catch(e){}
+            qrScanner = null;
+            await lookupCode(decodedText);
+        }catch(error){
+            console.error(error);
+            showError('Không đọc được mã QR trong ảnh này. Vui lòng chọn ảnh rõ hơn.');
+        }finally{
+            imageInput.value = '';
+        }
+    });
+})();
+</script>
+{% endblock %}

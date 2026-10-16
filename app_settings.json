@@ -1,0 +1,46 @@
+{
+  "header": {
+    "club_small_title": "CÂU LẠC BỘ TAEKWONDO",
+    "club_name": "HOA HƯỚNG DƯƠNG",
+    "logo_url": "/static/uploads/logos/club_logo.jpg"
+  },
+  "fees": {
+    "tuition_fee": 500000,
+    "exam_fee": 300000,
+    "dan_fees": {
+      "1 Đẳng": 950000,
+      "2 Đẳng": 650000,
+      "3 Đẳng": 800000,
+      "4 Đẳng": 1250000,
+      "5 Đẳng": 1500000,
+      "6 Đẳng": 2000000
+    }
+  },
+  "exam": {
+    "exam_number_prefix": "{cap}_"
+  },
+  "class_options": {
+    "classrooms": [
+      "2 - 4 - 6",
+      "3 - 5 - 7",
+      "T7 - CN",
+      "Hẹn hò"
+    ],
+    "timeclasses": [
+      "Ca 1",
+      "Ca 2",
+      "Ca sáng"
+    ],
+    "clubs": [
+      "Hoa Hướng Dương Q1(CLB_00019)",
+      "Hoa Hướng Dương Q10(CLB_00104)"
+    ]
+  },
+  "profile": {
+    "owner": "Nguyễn Thiên Phụng",
+    "phone_zalo": "0989 03 04 93",
+    "email": "nhoctotokute93@gmail.com",
+    "role": "VĐV Taekwondo Poomsae Việt Nam",
+    "system_name": "Hệ thống quản lý hội viên CLB Taekwondo"
+  }
+}

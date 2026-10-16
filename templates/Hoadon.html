@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+{% block title %}Hóa Đơn - Billiards Manager{% endblock %}
+
+{% block page_style %}
+<style>
+    .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:15px}
+    .page-head h1{margin:0;font-size:30px;font-weight:1000;color:#102a43}
+    .page-head p{margin:4px 0 0;color:#64748b;font-weight:700}
+
+    .panel{background:#fff;border:1px solid #dce7f1;border-radius:20px;box-shadow:0 12px 28px rgba(15,37,64,.07)}
+    .list-panel{padding:18px}
+    .list-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .search-form{display:flex;gap:9px;flex:1;max-width:850px}
+    .search-wrap{position:relative;flex:1}
+    .search-wrap i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7c8da1}
+    .search-wrap input{width:100%;height:44px;border:1px solid #cbd5e1;border-radius:13px;padding:0 13px 0 41px;font-weight:750;outline:none;background:#fff;box-sizing:border-box}
+    .search-wrap input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .search-btn,.clear-btn{height:44px;border-radius:12px;padding:0 16px;font-weight:900;cursor:pointer}
+    .search-btn{border:0;background:#123a61;color:#fff}
+    .clear-btn{display:grid;place-items:center;text-decoration:none;border:1px solid #cbd5e1;background:#fff;color:#334155}
+    .count-badge{padding:9px 12px;border-radius:999px;background:#e8f3ff;color:#1d4ed8;font-size:13px;font-weight:950;white-space:nowrap}
+
+    .table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:15px}
+    table{width:100%;border-collapse:collapse;min-width:1550px;background:#fff}
+    thead th{position:sticky;top:0;z-index:2;background:#eaf4ff;color:#153c63;text-align:left;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.25px;padding:11px;border-bottom:1px solid #cfe1f2;white-space:nowrap}
+    tbody td{padding:11px;border-bottom:1px solid #edf2f7;font-size:13px;font-weight:650;vertical-align:middle;color:#1f2937}
+    tbody tr:hover{background:#f8fbff}
+    tbody tr:last-child td{border-bottom:0}
+
+    .invoice-code{font-weight:900;color:#1d4ed8;white-space:nowrap}
+    .member-code{font-weight:850;color:#475569;white-space:nowrap}
+    .member-name{font-weight:850;color:#102a43;min-width:150px}
+    .money{font-weight:900;white-space:nowrap;text-align:right}
+    .discount-money{color:#dc2626;font-weight:700;white-space:nowrap;text-align:right}
+    .final-money{color:#15803d;font-weight:1000;white-space:nowrap;text-align:right}
+    .service-cell{min-width:220px;max-width:320px;line-height:1.45;color:#475569}
+    .date-cell{white-space:nowrap;line-height:1.45}
+    .actions{display:flex;gap:7px;align-items:center}
+    .icon-btn{width:36px;height:36px;border:0;border-radius:10px;display:grid;place-items:center;cursor:pointer}
+    .print-btn{background:#dbeafe;color:#1d4ed8}
+    .delete-btn{background:#fee2e2;color:#dc2626;font-size:17px}
+    .empty-row td{text-align:center;padding:34px;color:#64748b;font-weight:800}
+
+    .modal-backdrop{display:none;position:fixed;inset:0;z-index:4000;background:rgba(15,23,42,.52);align-items:center;justify-content:center;padding:18px}
+    .modal-backdrop.show{display:flex}
+    .receipt-modal{width:min(620px,96vw);max-height:94vh;overflow:auto;background:#eef3f8;padding:14px;border-radius:22px;box-shadow:0 30px 80px rgba(15,23,42,.3)}
+    .receipt-sheet,
+    .receipt-sheet *{
+        font-family:"Segoe UI",Arial,Tahoma,sans-serif;
+        text-rendering:optimizeLegibility;
+        font-synthesis:none;
+    }
+    .receipt-sheet{width:100%;max-width:148mm;min-height:190mm;margin:0 auto;padding:12mm 10mm;background:#fff;color:#111827;box-sizing:border-box;border-radius:10px;font-size:13px}
+    .receipt-brand{text-align:center;border-bottom:2px solid #123a61;padding-bottom:10px;margin-bottom:14px}
+    .receipt-club-small{font-size:16px;line-height:1.3;font-weight:700;color:#123a61}
+    .receipt-club-name{margin-top:3px;font-size:25px;line-height:1.2;font-weight:800;color:#0b4f91}
+    .receipt-title{margin-top:10px;font-size:19px;line-height:1.3;font-weight:800;letter-spacing:.2px;color:#111827}
+    .receipt-code,.receipt-date{margin-top:4px;font-size:11px;line-height:1.35;font-weight:600;color:#475569}
+    .receipt-section{margin-top:16px}
+    .receipt-section-title{margin-bottom:7px;font-size:14px;line-height:1.3;font-weight:700;color:#111827}
+    .receipt-row{display:grid;grid-template-columns:minmax(0,1fr) 92px 118px;column-gap:14px;align-items:center;padding:7px 0;border-bottom:1px dashed #cbd5e1;font-size:12px;line-height:1.4}
+    .receipt-row>span:nth-child(2){text-align:center;justify-self:center}
+    .receipt-row>span:nth-child(3),.receipt-row>strong{width:100%;text-align:right;justify-self:end;white-space:nowrap}
+    .receipt-header-row{padding-top:5px;padding-bottom:6px;border-bottom:1px solid #94a3b8;font-size:10px;line-height:1.25;font-weight:700;text-transform:uppercase;color:#64748b}
+    .receipt-header-row>span:nth-child(3){text-align:right}
+    .receipt-total-box{margin-top:17px;padding-top:8px;border-top:2px solid #123a61}
+    .receipt-total-box>div{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:6px 0;font-size:13px;line-height:1.35;color:#111827}
+    .receipt-subtotal-row{font-weight:700}
+    .receipt-discount-row,.receipt-discount-row span,.receipt-discount-row strong{color:#dc2626!important;font-weight:500!important}
+    .receipt-grand-total{margin-top:5px!important;padding-top:10px!important;border-top:1px solid #cbd5e1;color:#15803d!important;font-size:19px!important;font-weight:800!important}
+    .receipt-grand-total span,.receipt-grand-total strong{color:#15803d!important;font-size:19px!important;font-weight:800!important}
+    .receipt-customer{margin-top:14px;padding-top:10px;border-top:1px dashed #cbd5e1;font-size:11px;line-height:1.6;color:#334155}
+    .receipt-thanks{margin-top:20px;text-align:center;font-size:12px;font-weight:600;font-style:italic}
+    .receipt-actions{display:flex;justify-content:center;gap:10px;margin-top:20px}
+    .secondary-btn,.primary-btn{height:44px;border-radius:12px;padding:0 17px;border:0;font-weight:850;cursor:pointer}
+    .secondary-btn{background:#eef2f7;color:#334155}
+    .primary-btn{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 10px 22px rgba(37,99,235,.18)}
+
+    @media(max-width:760px){
+        .page-head{align-items:flex-start;flex-direction:column}.page-head h1{font-size:25px}
+        .list-panel{padding:14px;border-radius:16px}
+        .list-toolbar{align-items:stretch;flex-direction:column}.search-form{max-width:none}.count-badge{align-self:flex-start}
+    }
+
+    .print-btn{
+        display:inline-flex;
+        align-items:center;
+        justify-content:center;
+        gap:7px;
+    }
+
+    .print-btn svg{
+        flex:0 0 auto;
+        display:block;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Hóa Đơn</h1>
+        <p>Quản lý lịch sử hóa đơn dịch vụ của Câu Lạc Bộ Billiards Thanh Trung.</p>
+    </div>
+</div>
+
+<section class="panel list-panel">
+    <div class="list-toolbar">
+        <form method="get" action="{{ url_for('hoa_don') }}" class="search-form">
+            <div class="search-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ q or '' }}"
+                    placeholder="Tìm mã hóa đơn, mã thành viên, tên, SĐT hoặc bàn số..."
+                >
+            </div>
+            <button type="submit" class="search-btn">Tìm</button>
+            {% if q %}<a class="clear-btn" href="{{ url_for('hoa_don') }}">Xóa lọc</a>{% endif %}
+        </form>
+        <div class="count-badge">{{ rows|length }} hóa đơn</div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Thời gian xuất</th>
+                    <th>Mã hóa đơn</th>
+                    <th>Mã thành viên</th>
+                    <th>Tên thành viên</th>
+                    <th>Bàn chơi</th>
+                    <th>Thời lượng</th>
+                    <th>Dịch vụ thêm</th>
+                    <th>Tổng tiền</th>
+                    <th>Giảm giá</th>
+                    <th>Thành tiền</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td class="date-cell">{{ r.created_at_hien_thi or '—' }}</td>
+                    <td class="invoice-code">{{ r.ma_hoa_don or '—' }}</td>
+                    <td class="member-code">{{ r.ma_thanh_vien or 'Khách lẻ' }}</td>
+                    <td class="member-name">{{ r.ho_va_ten or 'Khách lẻ' }}</td>
+                    <td>Bàn {{ r.ban_so or '—' }}</td>
+                    <td>{{ r.thoi_luong_hien_thi or '—' }}</td>
+                    <td class="service-cell">{{ r.dich_vu_them or '[]' }}</td>
+                    <td class="money">{{ r.tong_tien_hien_thi or '0 đ' }}</td>
+                    <td class="discount-money">{{ r.so_tien_giam_hien_thi or '0 đ' }}</td>
+                    <td class="final-money">{{ r.thanh_tien_hien_thi or '0 đ' }}</td>
+                    <td>
+                        <div class="actions">
+                            <button
+                                type="button"
+                                class="icon-btn print-btn"
+                                title="In hóa đơn"
+                                onclick='openInvoicePrint({{ r|tojson }})'
+                            >
+                                <i class="fa-solid fa-print"></i>
+                            </button>
+
+                            <form
+                                method="post"
+                                action="{{ url_for('xoa_hoa_don', invoice_id=r.id) }}"
+                                onsubmit="return confirm('Ken có chắc muốn xóa hóa đơn này không?')"
+                            >
+                                <input type="hidden" name="return_q" value="{{ q or '' }}">
+                                <button type="submit" class="icon-btn delete-btn" title="Xóa hóa đơn">×</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="empty-row">
+                    <td colspan="11">Chưa có hóa đơn phù hợp.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div id="receiptModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event)">
+    <div class="receipt-modal">
+        <div id="receiptPrintArea" class="receipt-sheet">
+            <div class="receipt-brand">
+                <div class="receipt-club-small">{{ app_setup.club.title }}</div>
+                <div class="receipt-club-name">{{ app_setup.club.name }}</div>
+                <div class="receipt-title">HÓA ĐƠN DỊCH VỤ</div>
+                <div id="receiptInvoiceCode" class="receipt-code">—</div>
+                <div id="receiptCreatedAt" class="receipt-date">Ngày lập: —</div>
+            </div>
+
+            <div class="receipt-section">
+                <div class="receipt-section-title">Thuê bàn</div>
+                <div class="receipt-row receipt-header-row">
+                    <span>Nội dung</span><span>Thời lượng</span><span>Thành tiền</span>
+                </div>
+                <div id="receiptTableRows"></div>
+                <div class="receipt-row">
+                    <span><strong id="receiptTable">Bàn số —</strong></span>
+                    <span><strong id="receiptDuration">—</strong></span>
+                    <strong id="receiptTableAmount">0 đ</strong>
+                </div>
+            </div>
+
+            <div class="receipt-section">
+                <div class="receipt-section-title">Dịch vụ thêm</div>
+                <div class="receipt-row receipt-header-row">
+                    <span>Dịch vụ</span><span>Số lượng</span><span>Thành tiền</span>
+                </div>
+                <div id="receiptServiceRows"></div>
+            </div>
+
+            <div class="receipt-total-box">
+                <div class="receipt-subtotal-row"><span>Tổng cộng</span><strong id="receiptSubtotal">0 đ</strong></div>
+                <div class="receipt-discount-row"><span>Giảm giá</span><strong id="receiptDiscount">0 đ</strong></div>
+                <div class="receipt-grand-total"><span>Thành tiền</span><strong id="receiptGrandTotal">0 đ</strong></div>
+            </div>
+
+            <div id="receiptCustomerInfo" class="receipt-customer"></div>
+            <div class="receipt-thanks">Cảm ơn Quý khách và hẹn gặp lại!</div>
+
+            <div class="receipt-actions">
+                <button type="button" class="secondary-btn" onclick="closeReceiptModal()">Thoát</button>
+                <button
+                    type="button"
+                    class="primary-btn print-btn"
+                    onclick="printReceipt()"
+                >
+                    <svg
+                        width="17"
+                        height="17"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        xmlns="http://www.w3.org/2000/svg"
+                        aria-hidden="true"
+                    >
+                        <path
+                            d="M6 9V3H18V9"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+
+                        <path
+                            d="M6 18H4C2.9 18 2 17.1 2 16V11C2 9.9 2.9 9 4 9H20C21.1 9 22 9.9 22 11V16C22 17.1 21.1 18 20 18H18"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+
+                        <path
+                            d="M6 14H18V21H6V14Z"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+
+                        <circle
+                            cx="18"
+                            cy="12"
+                            r="1"
+                            fill="currentColor"
+                        />
+                    </svg>
+
+                    <span>In</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_script %}
+<script>
+function money(value){
+    return new Intl.NumberFormat('vi-VN').format(Math.round(Number(value || 0))) + ' đ';
+}
+
+function escapeHtml(value){
+    return String(value ?? '')
+        .replace(/&/g,'&amp;')
+        .replace(/</g,'&lt;')
+        .replace(/>/g,'&gt;')
+        .replace(/"/g,'&quot;')
+        .replace(/'/g,'&#039;');
+}
+
+function parseServiceText(raw){
+    const text = String(raw || '').trim();
+    if(!text || text === '[]') return [];
+
+    const content = text.replace(/^\[/,'').replace(/\]$/,'').trim();
+    if(!content) return [];
+
+    return content.split(',').map(part => {
+        const item = part.trim();
+        const match = item.match(/^(.*?)\s+x(\d+)$/i);
+        if(!match) return {ten:item, so_luong:1};
+        return {
+            ten: match[1].trim(),
+            so_luong: Number(match[2] || 1)
+        };
+    }).filter(Boolean);
+}
+
+function openInvoicePrint(invoice){
+    document.getElementById('receiptInvoiceCode').textContent = invoice.ma_hoa_don || '—';
+    document.getElementById('receiptCreatedAt').textContent = 'Ngày lập: ' + (invoice.created_at_hien_thi || '—');
+    document.getElementById('receiptTable').textContent = `Bàn số ${invoice.ban_so || '—'}`;
+    document.getElementById('receiptDuration').textContent = invoice.thoi_luong_hien_thi || '—';
+    document.getElementById('receiptTableAmount').textContent = money(invoice.tien_ban || 0);
+
+    const tableDetails =
+        Array.isArray(invoice.chi_tiet_tien_ban)
+            ? invoice.chi_tiet_tien_ban
+            : [];
+
+    const tableRows =
+        document.getElementById(
+            'receiptTableRows'
+        );
+
+    if (tableRows) {
+        tableRows.innerHTML =
+            tableDetails.map(item => `
+                <div class="receipt-row">
+                    <span>
+                        Thời gian ${escapeHtml(item.khung_gio || '')}
+                        <small style="display:block;color:#64748b">
+                            ${money(item.don_gia_gio || 0)}/giờ
+                        </small>
+                    </span>
+                    <span>
+                        ${escapeHtml(
+                            item.thoi_luong_hien_thi
+                            || ((item.so_phut || 0) + ' phút')
+                        )}
+                    </span>
+                    <strong>${money(item.thanh_tien || 0)}</strong>
+                </div>
+            `).join('');
+    }
+
+    const services = parseServiceText(invoice.dich_vu_them);
+    const serviceBox = document.getElementById('receiptServiceRows');
+
+    if(!services.length){
+        serviceBox.innerHTML = `
+            <div class="receipt-row">
+                <span>Không sử dụng</span>
+                <span>—</span>
+                <strong>0 đ</strong>
+            </div>
+        `;
+    }else{
+        serviceBox.innerHTML = services.map(item => `
+            <div class="receipt-row">
+                <span>${escapeHtml(item.ten)}</span>
+                <span>${Number(item.so_luong || 0)}</span>
+                <strong>—</strong>
+            </div>
+        `).join('');
+
+        serviceBox.innerHTML += `
+            <div class="receipt-row">
+                <span><b>Tổng dịch vụ</b></span>
+                <span></span>
+                <strong>${money(invoice.tien_dich_vu || 0)}</strong>
+            </div>
+        `;
+    }
+
+    document.getElementById('receiptSubtotal').textContent = money(invoice.tong_tien || 0);
+    document.getElementById('receiptDiscount').textContent = '-' + money(invoice.so_tien_giam || 0);
+    document.getElementById('receiptGrandTotal').textContent = money(invoice.thanh_tien || 0);
+
+    const info = [];
+    if(invoice.ho_va_ten) info.push(`<b>Khách hàng:</b> ${escapeHtml(invoice.ho_va_ten)}`);
+    if(invoice.ma_thanh_vien) info.push(`<b>Mã thành viên:</b> ${escapeHtml(invoice.ma_thanh_vien)}`);
+    if(invoice.so_dien_thoai) info.push(`<b>SĐT:</b> ${escapeHtml(invoice.so_dien_thoai)}`);
+    document.getElementById('receiptCustomerInfo').innerHTML = info.join('<br>');
+
+    document.getElementById('receiptModal').classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeReceiptModal(){
+    document.getElementById('receiptModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function closeModalOnBackdrop(event){
+    if(event.target.id === 'receiptModal') closeReceiptModal();
+}
+
+function printReceipt(){
+    const receipt = document.getElementById('receiptPrintArea');
+    if(!receipt) return;
+
+    const printWindow = window.open('', '_blank', 'width=700,height=900');
+    if(!printWindow){
+        alert('Trình duyệt đang chặn cửa sổ in.');
+        return;
+    }
+
+    const receiptHtml = receipt.cloneNode(true);
+    const actions = receiptHtml.querySelector('.receipt-actions');
+    if(actions) actions.remove();
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="vi">
+        <head>
+            <meta charset="UTF-8">
+            <title>Hóa đơn dịch vụ</title>
+            <style>
+                @page{size:A5 portrait;margin:8mm}
+                *{box-sizing:border-box}
+                html,body{margin:0;padding:0;background:#fff;font-family:"Segoe UI",Arial,Tahoma,sans-serif;color:#111827}
+                body{width:100%}
+                .receipt-sheet{width:100%;max-width:none;min-height:0;margin:0;padding:0;background:#fff;font-size:11px;line-height:1.35}
+                .receipt-sheet,.receipt-sheet *{font-family:"Segoe UI",Arial,Tahoma,sans-serif;font-synthesis:none}
+                .receipt-brand{text-align:center;padding-bottom:8px;margin-bottom:10px;border-bottom:1.5px solid #123a61}
+                .receipt-club-small{font-size:14px;font-weight:700;color:#123a61}
+                .receipt-club-name{margin-top:2px;font-size:21px;font-weight:800;color:#0b4f91}
+                .receipt-title{margin-top:7px;font-size:16px;font-weight:800;letter-spacing:.1px;color:#111827}
+                .receipt-code,.receipt-date{margin-top:2px;font-size:9px;font-weight:500;color:#475569}
+                .receipt-section{margin-top:11px}
+                .receipt-section-title{margin-bottom:5px;font-size:12px;font-weight:700}
+                .receipt-row{display:grid;grid-template-columns:minmax(0,1fr) 70px 92px;column-gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed #cbd5e1;font-size:10px}
+                .receipt-row>span:nth-child(2){text-align:center}
+                .receipt-row>span:nth-child(3),.receipt-row>strong{text-align:right;white-space:nowrap}
+                .receipt-header-row{font-size:8px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid #94a3b8}
+                .receipt-total-box{margin-top:12px;padding-top:5px;border-top:1.5px solid #123a61}
+                .receipt-total-box>div{display:flex;justify-content:space-between;gap:15px;padding:4px 0;font-size:11px}
+                .receipt-subtotal-row{font-weight:700}
+                .receipt-discount-row,.receipt-discount-row span,.receipt-discount-row strong{color:#dc2626;font-weight:400}
+                .receipt-grand-total,.receipt-grand-total span,.receipt-grand-total strong{color:#15803d;font-size:15px;font-weight:800}
+                .receipt-grand-total{margin-top:3px;padding-top:7px!important;border-top:1px solid #cbd5e1}
+                .receipt-customer{margin-top:10px;padding-top:7px;border-top:1px dashed #cbd5e1;font-size:9px;line-height:1.5;color:#334155}
+                .receipt-thanks{margin-top:14px;text-align:center;font-size:10px;font-weight:600;font-style:italic}
+            </style>
+        </head>
+        <body>${receiptHtml.outerHTML}</body>
+        </html>
+    `);
+
+    printWindow.document.close();
+    printWindow.onload = function(){
+        printWindow.focus();
+        setTimeout(() => printWindow.print(), 200);
+    };
+}
+
+document.addEventListener('keydown', function(event){
+    if(event.key === 'Escape') closeReceiptModal();
+});
+</script>
+{% endblock %}

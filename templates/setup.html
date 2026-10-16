@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+{% block title %}Setup - Billiards Manager{% endblock %}
+
+{% block page_style %}
+<style>
+.setup-page{display:flex;flex-direction:column;gap:18px}
+.setup-head h1{margin:0;font-size:30px;font-weight:1000;color:#102a43}
+.setup-head p{margin:6px 0 0;color:#64748b;font-weight:700}
+.setup-shell{background:#fff;border:1px solid #dce7f1;border-radius:22px;overflow:hidden;box-shadow:0 12px 28px rgba(15,37,64,.07)}
+.setup-tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #dbe7f3;background:#f8fbff}
+.setup-tab{min-height:68px;border:0;background:transparent;padding:12px 16px;cursor:pointer;font-weight:950;color:#475569;position:relative}
+.setup-tab i{margin-right:8px;color:#2563eb}
+.setup-tab.active{color:#123a61;background:#fff}
+.setup-tab.active::after{content:"";position:absolute;left:12px;right:12px;bottom:0;height:4px;border-radius:999px 999px 0 0;background:linear-gradient(90deg,#2563eb,#38bdf8)}
+.setup-panel{display:none;padding:22px}.setup-panel.active{display:block}
+.section-title{display:flex;align-items:center;gap:10px;margin-bottom:15px;font-size:20px;font-weight:1000;color:#123a61}
+.section-title i{color:#2563eb}
+.setup-card{border:1px solid #dbe7f3;border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff);padding:18px;margin-bottom:16px}
+.setup-grid{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:14px}
+.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}
+.field label{color:#334155;font-size:13px;font-weight:900}
+.field input,.field select{width:100%;min-height:46px;border:1px solid #cbd5e1;border-radius:12px;padding:0 12px;background:#fff;color:#0f172a;font-weight:750;outline:none}
+.field input:focus,.field select:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+.helper{margin-top:5px;color:#64748b;font-size:12px;font-weight:700;line-height:1.45}
+.rate-table,.service-list{display:flex;flex-direction:column;gap:12px}
+.rate-row{display:grid;grid-template-columns:1.2fr .8fr .8fr 1fr;gap:10px;align-items:end}
+.service-row{display:grid;grid-template-columns:minmax(240px,1fr) 220px 46px 46px;gap:10px;align-items:end}
+.icon-btn{width:46px;height:46px;border:0;border-radius:12px;color:#fff;font-size:19px;font-weight:1000;cursor:pointer}
+.icon-btn.add{background:linear-gradient(135deg,#16a34a,#15803d)}
+.icon-btn.remove{background:linear-gradient(135deg,#ef4444,#dc2626)}
+.save-row{display:flex;justify-content:flex-end;margin-top:18px}
+.save-btn{height:48px;min-width:150px;border:0;border-radius:13px;padding:0 20px;color:#fff;font-weight:1000;cursor:pointer;background:linear-gradient(135deg,#2563eb,#1d4ed8);box-shadow:0 10px 22px rgba(37,99,235,.18)}
+.payment-layout{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);gap:18px;align-items:start}
+.qr-card{border:1px solid #dbe7f3;border-radius:18px;padding:18px;background:#fff;text-align:center;position:sticky;top:140px}
+.qr-title{font-size:17px;font-weight:1000;color:#123a61;margin-bottom:12px}
+.qr-frame{width:min(100%,300px);aspect-ratio:1/1;margin:0 auto;border:1px dashed #bfdbfe;border-radius:18px;display:flex;align-items:center;justify-content:center;background:#f8fbff;overflow:hidden}
+.qr-frame img{width:100%;height:100%;object-fit:contain}.qr-empty{padding:24px;color:#64748b;font-weight:800;line-height:1.5}
+.json-note{margin-top:12px;padding:10px 12px;border-radius:12px;background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af;font-size:12px;font-weight:750}
+@media(max-width:900px){.setup-grid,.payment-layout{grid-template-columns:1fr}.rate-row{grid-template-columns:1fr 1fr}.service-row{grid-template-columns:1fr 160px 46px 46px}.qr-card{position:static}}
+@media(max-width:650px){.setup-tabs{grid-template-columns:1fr}.setup-panel{padding:14px}.rate-row,.service-row{grid-template-columns:1fr}.icon-btn{width:100%}}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="setup-page">
+  <div class="setup-head"><h1>Setup</h1><p>Quản lý cài đặt chung. Tất cả thông tin được lưu trong một file JSON duy nhất.</p></div>
+
+  <div class="setup-shell">
+    <div class="setup-tabs">
+      <button type="button" class="setup-tab active" data-tab="club"><i class="fa-solid fa-building"></i>Thông tin CLB</button>
+      <button type="button" class="setup-tab" data-tab="pricing"><i class="fa-solid fa-tags"></i>Biểu phí</button>
+      <button type="button" class="setup-tab" data-tab="payment"><i class="fa-solid fa-qrcode"></i>Thanh toán</button>
+    </div>
+
+    <div id="club" class="setup-panel active">
+      <form method="post">
+        <input type="hidden" name="section" value="club">
+        <div class="section-title"><i class="fa-solid fa-building"></i>Thông tin CLB</div>
+        <div class="setup-card">
+          <div class="setup-grid">
+            <div class="field"><label>Tiêu đề</label><input type="text" name="club_title" value="{{ setup_config.club.title }}" required></div>
+            <div class="field"><label>Tên CLB</label><input type="text" name="club_name" value="{{ setup_config.club.name }}" required></div>
+            <div class="field"><label>Số lượng bàn</label><input type="number" name="table_count" min="1" max="100" value="{{ setup_config.club.table_count }}" required><div class="helper">Tăng số bàn: hệ thống tự tạo thêm. Giảm số bàn: dữ liệu bàn cũ không bị xóa.</div></div>
+          </div>
+        </div>
+        <div class="save-row"><button class="save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu</button></div>
+      </form>
+    </div>
+
+    <div id="pricing" class="setup-panel">
+      <form method="post">
+        <input type="hidden" name="section" value="pricing">
+        <div class="section-title"><i class="fa-solid fa-clock"></i>Phí thuê bàn</div>
+        <div class="setup-card">
+          <div class="rate-table">
+            {% for rate in setup_config.pricing %}
+            <div class="rate-row">
+              <div class="field"><label>Tên khung giờ</label><input type="text" name="rate_label" value="{{ rate.label }}" required></div>
+              <div class="field"><label>Từ giờ</label><input type="text" name="rate_start" value="{{ rate.start }}" placeholder="00:00" maxlength="5" required></div>
+              <div class="field"><label>Đến giờ</label><input type="text" name="rate_end" value="{{ rate.end }}" placeholder="12:00" maxlength="5" required></div>
+              <div class="field"><label>Phí / giờ</label><input type="text" name="rate_price" class="money-input" value="{{ '{:,}'.format(rate.price_per_hour) }}" inputmode="numeric" required></div>
+            </div>
+            {% endfor %}
+          </div>
+          <div class="helper">Có thể đổi cả giờ và giá. Cuối ngày được nhập <strong>24:00</strong>.</div>
+        </div>
+
+        <div class="section-title"><i class="fa-solid fa-mug-hot"></i>Phí dịch vụ thêm</div>
+        <div class="setup-card">
+          <div id="serviceList" class="service-list">
+            {% for service in setup_config.services %}
+            <div class="service-row">
+              <input type="hidden" name="service_code" value="{{ service.code }}">
+              <div class="field"><label>Nội dung</label><input type="text" name="service_name" value="{{ service.name }}" placeholder="VD: Nước lọc"></div>
+              <div class="field"><label>Giá tiền</label><input type="text" name="service_price" class="money-input" value="{{ '{:,}'.format(service.price) }}" inputmode="numeric"></div>
+              <button type="button" class="icon-btn add" onclick="addServiceRow()" title="Thêm">+</button>
+              <button type="button" class="icon-btn remove" onclick="removeServiceRow(this)" title="Xóa">×</button>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        <div class="save-row"><button class="save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu</button></div>
+      </form>
+    </div>
+
+    <div id="payment" class="setup-panel">
+      <form method="post">
+        <input type="hidden" name="section" value="payment">
+        <div class="section-title"><i class="fa-solid fa-building-columns"></i>Thanh toán</div>
+        <div class="payment-layout">
+          <div class="setup-card">
+            <div class="setup-grid">
+              <div class="field full"><label>Tên chủ tài khoản</label><input id="accountName" type="text" name="account_name" value="{{ setup_config.payment.account_name }}" oninput="updateQrPreview()"></div>
+              <div class="field"><label>Ngân hàng</label><select id="bankCode" name="bank_code" onchange="updateQrPreview()"><option value="">-- Chọn ngân hàng --</option>{% for bank in bank_options %}<option value="{{ bank.code }}" {% if bank.code == setup_config.payment.bank_code %}selected{% endif %}>{{ bank.name }}</option>{% endfor %}</select></div>
+              <div class="field"><label>Số tài khoản</label><input id="accountNumber" type="text" name="account_number" value="{{ setup_config.payment.account_number }}" inputmode="numeric" oninput="updateQrPreview()"></div>
+              <div class="field full"><label>Ghi chú chuyển khoản</label><input id="noteTemplate" type="text" name="note_template" value="{{ setup_config.payment.note_template }}" placeholder="Khách lẻ hoặc mã Thành Viên" oninput="updateQrPreview()"><div class="helper">Mặc định: <strong>Khách lẻ hoặc mã Thành Viên</strong>.</div></div>
+            </div>
+          </div>
+          <div class="qr-card">
+            <div class="qr-title">QR thanh toán</div>
+            <div id="qrFrame" class="qr-frame">
+              {% if payment_qr_url %}<img src="{{ payment_qr_url }}" alt="QR thanh toán">{% else %}<div class="qr-empty">Chọn ngân hàng và nhập số tài khoản để tạo QR thanh toán.</div>{% endif %}
+            </div>
+            <div class="json-note">QR tự cập nhật theo thông tin thanh toán.</div>
+          </div>
+        </div>
+        <div class="save-row"><button class="save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu</button></div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block page_script %}
+<script>
+(function(){
+  const tabs=[...document.querySelectorAll('.setup-tab')];
+  const panels=[...document.querySelectorAll('.setup-panel')];
+  function openTab(name){
+    tabs.forEach(x=>x.classList.toggle('active',x.dataset.tab===name));
+    panels.forEach(x=>x.classList.toggle('active',x.id===name));
+  }
+  tabs.forEach(x=>x.addEventListener('click',()=>{openTab(x.dataset.tab);history.replaceState(null,'','#'+x.dataset.tab);}));
+  const first=(location.hash||'#club').slice(1);
+  openTab(['club','pricing','payment'].includes(first)?first:'club');
+})();
+
+document.addEventListener('input',e=>{
+  if(e.target.classList && e.target.classList.contains('money-input')){
+    const raw=String(e.target.value||'').replace(/\D/g,'');
+    e.target.value=raw?Number(raw).toLocaleString('en-US'):'';
+  }
+});
+
+function refreshServiceButtons(){
+  const rows=[...document.querySelectorAll('#serviceList .service-row')];
+  rows.forEach((row,i)=>{
+    const btn=row.querySelector('.icon-btn.add');
+    if(btn) btn.style.visibility=(i===rows.length-1?'visible':'hidden');
+  });
+}
+
+function addServiceRow(){
+  const list=document.getElementById('serviceList');
+  const row=document.createElement('div');
+  row.className='service-row';
+  row.innerHTML=`
+    <input type="hidden" name="service_code" value="">
+    <div class="field"><label>Nội dung</label><input type="text" name="service_name" placeholder="VD: Nước lọc"></div>
+    <div class="field"><label>Giá tiền</label><input type="text" name="service_price" class="money-input" inputmode="numeric"></div>
+    <button type="button" class="icon-btn add" onclick="addServiceRow()">+</button>
+    <button type="button" class="icon-btn remove" onclick="removeServiceRow(this)">×</button>`;
+  list.appendChild(row);
+  refreshServiceButtons();
+  row.querySelector('input[name="service_name"]').focus();
+}
+
+function removeServiceRow(btn){
+  const row=btn.closest('.service-row');
+  const rows=document.querySelectorAll('#serviceList .service-row');
+  if(rows.length===1){
+    row.querySelector('input[name="service_code"]').value='';
+    row.querySelector('input[name="service_name"]').value='';
+    row.querySelector('input[name="service_price"]').value='';
+  }else row.remove();
+  refreshServiceButtons();
+}
+
+function updateQrPreview(){
+  const bank=document.getElementById('bankCode').value.trim();
+  const account=document.getElementById('accountNumber').value.trim();
+  const name=document.getElementById('accountName').value.trim();
+  const note=document.getElementById('noteTemplate').value.trim();
+  const frame=document.getElementById('qrFrame');
+  if(!bank||!account){
+    frame.innerHTML='<div class="qr-empty">Chọn ngân hàng và nhập số tài khoản để tạo QR thanh toán.</div>';
+    return;
+  }
+  const url=`https://img.vietqr.io/image/${encodeURIComponent(bank)}-${encodeURIComponent(account)}-compact2.png?accountName=${encodeURIComponent(name)}&addInfo=${encodeURIComponent(note)}`;
+  frame.innerHTML=`<img src="${url}" alt="QR thanh toán">`;
+}
+
+document.addEventListener('DOMContentLoaded',refreshServiceButtons);
+</script>
+{% endblock %}

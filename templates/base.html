@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="vi">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Billiards Manager{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <style>
+        :root{
+            --header-h:118px;
+            --sidebar-open:270px;
+            --sidebar-closed:76px;
+            --blue-050:#eff8ff;
+            --blue-100:#dbeeff;
+            --blue-200:#bfdbfe;
+            --blue-600:#2563eb;
+            --blue-700:#1d4ed8;
+            --navy:#0f2540;
+            --text:#0f172a;
+            --muted:#64748b;
+            --line:#dbe6f1;
+            --bg:#f5f8fc;
+            --card:#ffffff;
+            --yellow:#facc15;
+        }
+
+        *{box-sizing:border-box}
+        html,body{margin:0;min-height:100%;font-family:"Segoe UI",Arial,sans-serif;color:var(--text);background:var(--bg)}
+        button,input,select{font:inherit}
+
+        .top-header{
+            height:var(--header-h);
+            position:sticky;
+            top:0;
+            z-index:1000;
+            display:grid;
+            grid-template-columns:150px minmax(0,1fr) 220px;
+            align-items:center;
+            gap:18px;
+            padding:12px 24px;
+            background:linear-gradient(135deg,#dff3ff 0%,#bfe5ff 50%,#d9f0ff 100%);
+            border-bottom:1px solid rgba(37,99,235,.18);
+            box-shadow:0 10px 28px rgba(37,99,235,.12);
+        }
+
+        .brand-logo-wrap{display:flex;align-items:center;justify-content:flex-start;height:100%}
+        .brand-logo{
+            width:92px;height:92px;object-fit:contain;padding:8px;border-radius:20px;
+            background:rgba(255,255,255,.92);border:1px solid rgba(37,99,235,.18);
+            box-shadow:0 10px 20px rgba(15,37,64,.12)
+        }
+        .brand-logo-placeholder{
+            width:92px;height:92px;border-radius:20px;display:grid;place-items:center;
+            background:rgba(255,255,255,.9);color:var(--blue-700);font-size:32px;
+            border:1px dashed rgba(37,99,235,.35)
+        }
+
+        .brand-title{text-align:center;line-height:1.02;user-select:none}
+        .brand-title .line-1{
+            display:block;font-size:32px;font-weight:950;letter-spacing:.3px;color:#0a3f78;
+            text-shadow:0 1px 0 #fff,0 2px 0 #9fcff1,0 3px 0 #73b4e2,0 5px 9px rgba(15,78,128,.22)
+        }
+        .brand-title .line-2{
+            display:block;margin-top:7px;font-size:47px;font-weight:1000;letter-spacing:1.5px;color:#0b4f8a;
+            text-shadow:0 1px 0 #e8f7ff,0 2px 0 #9dd2f3,0 3px 0 #6fb8e7,0 4px 0 #3f8fc4,0 8px 14px rgba(15,78,128,.26)
+        }
+
+        .live-clock{
+            min-height:76px;padding:11px 14px;border-radius:18px;text-align:center;
+            background:rgba(255,255,255,.73);border:1px solid rgba(37,99,235,.22);
+            box-shadow:0 9px 22px rgba(37,99,235,.11);backdrop-filter:blur(7px)
+        }
+        .live-clock-time{font-size:28px;font-weight:1000;color:#0b4f8a;font-variant-numeric:tabular-nums;letter-spacing:1px}
+        .live-clock-date{margin-top:6px;font-size:13px;font-weight:850;color:#315471}
+
+        .app-shell{display:grid;grid-template-columns:var(--sidebar-open) minmax(0,1fr);min-height:calc(100vh - var(--header-h));transition:grid-template-columns .2s ease}
+        .app-shell.is-collapsed{grid-template-columns:var(--sidebar-closed) minmax(0,1fr)}
+
+        .sidebar{
+            position:sticky;top:var(--header-h);height:calc(100vh - var(--header-h));
+            background:linear-gradient(180deg,#0d223a,#102b49);color:#fff;padding:14px 11px;
+            overflow:hidden;box-shadow:8px 0 24px rgba(15,37,64,.08)
+            display:flex;
+            flex-direction:column;
+        }
+        .sidebar-toggle{
+            width:48px;height:44px;border:0;border-radius:13px;background:rgba(255,255,255,.10);color:#fff;
+            display:grid;place-items:center;cursor:pointer;font-size:20px;margin-bottom:14px;transition:.18s ease
+        }
+        .sidebar-toggle:hover{background:rgba(255,255,255,.16);transform:translateY(-1px)}
+        .nav-list{display:grid;gap:8px}
+        .nav-link{
+            min-height:48px;display:flex;align-items:center;gap:13px;padding:0 14px;border-radius:14px;
+            color:#dbeafe;text-decoration:none;font-weight:900;white-space:nowrap;transition:.16s ease
+        }
+        .nav-link .nav-icon{width:24px;text-align:center;font-size:18px;flex:0 0 24px}
+        .nav-link:hover{background:rgba(255,255,255,.09);color:#fff}
+        .nav-link.active{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:inset 4px 0 0 var(--yellow),0 10px 22px rgba(37,99,235,.24)}
+        .app-shell.is-collapsed .sidebar{padding-left:10px;padding-right:10px}
+        .app-shell.is-collapsed .sidebar-toggle{margin-left:auto;margin-right:auto}
+        .app-shell.is-collapsed .nav-link{justify-content:center;padding:0}
+        .app-shell.is-collapsed .nav-text{display:none}
+
+        .content{min-width:0;padding:22px 24px 42px}
+        .flash-stack{display:grid;gap:10px;margin-bottom:15px}
+        .flash{padding:12px 15px;border-radius:13px;font-weight:800;border:1px solid transparent}
+        .flash{
+            transition:
+                opacity .45s ease,
+                transform .45s ease;
+        }
+
+        .flash.flash-hide{
+            opacity:0;
+            transform:translateY(-12px);
+            pointer-events:none;
+        }
+        .flash.success{background:#dcfce7;color:#166534;border-color:#86efac}
+        .flash.danger{background:#fee2e2;color:#991b1b;border-color:#fecaca}
+
+        @media(max-width:900px){
+            :root{--header-h:96px}
+            .top-header{grid-template-columns:92px minmax(0,1fr) 170px;padding:9px 12px;gap:8px}
+            .brand-logo,.brand-logo-placeholder{width:70px;height:70px;border-radius:15px}
+            .brand-title .line-1{font-size:22px}
+            .brand-title .line-2{font-size:32px}
+            .live-clock{min-height:64px;padding:8px}
+            .live-clock-time{font-size:21px}.live-clock-date{font-size:11px}
+            .content{padding:18px 16px 34px}
+        }
+
+        @media(max-width:650px){
+            :root{--header-h:86px;--sidebar-open:230px;--sidebar-closed:64px}
+            .top-header{grid-template-columns:65px minmax(0,1fr);padding:8px 10px}
+            .brand-logo,.brand-logo-placeholder{width:58px;height:58px;border-radius:13px}
+            .brand-title .line-1{font-size:15px}.brand-title .line-2{font-size:24px;margin-top:4px}
+            .live-clock{display:none}
+            .sidebar{padding:10px 8px}.sidebar-toggle{width:44px}
+            .content{padding:14px 10px 28px}
+        }
+
+        .sidebar-logout{
+            margin-top:auto;
+            padding-top:14px;
+        }
+
+        .logout-divider{
+            height:1px;
+
+            margin:
+                0 10px
+                14px;
+
+            background:
+                linear-gradient(
+                    90deg,
+                    transparent,
+                    rgba(255,255,255,.32),
+                    transparent
+                );
+
+            box-shadow:
+                0 1px 0
+                rgba(255,255,255,.06);
+        }
+
+        .logout-link{
+            color:#ffd4d4;
+        }
+
+        .logout-link:hover{
+            background:
+                rgba(
+                    239,
+                    68,
+                    68,
+                    .16
+                );
+
+            color:#fff;
+        }
+
+
+        .global-flash-stack{
+            position:fixed;
+
+            top:24px;
+            left:50%;
+
+            transform:translateX(-50%);
+
+            z-index:99999;
+
+            width:min(
+                520px,
+                calc(100vw - 30px)
+            );
+
+            display:flex;
+            flex-direction:column;
+
+            gap:10px;
+
+            pointer-events:none;
+        }
+
+
+        .global-flash{
+            padding:13px 18px;
+
+            border-radius:14px;
+
+            text-align:center;
+
+            font-size:14px;
+            font-weight:850;
+
+            box-shadow:
+                0 14px 34px
+                rgba(15,23,42,.18);
+
+            backdrop-filter:blur(8px);
+
+            animation:
+                globalFlashIn
+                .22s
+                ease;
+        }
+
+        .global-flash{
+            transition:
+                opacity .45s ease,
+                transform .45s ease;
+        }
+
+        .global-flash.flash-hide{
+            opacity:0;
+            transform:translateY(-12px);
+            pointer-events:none;
+        }
+
+
+        .global-flash-success{
+            background:
+                rgba(236,253,245,.96);
+
+            color:#047857;
+
+            border:
+                1px solid
+                #a7f3d0;
+        }
+
+
+        .global-flash-danger{
+            background:
+                rgba(255,241,242,.97);
+
+            color:#be123c;
+
+            border:
+                1px solid
+                #fecdd3;
+        }
+
+
+        .global-flash-warning{
+            background:
+                rgba(255,251,235,.97);
+
+            color:#b45309;
+
+            border:
+                1px solid
+                #fde68a;
+        }
+
+
+        .global-flash-info{
+            background:
+                rgba(239,246,255,.97);
+
+            color:#1d4ed8;
+
+            border:
+                1px solid
+                #bfdbfe;
+        }
+
+
+        @keyframes globalFlashIn{
+            from{
+                opacity:0;
+                transform:translateY(-10px);
+            }
+
+            to{
+                opacity:1;
+                transform:translateY(0);
+            }
+        }
+    </style>
+    {% block page_style %}{% endblock %}
+</head>
+<body>
+<header class="top-header">
+    <div class="brand-logo-wrap">
+        {% if logo_url %}
+            <img class="brand-logo" src="{{ logo_url }}" alt="Logo CLB">
+        {% else %}
+            <div class="brand-logo-placeholder" title="Đặt logo_clb.png/webp/jpg vào static/pictures">
+                <i class="fa-solid fa-circle-dot"></i>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="brand-title">
+        <span class="line-1">{{ app_setup.club.title if app_setup is defined else 'Câu Lạc Bộ Billiards' }}</span>
+        <span class="line-2">{{ app_setup.club.name if app_setup is defined else 'Thanh Trung' }}</span>
+    </div>
+
+    <div class="live-clock" aria-label="Thời gian hiện tại">
+        <div id="clockTime" class="live-clock-time">--:--:--</div>
+        <div id="clockDate" class="live-clock-date">--/--/----</div>
+    </div>
+</header>
+
+<div id="appShell" class="app-shell">
+    <aside class="sidebar">
+        <button id="sidebarToggle" class="sidebar-toggle" type="button" aria-label="Thu gọn hoặc mở menu">
+            <i class="fa-solid fa-bars"></i>
+        </button>
+
+        <nav class="nav-list">
+
+            <!-- THÀNH VIÊN -->
+            <a
+                href="{{ url_for('thanh_vien') }}"
+                class="nav-link {{ 'active' if request.endpoint in [
+                    'thanh_vien',
+                    'them_thanh_vien',
+                    'cap_nhat_thanh_vien',
+                    'xoa_thanh_vien'
+                ] else '' }}"
+            >
+                <span class="nav-icon">
+                    <i class="fa-solid fa-users"></i>
+                </span>
+
+                <span class="nav-text">
+                    Thành Viên
+                </span>
+            </a>
+
+
+            <!-- HOẠT ĐỘNG -->
+            <a
+                href="{{ url_for('hoat_dong') }}"
+                class="nav-link {{ 'active' if request.endpoint == 'hoat_dong' else '' }}"
+            >
+                <span class="nav-icon">
+                    <i class="fa-solid fa-table-cells-large"></i>
+                </span>
+
+                <span class="nav-text">
+                    Hoạt Động
+                </span>
+            </a>
+
+
+            <!-- HÓA ĐƠN -->
+            <a
+                href="{{ url_for('hoa_don') }}"
+                class="nav-link {{ 'active' if request.endpoint in [
+                    'hoa_don',
+                    'xoa_hoa_don'
+                ] else '' }}"
+            >
+                <span class="nav-icon">
+                    <i class="fa-solid fa-receipt"></i>
+                </span>
+
+                <span class="nav-text">
+                    Hóa Đơn
+                </span>
+            </a>
+
+            <!-- KHUYẾN MÃI -->
+            <a
+                href="{{ url_for('khuyen_mai_admin') }}"
+                class="nav-link {{ 'active' if request.endpoint in [
+                    'khuyen_mai_admin',
+                    'cap_nhat_khuyen_mai',
+                    'tang_voucher'
+                ] else '' }}"
+            >
+                <span class="nav-icon">
+                    <i class="fa-solid fa-gift"></i>
+                </span>
+
+                <span class="nav-text">
+                    Khuyến Mãi
+                </span>
+            </a>
+
+
+            <!-- KÍCH HOẠT QUÀ / VOUCHER -->
+            <a
+                href="{{ url_for('kich_hoat_qua') }}"
+                class="nav-link {{ 'active' if request.endpoint in [
+                    'kich_hoat_qua',
+                    'xac_nhan_kich_hoat_qua'
+                ] else '' }}"
+            >
+                <span class="nav-icon">
+                    <i class="fa-solid fa-qrcode"></i>
+                </span>
+
+                <span class="nav-text">
+                    Kích hoạt Quà/Voucher
+                </span>
+            </a>
+
+
+            <!-- SETUP -->
+            <a
+                href="{{ url_for('setup') }}"
+                class="nav-link {{ 'active' if request.endpoint == 'setup' else '' }}"
+            >
+                <span class="nav-icon">
+                    <i class="fa-solid fa-gear"></i>
+                </span>
+
+                <span class="nav-text">
+                    Setup
+                </span>
+            </a>
+
+        </nav>
+
+        <!-- ĐĂNG XUẤT -->
+        <div class="sidebar-logout">
+
+            <div class="logout-divider"></div>
+
+            <a
+                href="{{ url_for('admin_logout') }}"
+                class="nav-link logout-link"
+                onclick="
+                    return confirm(
+                        'Ken có muốn đăng xuất khỏi hệ thống không?'
+                    );
+                "
+            >
+                <span class="nav-icon">
+
+                    <svg
+                        width="19"
+                        height="19"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                    >
+                        <path
+                            d="M10 17L15 12L10 7"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                        />
+
+                        <path
+                            d="M15 12H3"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                        />
+
+                        <path
+                            d="M14 4H19C20.1 4 21 4.9 21 6V18C21 19.1 20.1 20 19 20H14"
+                            stroke="currentColor"
+                            stroke-width="2"
+                            stroke-linecap="round"
+                        />
+                    </svg>
+
+                </span>
+
+                <span class="nav-text">
+                    Đăng xuất
+                </span>
+
+            </a>
+
+        </div>
+    </aside>
+
+    <main class="content">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="global-flash-stack">
+                    {% for category, message in messages %}
+                        <div class="global-flash global-flash-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+<script>
+(function(){
+    const shell = document.getElementById('appShell');
+    const toggle = document.getElementById('sidebarToggle');
+    const storageKey = 'billiards_sidebar_collapsed';
+
+    function applySidebarState(collapsed){
+        shell.classList.toggle('is-collapsed', collapsed);
+        try{ localStorage.setItem(storageKey, collapsed ? '1' : '0'); }catch(e){}
+    }
+
+    try{ applySidebarState(localStorage.getItem(storageKey) === '1'); }catch(e){}
+
+    toggle.addEventListener('click', function(){
+        applySidebarState(!shell.classList.contains('is-collapsed'));
+    });
+})();
+
+(function(){
+    const timeEl = document.getElementById('clockTime');
+    const dateEl = document.getElementById('clockDate');
+    let timer = null;
+    let lastTime = '';
+    let lastDate = '';
+
+    const pad = n => String(n).padStart(2,'0');
+    const dayNames = ['Chủ Nhật','Thứ Hai','Thứ Ba','Thứ Tư','Thứ Năm','Thứ Sáu','Thứ Bảy'];
+
+    function renderClock(){
+        if(document.hidden) return;
+        const now = new Date();
+        const timeText = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        const dateText = `${dayNames[now.getDay()]}, ${pad(now.getDate())}/${pad(now.getMonth()+1)}/${now.getFullYear()}`;
+
+        if(timeText !== lastTime){ timeEl.textContent = timeText; lastTime = timeText; }
+        if(dateText !== lastDate){ dateEl.textContent = dateText; lastDate = dateText; }
+
+        clearTimeout(timer);
+        timer = setTimeout(renderClock, 1000 - now.getMilliseconds() + 20);
+    }
+
+    document.addEventListener('visibilitychange', function(){
+        clearTimeout(timer);
+        if(!document.hidden) renderClock();
+    });
+
+    renderClock();
+})();
+
+document.addEventListener(
+    'DOMContentLoaded',
+    function(){
+
+        const flashes =
+            document.querySelectorAll(
+                '.global-flash'
+            );
+
+        flashes.forEach(
+            function(flash){
+
+                /*
+                   Hiển thị 3 giây
+                */
+                setTimeout(
+                    function(){
+
+                        flash.classList.add(
+                            'flash-hide'
+                        );
+
+                        /*
+                           Chờ animation fade-out xong
+                           rồi xóa khỏi DOM
+                        */
+                        setTimeout(
+                            function(){
+
+                                flash.remove();
+
+                            },
+                            500
+                        );
+
+                    },
+                    3000
+                );
+
+            }
+        );
+
+    }
+);
+</script>
+{% block page_script %}{% endblock %}
+</body>
+</html>

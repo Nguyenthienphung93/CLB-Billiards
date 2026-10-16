@@ -1,0 +1,1061 @@
+{% extends "base.html" %}
+{% block title %}Khuyến Mãi - Billiards Manager{% endblock %}
+{% block content %}
+<style>
+.promo-admin-page{display:flex;flex-direction:column;gap:16px}.promo-page-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}.promo-page-head h1{margin:0;color:#102a43;font-size:28px;font-weight:900}.promo-page-head p{margin:6px 0 0;color:#64748b;font-size:14px;line-height:1.5;font-weight:650}.promo-tabs-shell{background:#fff;border:1px solid #dbe7f2;border-radius:20px;box-shadow:0 12px 28px rgba(15,44,76,.06);overflow:hidden}.promo-tabs{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:1px solid #dbe7f2;background:#f8fbff}.promo-tab-btn{position:relative;min-height:66px;border:0;border-right:1px solid #e5edf5;background:transparent;color:#5b7085;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;padding:12px 14px;font-family:inherit;font-size:14px;font-weight:900;transition:.16s ease}.promo-tab-btn:last-child{border-right:0}.promo-tab-btn:hover{background:#eef6ff;color:#1d4ed8}.promo-tab-btn.active{background:#fff;color:#0f4f8a}.promo-tab-btn.active::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:4px;border-radius:999px 999px 0 0;background:linear-gradient(90deg,#2563eb,#38bdf8)}.promo-tab-icon{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:#e9f3ff;font-size:19px;flex:0 0 38px}.promo-tab-btn.active .promo-tab-icon{background:#dbeafe}.promo-tab-text{text-align:left;line-height:1.25}.promo-tab-text small{display:block;margin-top:3px;color:#94a3b8;font-size:10px;font-weight:750}.promo-tab-panel{display:none;padding:20px}.promo-tab-panel.active{display:block}.panel-top{display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:18px;flex-wrap:wrap}.panel-title{display:flex;align-items:center;gap:12px}.panel-title-icon{width:46px;height:46px;border-radius:14px;display:grid;place-items:center;font-size:22px;background:#edf6ff}.panel-title h2{margin:0;color:#123a61;font-size:20px;font-weight:900}.panel-title p{margin:5px 0 0;color:#64748b;font-size:12px;font-weight:650}.status-pill{display:inline-flex;align-items:center;gap:7px;min-height:32px;padding:6px 11px;border-radius:999px;font-size:11px;font-weight:900;white-space:nowrap}.status-pill.on{background:#dcfce7;border:1px solid #86efac;color:#166534}.status-pill.off{background:#f1f5f9;border:1px solid #cbd5e1;color:#64748b}.status-dot{width:8px;height:8px;border-radius:50%;background:currentColor}.promo-form{display:flex;flex-direction:column;gap:16px}.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}.field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}.field label{color:#334155;font-size:12px;font-weight:850}.field input,.field textarea,.field select{width:100%;border:1px solid #cedbe8;border-radius:12px;background:#f8fbff;color:#102a43;font-family:inherit;font-size:13px;font-weight:650;outline:none;transition:.15s ease}.field input,.field select{height:43px;padding:0 12px}.field textarea{min-height:92px;resize:vertical;padding:11px 12px;line-height:1.5}.field input:focus,.field textarea:focus,.field select:focus{background:#fff;border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.08)}.switch-row{display:flex;align-items:center;justify-content:space-between;gap:15px;padding:13px 14px;border:1px solid #dce7f1;border-radius:14px;background:#f8fbff}.switch-copy strong{display:block;color:#123a61;font-size:13px;font-weight:900}.switch-copy span{display:block;margin-top:3px;color:#64748b;font-size:11px;font-weight:650}.switch{position:relative;width:52px;height:29px;flex:0 0 52px}.switch input{opacity:0;width:0;height:0}.switch-slider{position:absolute;inset:0;border-radius:999px;background:#cbd5e1;cursor:pointer;transition:.18s ease}.switch-slider::before{content:"";position:absolute;width:23px;height:23px;left:3px;top:3px;border-radius:50%;background:#fff;box-shadow:0 2px 5px rgba(0,0,0,.18);transition:.18s ease}.switch input:checked + .switch-slider{background:#22c55e}.switch input:checked + .switch-slider::before{transform:translateX(23px)}.milestone-section{margin-top:3px;padding-top:16px;border-top:1px solid #e5edf5}.subsection-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}.subsection-title{color:#123a61;font-size:15px;font-weight:900}.subsection-note{color:#64748b;font-size:11px;font-weight:650}.milestone-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px}.milestone-card{min-height:108px;padding:12px;border:1px solid #dce7f1;border-radius:14px;background:linear-gradient(180deg,#fbfdff,#f5f9fd)}.milestone-value{display:inline-flex;padding:5px 8px;border-radius:999px;background:#e7f1ff;color:#1d4ed8;font-size:10px;font-weight:900}.milestone-gift{margin-top:9px;color:#102a43;font-size:12px;line-height:1.35;font-weight:850}.milestone-inactive{opacity:.55;filter:grayscale(.35)}.empty-milestone{grid-column:1/-1;padding:22px;border:1px dashed #cbd5e1;border-radius:14px;text-align:center;color:#64748b;font-size:12px;font-weight:700}.voucher-box{padding:16px;border:1px solid #dce7f1;border-radius:16px;background:linear-gradient(135deg,#f8fbff,#eef6ff)}.voucher-preview{margin-top:16px;position:relative;overflow:hidden;min-height:150px;padding:18px;border-radius:18px;background:linear-gradient(135deg,#dbeafe,#eff6ff);border:1px solid #bfdbfe}.voucher-preview::after{content:"VOUCHER";position:absolute;right:-8px;bottom:-4px;transform:rotate(-11deg);color:rgba(37,99,235,.08);font-size:48px;font-weight:1000;letter-spacing:1px}.voucher-preview-title{position:relative;z-index:1;color:#123a61;font-size:18px;font-weight:900}.voucher-preview-value{position:relative;z-index:1;margin-top:8px;color:#1d4ed8;font-size:24px;font-weight:1000}.voucher-preview-desc{position:relative;z-index:1;margin-top:8px;max-width:70%;color:#64748b;font-size:11px;line-height:1.5;font-weight:650}.form-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:4px}.btn{min-height:42px;border:0;border-radius:12px;padding:0 17px;font-family:inherit;font-size:13px;font-weight:900;cursor:pointer;transition:.15s ease}.btn:hover{transform:translateY(-1px)}.btn-primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;box-shadow:0 9px 18px rgba(37,99,235,.18)}.btn-success{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff;box-shadow:0 9px 18px rgba(22,163,74,.16)}
+@media(max-width:900px){.milestone-list{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:700px){.promo-tabs{grid-template-columns:1fr}.promo-tab-btn{justify-content:flex-start;border-right:0;border-bottom:1px solid #e5edf5;min-height:56px}.promo-tab-btn:last-child{border-bottom:0}.promo-tab-btn.active::after{left:0;right:auto;top:8px;bottom:8px;width:4px;height:auto;border-radius:0 999px 999px 0}.promo-tab-panel{padding:14px}.form-grid{grid-template-columns:1fr}.field.full{grid-column:auto}.milestone-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:480px){.promo-page-head h1{font-size:22px}.promo-page-head p{font-size:11px}.milestone-list{grid-template-columns:1fr}.form-actions{flex-direction:column}.btn{width:100%}.voucher-preview-desc{max-width:100%}}
+
+/* ==========================
+   MEMBER SEARCH COMBOBOX
+========================== */
+.member-picker{position:relative}
+.member-picker-search-wrap{position:relative}
+.member-picker-search{width:100%;height:44px;border:1px solid #cedbe8;border-radius:12px;background:#fff;padding:0 44px 0 13px;font-family:inherit;font-size:12px;font-weight:700;color:#102a43;outline:none}
+.member-picker-search:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.member-picker-chevron{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:#64748b;pointer-events:none;font-size:12px}
+.member-dropdown{display:none;position:absolute;z-index:80;left:0;right:0;top:calc(100% + 6px);max-height:290px;overflow-y:auto;padding:6px;background:#fff;border:1px solid #cedbe8;border-radius:13px;box-shadow:0 18px 38px rgba(15,44,76,.18)}
+.member-dropdown.show{display:block}
+.member-option{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 10px;border-radius:10px}
+.member-option:hover{background:#f2f7fd}
+.member-option-info{min-width:0}
+.member-option-name{font-size:12px;font-weight:900;color:#123a61;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member-option-meta{margin-top:3px;font-size:10px;font-weight:650;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.member-option-add{width:31px;height:31px;border:0;border-radius:9px;background:#16a34a;color:#fff;font-size:19px;font-weight:800;cursor:pointer;flex:0 0 31px}
+.member-option-add:disabled{background:#cbd5e1;cursor:not-allowed}
+.member-dropdown-empty{padding:16px;text-align:center;color:#64748b;font-size:11px;font-weight:700}
+.selected-members-box{margin-top:9px;border:1px solid #dbe7f2;border-radius:12px;background:#f8fbff;overflow:hidden}
+.selected-members-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 11px;border-bottom:1px solid #dbe7f2;font-size:11px;font-weight:800;color:#64748b}
+.selected-members-head strong{color:#1d4ed8}
+.selected-members-list{display:flex;flex-wrap:wrap;gap:7px;padding:9px;min-height:48px}
+.selected-member-chip{display:inline-flex;align-items:center;gap:7px;max-width:100%;padding:7px 8px 7px 10px;border:1px solid #bfdbfe;border-radius:999px;background:#eff6ff;color:#123a61;font-size:11px;font-weight:800}
+.selected-member-chip span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:270px}
+.selected-member-remove{width:22px;height:22px;border:0;border-radius:50%;background:#fee2e2;color:#dc2626;font-weight:900;cursor:pointer}
+.selected-members-empty{padding:3px 4px;color:#94a3b8;font-size:11px;font-weight:650}
+
+/* MONEY */
+.money-input-wrap{position:relative}
+.money-input-wrap input{padding-right:38px!important}
+.money-suffix{position:absolute;right:13px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:900;color:#475569;pointer-events:none}
+
+/* VOUCHER TABLE */
+.voucher-table-section{margin-top:16px;padding-top:16px;border-top:1px solid #dbe7f2}
+.voucher-table-wrap{overflow:auto;border:1px solid #dbe7f2;border-radius:14px;background:#fff}
+.voucher-table{width:100%;min-width:1050px;border-collapse:collapse}
+.voucher-table th{padding:10px;background:#eaf3fd;border-bottom:1px solid #d3e1ef;color:#123a61;font-size:10px;font-weight:900;text-transform:uppercase;text-align:left;white-space:nowrap}
+.voucher-table td{padding:10px;border-bottom:1px solid #edf2f7;color:#334155;font-size:11px;font-weight:700;vertical-align:middle}
+.voucher-table tr:last-child td{border-bottom:0}
+.voucher-code-cell{color:#1d4ed8!important;font-weight:900!important}
+.voucher-status{display:inline-flex;padding:5px 8px;border-radius:999px;background:#eef2ff;color:#4338ca;font-size:10px;font-weight:900;white-space:nowrap}
+.voucher-actions{display:flex;gap:6px}
+.voucher-action-btn{width:32px;height:32px;border:0;border-radius:9px;display:grid;place-items:center;cursor:pointer;font-size:14px}
+.voucher-edit-btn{background:#e7f1ff;color:#2563eb}
+.voucher-delete-btn{background:#fee2e2;color:#dc2626}
+
+/* EDIT MODAL */
+.voucher-modal-backdrop{display:none;position:fixed;inset:0;z-index:7000;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:16px}
+.voucher-modal-backdrop.show{display:flex}
+.voucher-modal{width:min(650px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 30px 80px rgba(15,23,42,.28)}
+.voucher-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #e5edf5}
+.voucher-modal-head h3{margin:0;color:#123a61;font-size:18px;font-weight:900}
+.voucher-modal-close{width:34px;height:34px;border:0;border-radius:10px;background:#f1f5f9;color:#475569;cursor:pointer;font-size:20px}
+.voucher-modal-body{padding:18px}
+.voucher-recipient-readonly{padding:10px 12px;border-radius:11px;background:#f1f5f9;border:1px solid #dbe4ee;color:#334155;font-size:12px;font-weight:800}
+
+@media(max-width:700px){
+    .selected-member-chip{width:100%;justify-content:space-between;border-radius:11px}
+    .selected-member-chip span{max-width:calc(100% - 35px)}
+    .member-dropdown{max-height:240px}
+    .voucher-modal-body{padding:13px}
+}
+
+/* ==========================
+   EDITABLE PROMOTION MILESTONES
+========================== */
+.editable-milestone-list{display:flex;flex-direction:column;gap:9px}
+.editable-milestone-row{display:grid;grid-template-columns:180px minmax(0,1fr) 42px;gap:10px;align-items:end;padding:11px;border:1px solid #dbe7f2;border-radius:13px;background:#f8fbff}
+.milestone-edit-field{display:flex;flex-direction:column;gap:6px}
+.milestone-edit-field label{color:#64748b;font-size:10px;font-weight:850}
+.milestone-edit-field input{width:100%;height:40px;border:1px solid #cedbe8;border-radius:10px;background:#fff;padding:0 11px;font-family:inherit;font-size:12px;font-weight:750;color:#102a43;outline:none}
+.milestone-edit-field input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.milestone-number-wrap{position:relative}
+.milestone-number-wrap input{padding-right:50px}
+.milestone-number-wrap span{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:#64748b;font-size:10px;font-weight:850;pointer-events:none}
+.milestone-remove-btn{width:40px;height:40px;border:0;border-radius:10px;background:#fee2e2;color:#dc2626;font-size:20px;font-weight:900;cursor:pointer}
+.milestone-remove-btn:hover{background:#fecaca}
+.milestone-add-btn{margin-top:10px;height:40px;padding:0 14px;border:1px solid #86efac;border-radius:11px;background:#f0fdf4;color:#15803d;font-family:inherit;font-size:12px;font-weight:900;cursor:pointer}
+.milestone-add-btn:hover{background:#dcfce7}
+.promo-date-note{margin-top:5px;color:#94a3b8;font-size:10px;font-weight:650}
+@media(max-width:700px){.editable-milestone-row{grid-template-columns:1fr 42px}.milestone-edit-field:first-of-type{grid-column:1}.gift-field{grid-column:1}.milestone-remove-btn{grid-column:2;grid-row:1 / span 2;align-self:center}}
+
+
+/* ==========================
+   ĐIỀU KIỆN SỬ DỤNG VOUCHER
+========================== */
+.voucher-condition-box{
+    grid-column:1/-1;
+    padding:14px;
+    border:1px solid #dbe7f2;
+    border-radius:14px;
+    background:#f8fbff;
+}
+.voucher-condition-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-bottom:10px;
+}
+.voucher-condition-title{
+    color:#123a61;
+    font-size:13px;
+    font-weight:900;
+}
+.voucher-condition-note{
+    margin-top:4px;
+    color:#64748b;
+    font-size:10px;
+    line-height:1.45;
+    font-weight:650;
+}
+.voucher-condition-list{
+    display:flex;
+    flex-direction:column;
+    gap:9px;
+}
+.voucher-condition-row{
+    display:grid;
+    grid-template-columns:minmax(190px,1.25fr) minmax(170px,1fr) 42px;
+    gap:9px;
+    align-items:end;
+}
+.voucher-condition-row select,
+.voucher-condition-row input{
+    width:100%;
+    height:42px;
+    border:1px solid #cedbe8;
+    border-radius:11px;
+    background:#fff;
+    padding:0 11px;
+    color:#102a43;
+    font:inherit;
+    font-size:12px;
+    font-weight:750;
+    outline:none;
+}
+.condition-value-wrap{
+    position:relative;
+}
+.condition-value-wrap input{
+    padding-right:58px;
+}
+.condition-suffix{
+    position:absolute;
+    right:11px;
+    top:50%;
+    transform:translateY(-50%);
+    color:#64748b;
+    font-size:11px;
+    font-weight:900;
+    pointer-events:none;
+}
+.condition-add-btn{
+    min-height:38px;
+    padding:0 12px;
+    border:1px solid #86efac;
+    border-radius:10px;
+    background:#f0fdf4;
+    color:#15803d;
+    font-size:12px;
+    font-weight:900;
+    cursor:pointer;
+}
+.condition-remove-btn{
+    width:42px;
+    height:42px;
+    border:0;
+    border-radius:10px;
+    background:#fee2e2;
+    color:#dc2626;
+    font-size:19px;
+    font-weight:900;
+    cursor:pointer;
+}
+.condition-remove-btn.is-first{
+    visibility:hidden;
+}
+.voucher-condition-display{
+    min-width:240px;
+    max-width:360px;
+    color:#475569;
+    font-size:10px;
+    line-height:1.5;
+}
+.voucher-condition-display strong{
+    color:#123a61;
+}
+.voucher-preview-condition{
+    position:relative;
+    z-index:1;
+    margin-top:8px;
+    max-width:80%;
+    color:#b45309;
+    font-size:11px;
+    line-height:1.5;
+    font-weight:800;
+}
+@media(max-width:700px){
+    .voucher-condition-row{
+        grid-template-columns:1fr 42px;
+    }
+    .voucher-condition-row > :first-child,
+    .voucher-condition-row > :nth-child(2){
+        grid-column:1;
+    }
+    .condition-remove-btn{
+        grid-column:2;
+        grid-row:1 / span 2;
+        align-self:center;
+    }
+}
+
+</style>
+
+
+
+<div class="promo-admin-page">
+<div class="promo-page-head"><div><h1>Khuyến Mãi</h1><p>Quản lý chương trình tích giờ, tích lượt và gửi voucher cho thành viên.</p></div></div>
+<section class="promo-tabs-shell">
+<div class="promo-tabs">
+<button type="button" class="promo-tab-btn active" data-tab="promo-hours" onclick="openPromoTab('promo-hours',this)"><span class="promo-tab-icon">⏱️</span><span class="promo-tab-text">Khuyến mãi 1<small>Tích giờ đổi quà</small></span></button>
+<button type="button" class="promo-tab-btn" data-tab="promo-plays" onclick="openPromoTab('promo-plays',this)"><span class="promo-tab-icon">🎱</span><span class="promo-tab-text">Khuyến mãi 2<small>Tích lượt đổi quà</small></span></button>
+<button type="button" class="promo-tab-btn" data-tab="promo-voucher" onclick="openPromoTab('promo-voucher',this)"><span class="promo-tab-icon">🎟️</span><span class="promo-tab-text">Khuyến mãi 3<small>Tặng voucher</small></span></button>
+</div>
+
+<div id="promo-hours" class="promo-tab-panel active">
+{% if promo_hour %}
+<div class="panel-top">
+    <div class="panel-title">
+        <div class="panel-title-icon">⏱️</div>
+        <div>
+            <h2>Tích giờ đổi quà</h2>
+            <p>Cài đặt chương trình tích lũy thời gian chơi của thành viên.</p>
+        </div>
+    </div>
+    <div id="hourStatus" class="status-pill {% if promo_hour.mo_chuong_trinh %}on{% else %}off{% endif %}">
+        <span class="status-dot"></span>
+        <span class="status-text">{% if promo_hour.mo_chuong_trinh %}Đang mở{% else %}Đang tắt{% endif %}</span>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('cap_nhat_khuyen_mai', promotion_id=promo_hour.id) }}" class="promo-form">
+    <div class="switch-row">
+        <div class="switch-copy">
+            <strong>Hiển thị chương trình cho thành viên</strong>
+            <span>Gạt nút để bật/tắt ngay. Khi tắt, Member chỉ thấy thông báo chương trình chưa mở.</span>
+        </div>
+        <label class="switch">
+            <input
+                type="checkbox"
+                id="switchPromoHour"
+                name="mo_chuong_trinh"
+                value="1"
+                {% if promo_hour.mo_chuong_trinh %}checked{% endif %}
+                onchange="togglePromotion({{ promo_hour.id }}, this, 'hourStatus')"
+            >
+            <span class="switch-slider"></span>
+        </label>
+    </div>
+
+    <div class="form-grid">
+        <div class="field full">
+            <label>Tên chương trình</label>
+            <input type="text" name="ten_khuyen_mai" value="{{ promo_hour.ten_khuyen_mai or '' }}" required>
+        </div>
+
+        <div class="field">
+            <label>Thời gian bắt đầu</label>
+            <input
+                type="text"
+                name="bat_dau"
+                value="{{ promo_hour.bat_dau_input or '' }}"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="dd/mm/yyyy"
+                oninput="formatDateInput(this)"
+            >
+            <div class="promo-date-note">Định dạng: dd/mm/yyyy</div>
+        </div>
+
+        <div class="field">
+            <label>Thời gian kết thúc</label>
+            <input
+                type="text"
+                name="ket_thuc"
+                value="{{ promo_hour.ket_thuc_input or '' }}"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="dd/mm/yyyy"
+                oninput="formatDateInput(this)"
+            >
+            <div class="promo-date-note">Định dạng: dd/mm/yyyy</div>
+        </div>
+
+        <div class="field full">
+            <label>Nội dung / ghi chú hiển thị</label>
+            <textarea name="mo_ta">{{ promo_hour.mo_ta or '' }}</textarea>
+        </div>
+    </div>
+
+    <div class="milestone-section">
+        <div class="subsection-head">
+            <div>
+                <div class="subsection-title">Các mốc đổi quà</div>
+                <div class="subsection-note">Có thể sửa số giờ, sửa phần quà, thêm mốc mới hoặc xóa mốc.</div>
+            </div>
+        </div>
+
+        <div id="hourMilestoneList" class="editable-milestone-list">
+            {% for m in promo_hour.moc %}
+            <div class="editable-milestone-row">
+                <input type="hidden" name="moc_id" value="{{ m.id }}">
+
+                <div class="milestone-edit-field">
+                    <label>Số giờ</label>
+                    <div class="milestone-number-wrap">
+                        <input
+                            type="number"
+                            name="moc_value"
+                            min="0.5"
+                            step="0.5"
+                            value="{{ ((m.gia_tri_moc or 0) / 60)|round(2) }}"
+                            required
+                        >
+                        <span>giờ</span>
+                    </div>
+                </div>
+
+                <div class="milestone-edit-field gift-field">
+                    <label>Phần quà</label>
+                    <input
+                        type="text"
+                        name="moc_gift"
+                        value="{{ m.ten_qua_tang or '' }}"
+                        placeholder="Nhập phần quà..."
+                        required
+                    >
+                </div>
+
+                <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" class="milestone-add-btn" onclick="addHourMilestone()">+ Thêm mốc / quà</button>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Lưu chương trình</button>
+    </div>
+</form>
+{% else %}
+<div class="empty-milestone">Không tìm thấy chương trình KM_GIO trong Supabase.</div>
+{% endif %}
+</div>
+
+<div id="promo-plays" class="promo-tab-panel">
+{% if promo_play %}
+<div class="panel-top">
+    <div class="panel-title">
+        <div class="panel-title-icon">🎱</div>
+        <div>
+            <h2>Tích lượt đổi quà</h2>
+            <p>Cài đặt chương trình tích số lần chơi của thành viên.</p>
+        </div>
+    </div>
+    <div id="playStatus" class="status-pill {% if promo_play.mo_chuong_trinh %}on{% else %}off{% endif %}">
+        <span class="status-dot"></span>
+        <span class="status-text">{% if promo_play.mo_chuong_trinh %}Đang mở{% else %}Đang tắt{% endif %}</span>
+    </div>
+</div>
+
+<form method="post" action="{{ url_for('cap_nhat_khuyen_mai', promotion_id=promo_play.id) }}" class="promo-form">
+    <div class="switch-row">
+        <div class="switch-copy">
+            <strong>Hiển thị chương trình cho thành viên</strong>
+            <span>Gạt nút để bật/tắt ngay. Khi tắt, Member chỉ thấy thông báo chương trình chưa mở.</span>
+        </div>
+        <label class="switch">
+            <input
+                type="checkbox"
+                id="switchPromoPlay"
+                name="mo_chuong_trinh"
+                value="1"
+                {% if promo_play.mo_chuong_trinh %}checked{% endif %}
+                onchange="togglePromotion({{ promo_play.id }}, this, 'playStatus')"
+            >
+            <span class="switch-slider"></span>
+        </label>
+    </div>
+
+    <div class="form-grid">
+        <div class="field full">
+            <label>Tên chương trình</label>
+            <input type="text" name="ten_khuyen_mai" value="{{ promo_play.ten_khuyen_mai or '' }}" required>
+        </div>
+
+        <div class="field">
+            <label>Thời gian bắt đầu</label>
+            <input
+                type="text"
+                name="bat_dau"
+                value="{{ promo_play.bat_dau_input or '' }}"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="dd/mm/yyyy"
+                oninput="formatDateInput(this)"
+            >
+            <div class="promo-date-note">Định dạng: dd/mm/yyyy</div>
+        </div>
+
+        <div class="field">
+            <label>Thời gian kết thúc</label>
+            <input
+                type="text"
+                name="ket_thuc"
+                value="{{ promo_play.ket_thuc_input or '' }}"
+                inputmode="numeric"
+                maxlength="10"
+                placeholder="dd/mm/yyyy"
+                oninput="formatDateInput(this)"
+            >
+            <div class="promo-date-note">Định dạng: dd/mm/yyyy</div>
+        </div>
+
+        <div class="field full">
+            <label>Nội dung / ghi chú hiển thị</label>
+            <textarea name="mo_ta">{{ promo_play.mo_ta or '' }}</textarea>
+        </div>
+    </div>
+
+    <div class="milestone-section">
+        <div class="subsection-head">
+            <div>
+                <div class="subsection-title">Các mốc đổi quà</div>
+                <div class="subsection-note">Có thể sửa số lần, sửa phần quà, thêm mốc mới hoặc xóa mốc.</div>
+            </div>
+        </div>
+
+        <div id="playMilestoneList" class="editable-milestone-list">
+            {% for m in promo_play.moc %}
+            <div class="editable-milestone-row">
+                <input type="hidden" name="moc_id" value="{{ m.id }}">
+
+                <div class="milestone-edit-field">
+                    <label>Số lần</label>
+                    <div class="milestone-number-wrap">
+                        <input
+                            type="number"
+                            name="moc_value"
+                            min="1"
+                            step="1"
+                            value="{{ m.gia_tri_moc }}"
+                            required
+                        >
+                        <span>lần</span>
+                    </div>
+                </div>
+
+                <div class="milestone-edit-field gift-field">
+                    <label>Phần quà</label>
+                    <input
+                        type="text"
+                        name="moc_gift"
+                        value="{{ m.ten_qua_tang or '' }}"
+                        placeholder="Nhập phần quà..."
+                        required
+                    >
+                </div>
+
+                <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
+            </div>
+            {% endfor %}
+        </div>
+
+        <button type="button" class="milestone-add-btn" onclick="addPlayMilestone()">+ Thêm mốc / quà</button>
+    </div>
+
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Lưu chương trình</button>
+    </div>
+</form>
+{% else %}
+<div class="empty-milestone">Không tìm thấy chương trình KM_LAN trong Supabase.</div>
+{% endif %}
+</div>
+
+<div id="promo-voucher" class="promo-tab-panel">
+<div class="panel-top"><div class="panel-title"><div class="panel-title-icon">🎟️</div><div><h2>Tặng Voucher</h2><p>Chọn một hoặc nhiều thành viên và gửi Voucher trực tiếp vào Member Portal.</p></div></div></div>
+
+<div class="voucher-box">
+<form method="post" action="{{ url_for('tang_voucher') }}" class="promo-form" onsubmit="return validateVoucherMembers()">
+<div class="form-grid">
+
+    <div class="field full">
+        <label>Thành viên nhận Voucher</label>
+
+        <div class="member-picker" id="memberPicker">
+            <div class="member-picker-search-wrap">
+                <input
+                    type="text"
+                    id="memberPickerSearch"
+                    class="member-picker-search"
+                    placeholder="Nhập tên, mã thành viên hoặc SĐT để tìm..."
+                    autocomplete="off"
+                    onfocus="showMemberDropdown()"
+                    oninput="renderMemberDropdown()"
+                    onclick="showMemberDropdown()"
+                >
+                <span class="member-picker-chevron">▼</span>
+            </div>
+
+            <div id="memberDropdown" class="member-dropdown"></div>
+        </div>
+
+        <div class="selected-members-box">
+            <div class="selected-members-head">
+                <span>Đã chọn thành viên</span>
+                <span><strong id="selectedMemberCount">0</strong> người</span>
+            </div>
+            <div id="selectedMembersList" class="selected-members-list">
+                <div class="selected-members-empty">Chưa chọn thành viên nào.</div>
+            </div>
+        </div>
+
+        <div id="selectedMemberInputs"></div>
+    </div>
+
+    <div class="field">
+        <label>Tên Voucher</label>
+        <input id="voucherName" type="text" name="ten_voucher" placeholder="VD: Voucher sinh nhật" required oninput="updateVoucherPreview()">
+    </div>
+
+    <div class="field">
+        <label>Giá trị giảm</label>
+        <div class="money-input-wrap">
+            <input id="voucherValue" type="text" name="gia_tri" inputmode="numeric" placeholder="10,000" oninput="formatMoneyInput(this);updateVoucherPreview()">
+            <span class="money-suffix">đ</span>
+        </div>
+    </div>
+
+    <div class="field">
+        <label>Ngày bắt đầu</label>
+        <input id="voucherStart" type="text" name="ngay_bat_dau" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" oninput="formatDateInput(this)">
+    </div>
+
+    <div class="field">
+        <label>Ngày hết hạn</label>
+        <input id="voucherEnd" type="text" name="ngay_het_han" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" oninput="formatDateInput(this)">
+    </div>
+
+    <div class="voucher-condition-box">
+        <div class="voucher-condition-head">
+            <div>
+                <div class="voucher-condition-title">Điều kiện sử dụng (không bắt buộc)</div>
+                <div class="voucher-condition-note">
+                    Nếu không thêm điều kiện, Voucher chỉ kiểm tra thời gian hiệu lực.
+                    Có thể thêm nhiều điều kiện; khi dùng Voucher phải đạt tất cả điều kiện.
+                </div>
+            </div>
+            <button type="button" class="condition-add-btn" onclick="addVoucherConditionRow('voucherConditionList')">
+                + Thêm điều kiện
+            </button>
+        </div>
+
+        <div id="voucherConditionList" class="voucher-condition-list">
+            <div class="voucher-condition-row">
+                <select name="dieu_kien_loai" onchange="handleVoucherConditionType(this)">
+                    <option value="">-- Chọn điều kiện --</option>
+                    <option value="TONG_TIEN">Tổng tiền hóa đơn</option>
+                    <option value="THOI_LUONG">Thời lượng chơi</option>
+                    <option value="DICH_VU">Sử dụng dịch vụ thêm</option>
+                </select>
+
+                <div class="condition-value-wrap">
+                    <input
+                        type="text"
+                        name="dieu_kien_gia_tri"
+                        inputmode="decimal"
+                        placeholder="Nhập mốc..."
+                        oninput="handleVoucherConditionValue(this)"
+                    >
+                    <span class="condition-suffix">mốc</span>
+                </div>
+
+                <button type="button" class="condition-remove-btn is-first" title="Xóa điều kiện" onclick="removeVoucherConditionRow(this)">×</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="field full">
+        <label>Nội dung Voucher</label>
+        <textarea id="voucherDescription" name="noi_dung" placeholder="Nhập nội dung, điều kiện sử dụng hoặc lời nhắn..." oninput="updateVoucherPreview()"></textarea>
+    </div>
+</div>
+
+<div class="voucher-preview">
+    <div id="voucherPreviewTitle" class="voucher-preview-title">Tên Voucher</div>
+    <div id="voucherPreviewValue" class="voucher-preview-value">Ưu đãi dành riêng cho thành viên</div>
+    <div id="voucherPreviewDesc" class="voucher-preview-desc">Nội dung Voucher sẽ hiển thị tại đây.</div>
+    <div id="voucherPreviewCondition" class="voucher-preview-condition"></div>
+</div>
+
+<div class="form-actions">
+    <button type="submit" class="btn btn-success">Gửi Voucher</button>
+</div>
+</form>
+
+<div class="voucher-table-section">
+    <div class="subsection-head">
+        <div>
+            <div class="subsection-title">Voucher hiện tại</div>
+            <div class="subsection-note">Theo dõi, chỉnh sửa hoặc xóa các Voucher đã gửi.</div>
+        </div>
+        <div class="status-pill on"><span class="status-dot"></span>{{ vouchers|length }} Voucher</div>
+    </div>
+
+    <div class="voucher-table-wrap">
+        <table class="voucher-table">
+            <thead>
+                <tr>
+                    <th>Ngày tạo</th>
+                    <th>Mã Voucher</th>
+                    <th>Thành viên</th>
+                    <th>Tên Voucher</th>
+                    <th>Giá trị</th>
+                    <th>Hiệu lực</th>
+                    <th>Điều kiện</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for v in vouchers %}
+                <tr>
+                    <td>{{ v.created_at_hien_thi or '—' }}</td>
+                    <td class="voucher-code-cell">{{ v.ma_voucher or '—' }}</td>
+                    <td>
+                        <strong>{{ v.ho_va_ten or '—' }}</strong><br>
+                        <span style="font-size:9px;color:#64748b">{{ v.ma_thanh_vien or '' }} · {{ v.so_dien_thoai or '' }}</span>
+                    </td>
+                    <td>{{ v.ten_voucher or '—' }}</td>
+                    <td>{{ v.gia_tri_hien_thi or '—' }}</td>
+                    <td>{{ v.ngay_bat_dau_hien_thi or '—' }} → {{ v.ngay_het_han_hien_thi or 'Không giới hạn' }}</td>
+                    <td>
+                        {% if v.dieu_kien_dong %}
+                        <div class="voucher-condition-display">
+                            {% for line in v.dieu_kien_dong %}
+                                <div>• {{ line }}</div>
+                            {% endfor %}
+                        </div>
+                        {% else %}
+                            <span style="color:#94a3b8">Không có</span>
+                        {% endif %}
+                    </td>
+                    <td><span class="voucher-status">{{ v.trang_thai or 'Chưa sử dụng' }}</span></td>
+                    <td>
+                        <div class="voucher-actions">
+                            <button type="button" class="voucher-action-btn voucher-edit-btn" title="Chỉnh sửa" onclick='openEditVoucher({{ v|tojson }})'>✎</button>
+                            <form method="post" action="{{ url_for('xoa_voucher', voucher_id=v.id) }}" onsubmit="return confirm('Xóa Voucher {{ v.ma_voucher }}?')">
+                                <button type="submit" class="voucher-action-btn voucher-delete-btn" title="Xóa">×</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b">Chưa có Voucher nào.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+</div>
+</div>
+</section></div>
+
+<!-- POPUP CHỈNH SỬA VOUCHER -->
+<div id="editVoucherModal" class="voucher-modal-backdrop" onclick="closeEditVoucherOnBackdrop(event)">
+    <div class="voucher-modal">
+        <div class="voucher-modal-head">
+            <h3>Chỉnh sửa Voucher</h3>
+            <button type="button" class="voucher-modal-close" onclick="closeEditVoucher()">×</button>
+        </div>
+        <div class="voucher-modal-body">
+            <form id="editVoucherForm" method="post" class="promo-form">
+                <div class="form-grid">
+                    <div class="field full">
+                        <label>Thành viên nhận Voucher</label>
+                        <div id="editVoucherRecipient" class="voucher-recipient-readonly">—</div>
+                    </div>
+                    <div class="field">
+                        <label>Tên Voucher</label>
+                        <input id="editVoucherName" type="text" name="ten_voucher" required>
+                    </div>
+                    <div class="field">
+                        <label>Giá trị giảm</label>
+                        <div class="money-input-wrap">
+                            <input id="editVoucherValue" type="text" name="gia_tri" inputmode="numeric" oninput="formatMoneyInput(this)">
+                            <span class="money-suffix">đ</span>
+                        </div>
+                    </div>
+                    <div class="field">
+                        <label>Ngày bắt đầu</label>
+                        <input id="editVoucherStart" type="text" name="ngay_bat_dau" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" oninput="formatDateInput(this)">
+                    </div>
+                    <div class="field">
+                        <label>Ngày hết hạn</label>
+                        <input id="editVoucherEnd" type="text" name="ngay_het_han" inputmode="numeric" maxlength="10" placeholder="dd/mm/yyyy" oninput="formatDateInput(this)">
+                    </div>
+                    <div class="field">
+                        <label>Trạng thái</label>
+                        <select id="editVoucherStatus" name="trang_thai">
+                            <option value="Chưa sử dụng">Chưa sử dụng</option>
+                            <option value="Đã sử dụng">Đã sử dụng</option>
+                            <option value="Hết hạn">Hết hạn</option>
+                        </select>
+                    </div>
+
+                    <div class="voucher-condition-box">
+                        <div class="voucher-condition-head">
+                            <div>
+                                <div class="voucher-condition-title">Điều kiện sử dụng</div>
+                                <div class="voucher-condition-note">
+                                    Để trống nếu Voucher không có điều kiện ngoài thời gian hiệu lực.
+                                </div>
+                            </div>
+                            <button type="button" class="condition-add-btn" onclick="addVoucherConditionRow('editVoucherConditionList')">
+                                + Thêm điều kiện
+                            </button>
+                        </div>
+                        <div id="editVoucherConditionList" class="voucher-condition-list"></div>
+                    </div>
+
+                    <div class="field full">
+                        <label>Nội dung Voucher</label>
+                        <textarea id="editVoucherDescription" name="noi_dung"></textarea>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn" onclick="closeEditVoucher()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+const voucherMembers = {{ members|tojson }};
+const selectedVoucherMembers = new Map();
+
+function openPromoTab(tabId,button){document.querySelectorAll('.promo-tab-panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.promo-tab-btn').forEach(b=>b.classList.remove('active'));const panel=document.getElementById(tabId);if(panel)panel.classList.add('active');if(button)button.classList.add('active');sessionStorage.setItem('adminPromotionTab',tabId)}
+
+document.addEventListener('DOMContentLoaded',function(){const savedTab=sessionStorage.getItem('adminPromotionTab');if(savedTab){const button=document.querySelector('.promo-tab-btn[data-tab="'+savedTab+'"]');if(button)openPromoTab(savedTab,button)}renderMemberDropdown();renderSelectedMembers();document.addEventListener('click',function(e){const picker=document.getElementById('memberPicker');if(picker && !picker.contains(e.target)){document.getElementById('memberDropdown').classList.remove('show')}})});
+
+function memberSearchText(m){return [m.ho_va_ten,m.ma_thanh_vien,m.so_dien_thoai].map(v=>String(v||'').toLowerCase()).join(' ')}
+function showMemberDropdown(){document.getElementById('memberDropdown').classList.add('show');renderMemberDropdown()}
+function renderMemberDropdown(){
+    const box=document.getElementById('memberDropdown'); if(!box)return;
+    const keyword=String(document.getElementById('memberPickerSearch').value||'').trim().toLowerCase();
+    const matches=voucherMembers.filter(m=>memberSearchText(m).includes(keyword));
+    if(!matches.length){box.innerHTML='<div class="member-dropdown-empty">Không tìm thấy thành viên phù hợp.</div>';box.classList.add('show');return}
+    box.innerHTML=matches.map(m=>{
+        const added=selectedVoucherMembers.has(String(m.id));
+        return `<div class="member-option"><div class="member-option-info"><div class="member-option-name">${escapeHtml(m.ho_va_ten||'')}</div><div class="member-option-meta">${escapeHtml(m.ma_thanh_vien||'')} · ${escapeHtml(m.so_dien_thoai||'')}</div></div><button type="button" class="member-option-add" ${added?'disabled':''} onclick="addVoucherMember('${m.id}')">${added?'✓':'+'}</button></div>`
+    }).join('');
+    box.classList.add('show');
+}
+function addVoucherMember(id){const m=voucherMembers.find(x=>String(x.id)===String(id));if(!m)return;selectedVoucherMembers.set(String(id),m);renderSelectedMembers();renderMemberDropdown();document.getElementById('memberPickerSearch').value=''}
+function removeVoucherMember(id){selectedVoucherMembers.delete(String(id));renderSelectedMembers();renderMemberDropdown()}
+function renderSelectedMembers(){
+    const list=document.getElementById('selectedMembersList'), inputs=document.getElementById('selectedMemberInputs'), count=document.getElementById('selectedMemberCount'); if(!list||!inputs||!count)return;
+    const items=[...selectedVoucherMembers.values()];count.textContent=items.length;
+    list.innerHTML=items.length?items.map(m=>`<div class="selected-member-chip"><span>${escapeHtml(m.ho_va_ten||'')} · ${escapeHtml(m.ma_thanh_vien||'')}</span><button type="button" class="selected-member-remove" onclick="removeVoucherMember('${m.id}')">×</button></div>`).join(''):'<div class="selected-members-empty">Chưa chọn thành viên nào.</div>';
+    inputs.innerHTML=items.map(m=>`<input type="hidden" name="thanh_vien_ids" value="${m.id}">`).join('');
+}
+function validateVoucherMembers(){if(selectedVoucherMembers.size===0){alert('Vui lòng chọn ít nhất 1 thành viên nhận Voucher.');return false}return confirm('Xác nhận gửi Voucher cho '+selectedVoucherMembers.size+' thành viên đã chọn?')}
+
+function formatMoneyInput(input){let digits=String(input.value||'').replace(/\D/g,'');input.value=digits?Number(digits).toLocaleString('en-US'):''}
+function formatDateInput(input){let d=String(input.value||'').replace(/\D/g,'').slice(0,8);if(d.length>4)d=d.slice(0,2)+'/'+d.slice(2,4)+'/'+d.slice(4);else if(d.length>2)d=d.slice(0,2)+'/'+d.slice(2);input.value=d}
+function conditionTypeLabel(type){
+    if(type==='TONG_TIEN') return 'Tổng tiền hóa đơn';
+    if(type==='THOI_LUONG') return 'Thời lượng chơi';
+    if(type==='DICH_VU') return 'Sử dụng dịch vụ thêm';
+    return '';
+}
+
+function conditionSuffix(type){
+    return type==='THOI_LUONG' ? 'giờ' : (type ? 'đ' : 'mốc');
+}
+
+function conditionText(type, rawValue){
+    const raw=String(rawValue||'').trim();
+    if(!type || !raw) return '';
+
+    if(type==='THOI_LUONG'){
+        const hourNumber=Number(raw.replace(',','.'));
+        if(!Number.isFinite(hourNumber) || hourNumber<=0) return '';
+        const minutes=Math.round(hourNumber*60);
+        const h=Math.floor(minutes/60);
+        const m=minutes%60;
+        const duration=(h && m) ? `${h} giờ ${m} phút` : (h ? `${h} giờ` : `${m} phút`);
+        return `Bạn phải chơi trong thời lượng ${duration} trở lên.`;
+    }
+
+    const digits=raw.replace(/\D/g,'');
+    const amount=Number(digits||0);
+    if(amount<=0) return '';
+    const money=amount.toLocaleString('en-US')+' Vnđ';
+
+    if(type==='TONG_TIEN') return `Bạn phải có tổng tiền đạt ít nhất ${money}.`;
+    if(type==='DICH_VU') return `Bạn phải sử dụng dịch vụ thêm ít nhất ${money}.`;
+    return '';
+}
+
+function voucherConditionRowHtml(data={}, isFirst=false){
+    const type=String(data.loai||'');
+    let displayValue='';
+
+    if(type==='THOI_LUONG'){
+        displayValue=Number(data.gia_tri||0)>0
+            ? String(Number(data.gia_tri)/60)
+            : '';
+    }else{
+        const amount=Number(data.gia_tri||0);
+        displayValue=amount>0 ? amount.toLocaleString('en-US') : '';
+    }
+
+    return `
+        <div class="voucher-condition-row">
+            <select name="dieu_kien_loai" onchange="handleVoucherConditionType(this)">
+                <option value="" ${!type?'selected':''}>-- Chọn điều kiện --</option>
+                <option value="TONG_TIEN" ${type==='TONG_TIEN'?'selected':''}>Tổng tiền hóa đơn</option>
+                <option value="THOI_LUONG" ${type==='THOI_LUONG'?'selected':''}>Thời lượng chơi</option>
+                <option value="DICH_VU" ${type==='DICH_VU'?'selected':''}>Sử dụng dịch vụ thêm</option>
+            </select>
+            <div class="condition-value-wrap">
+                <input
+                    type="text"
+                    name="dieu_kien_gia_tri"
+                    inputmode="decimal"
+                    value="${escapeHtml(displayValue)}"
+                    placeholder="Nhập mốc..."
+                    oninput="handleVoucherConditionValue(this)"
+                >
+                <span class="condition-suffix">${conditionSuffix(type)}</span>
+            </div>
+            <button
+                type="button"
+                class="condition-remove-btn ${isFirst?'is-first':''}"
+                title="Xóa điều kiện"
+                onclick="removeVoucherConditionRow(this)"
+            >×</button>
+        </div>
+    `;
+}
+
+function addVoucherConditionRow(containerId, data={}){
+    const box=document.getElementById(containerId);
+    if(!box) return;
+    box.insertAdjacentHTML('beforeend', voucherConditionRowHtml(data, false));
+    updateVoucherPreview();
+}
+
+function removeVoucherConditionRow(button){
+    const row=button.closest('.voucher-condition-row');
+    if(row) row.remove();
+    updateVoucherPreview();
+}
+
+function handleVoucherConditionType(select){
+    const row=select.closest('.voucher-condition-row');
+    if(!row) return;
+
+    const input=row.querySelector('input[name="dieu_kien_gia_tri"]');
+    const suffix=row.querySelector('.condition-suffix');
+    if(suffix) suffix.textContent=conditionSuffix(select.value);
+
+    if(input){
+        input.value='';
+        input.inputMode=select.value==='THOI_LUONG' ? 'decimal' : 'numeric';
+    }
+    updateVoucherPreview();
+}
+
+function handleVoucherConditionValue(input){
+    const row=input.closest('.voucher-condition-row');
+    const select=row ? row.querySelector('select[name="dieu_kien_loai"]') : null;
+    const type=select ? select.value : '';
+
+    if(type==='THOI_LUONG'){
+        input.value=String(input.value||'')
+            .replace(/[^0-9.,]/g,'')
+            .replace(',', '.');
+    }else if(type){
+        formatMoneyInput(input);
+    }
+    updateVoucherPreview();
+}
+
+function collectConditionPreview(containerId){
+    const box=document.getElementById(containerId);
+    if(!box) return [];
+
+    return [...box.querySelectorAll('.voucher-condition-row')]
+        .map(row=>{
+            const type=row.querySelector('select[name="dieu_kien_loai"]')?.value||'';
+            const value=row.querySelector('input[name="dieu_kien_gia_tri"]')?.value||'';
+            return conditionText(type,value);
+        })
+        .filter(Boolean);
+}
+
+function updateVoucherPreview(){
+    const n=document.getElementById('voucherName');
+    const v=document.getElementById('voucherValue');
+    const d=document.getElementById('voucherDescription');
+
+    document.getElementById('voucherPreviewTitle').textContent=
+        n&&n.value.trim()?n.value.trim():'Tên Voucher';
+
+    document.getElementById('voucherPreviewValue').textContent=
+        v&&v.value.trim()?v.value.trim()+' đ':'Ưu đãi dành riêng cho thành viên';
+
+    document.getElementById('voucherPreviewDesc').textContent=
+        d&&d.value.trim()?d.value.trim():'Nội dung Voucher sẽ hiển thị tại đây.';
+
+    const conditionBox=document.getElementById('voucherPreviewCondition');
+    if(conditionBox){
+        const lines=collectConditionPreview('voucherConditionList');
+        conditionBox.innerHTML=lines.length
+            ? '<strong>Điều kiện:</strong><br>'+lines.map(line=>'• '+escapeHtml(line)).join('<br>')
+            : '';
+    }
+}
+function escapeHtml(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+
+function openEditVoucher(v){
+    document.getElementById('editVoucherForm').action='/khuyen-mai/voucher/'+v.id+'/cap-nhat';
+    document.getElementById('editVoucherRecipient').textContent=(v.ho_va_ten||'—')+' · '+(v.ma_thanh_vien||'')+' · '+(v.so_dien_thoai||'');
+    document.getElementById('editVoucherName').value=v.ten_voucher||'';
+    const raw=String(v.gia_tri||'').replace(/\D/g,'');document.getElementById('editVoucherValue').value=raw?Number(raw).toLocaleString('en-US'):'';
+    document.getElementById('editVoucherStart').value=v.ngay_bat_dau_hien_thi||'';
+    document.getElementById('editVoucherEnd').value=v.ngay_het_han_hien_thi||'';
+    document.getElementById('editVoucherStatus').value=v.trang_thai||'Chưa sử dụng';
+    document.getElementById('editVoucherDescription').value=v.noi_dung||'';
+
+    const conditionList=document.getElementById('editVoucherConditionList');
+    if(conditionList){
+        const conditions=Array.isArray(v.dieu_kien)?v.dieu_kien:[];
+        conditionList.innerHTML='';
+        if(conditions.length){
+            conditions.forEach((item,index)=>{
+                conditionList.insertAdjacentHTML(
+                    'beforeend',
+                    voucherConditionRowHtml(item, index===0)
+                );
+            });
+        }else{
+            conditionList.innerHTML=voucherConditionRowHtml({}, true);
+        }
+    }
+
+    document.getElementById('editVoucherModal').classList.add('show');document.body.style.overflow='hidden';
+}
+function closeEditVoucher(){document.getElementById('editVoucherModal').classList.remove('show');document.body.style.overflow=''}
+function closeEditVoucherOnBackdrop(e){if(e.target.id==='editVoucherModal')closeEditVoucher()}
+
+
+async function togglePromotion(promotionId,checkbox,statusId){
+    const enabled=checkbox.checked;
+    const status=document.getElementById(statusId);
+    try{
+        checkbox.disabled=true;
+        const response=await fetch(`/khuyen-mai/${promotionId}/toggle`,{
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({enabled:enabled})
+        });
+        const result=await response.json();
+        if(!response.ok||!result.ok){
+            checkbox.checked=!enabled;
+            alert(result.message||'Không thay đổi được trạng thái chương trình.');
+            return;
+        }
+        if(status){
+            status.classList.toggle('on',enabled);
+            status.classList.toggle('off',!enabled);
+            const t=status.querySelector('.status-text');
+            if(t)t.textContent=enabled?'Đang mở':'Đang tắt';
+        }
+    }catch(error){
+        console.error(error);
+        checkbox.checked=!enabled;
+        alert('Không thể kết nối máy chủ.');
+    }finally{
+        checkbox.disabled=false;
+    }
+}
+
+function removeMilestoneRow(button){
+    const row=button.closest('.editable-milestone-row');
+    if(!row)return;
+    if(!confirm('Xóa mốc và phần quà này?'))return;
+    row.remove();
+}
+
+function addHourMilestone(){
+    const box=document.getElementById('hourMilestoneList');
+    if(!box)return;
+    box.insertAdjacentHTML('beforeend',`
+        <div class="editable-milestone-row">
+            <input type="hidden" name="moc_id" value="">
+            <div class="milestone-edit-field">
+                <label>Số giờ</label>
+                <div class="milestone-number-wrap">
+                    <input type="number" name="moc_value" min="0.5" step="0.5" placeholder="VD: 20" required>
+                    <span>giờ</span>
+                </div>
+            </div>
+            <div class="milestone-edit-field gift-field">
+                <label>Phần quà</label>
+                <input type="text" name="moc_gift" placeholder="Nhập phần quà..." required>
+            </div>
+            <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
+        </div>
+    `);
+}
+
+function addPlayMilestone(){
+    const box=document.getElementById('playMilestoneList');
+    if(!box)return;
+    box.insertAdjacentHTML('beforeend',`
+        <div class="editable-milestone-row">
+            <input type="hidden" name="moc_id" value="">
+            <div class="milestone-edit-field">
+                <label>Số lần</label>
+                <div class="milestone-number-wrap">
+                    <input type="number" name="moc_value" min="1" step="1" placeholder="VD: 10" required>
+                    <span>lần</span>
+                </div>
+            </div>
+            <div class="milestone-edit-field gift-field">
+                <label>Phần quà</label>
+                <input type="text" name="moc_gift" placeholder="Nhập phần quà..." required>
+            </div>
+            <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
+        </div>
+    `);
+}
+
+</script>
+{% endblock %}

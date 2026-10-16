@@ -1,0 +1,693 @@
+{% extends "member_base.html" %}
+
+{% block title %}Thẻ thành viên{% endblock %}
+
+{% block extra_css %}
+<style>
+    .member-wrap{
+        min-height:calc(100vh - 220px);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:10px;
+    }
+
+    .member-card{
+        width:min(760px, 94vw);
+        aspect-ratio:16 / 9;
+        border-radius:30px;
+        position:relative;
+        overflow:hidden;
+        padding:22px 24px 20px;
+        box-shadow:
+            0 20px 48px rgba(15,44,76,.18),
+            inset 0 1px 0 rgba(255,255,255,.45);
+        border:1px solid rgba(255,255,255,.35);
+        display:flex;
+
+        /* biến màu mặc định */
+        --text-main:#ffffff;
+        --text-soft:rgba(255,255,255,.92);
+        --text-faint:rgba(255,255,255,.78);
+
+        --shadow-soft:
+            0 1px 0 rgba(255,255,255,.16),
+            0 2px 6px rgba(0,0,0,.12);
+
+        --shadow-emboss:
+            0 1px 0 rgba(255,255,255,.22),
+            0 2px 0 rgba(0,0,0,.10),
+            0 6px 14px rgba(0,0,0,.18);
+
+        --box-bg:rgba(255,255,255,.16);
+        --box-border:rgba(255,255,255,.24);
+
+        --rank-bg:rgba(255,255,255,.18);
+        --rank-border:rgba(255,255,255,.26);
+
+        --watermark-color:rgba(255,255,255,.13);
+    }
+
+    /* WATERMARK / EFFECTS */
+    .member-card::before{
+        content:"";
+        position:absolute;
+        left:-40px;
+        top:-50px;
+        width:230px;
+        height:230px;
+        border-radius:50%;
+        background:rgba(255,255,255,.16);
+        filter:blur(3px);
+    }
+
+    .member-card::after{
+        content:"";
+        position:absolute;
+        right:-45px;
+        bottom:-45px;
+        width:190px;
+        height:190px;
+        border-radius:50%;
+        background:rgba(255,255,255,.14);
+        filter:blur(2px);
+    }
+
+    .watermark{
+        position:absolute;
+        inset:0;
+        display:grid;
+        place-items:center;
+        pointer-events:none;
+        z-index:0;
+    }
+
+    .watermark-text{
+        transform:rotate(-24deg);
+        font-size:46px;
+        line-height:1.18;
+        font-weight:1000;
+        text-align:center;
+        letter-spacing:2px;
+        color:var(--watermark-color);
+        text-transform:uppercase;
+        white-space:pre-line;
+        user-select:none;
+    }
+
+    .card-content{
+        position:relative;
+        z-index:2;
+        width:100%;
+        display:grid;
+        grid-template-columns:1.2fr .8fr;
+        grid-template-rows:auto 1fr auto;
+        grid-template-areas:
+            "top top"
+            "info center"
+            "footer footer";
+        gap:16px 18px;
+    }
+
+    .card-top{
+        grid-area:top;
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-start;
+        gap:16px;
+    }
+
+    .club-mini{
+        max-width:60%;
+    }
+
+    .club-mini-title{
+        margin:0;
+        font-size:13px;
+        font-weight:900;
+        letter-spacing:.4px;
+        text-transform:uppercase;
+        color:var(--text-faint);
+        text-shadow:var(--shadow-soft);
+    }
+
+    .club-mini-name{
+        margin:4px 0 0;
+        font-size:32px;
+        line-height:1;
+        font-weight:1000;
+        letter-spacing:.2px;
+        color:var(--text-main);
+        text-shadow:var(--shadow-emboss);
+    }
+
+    .rank-box{
+        text-align:right;
+        padding:10px 12px;
+        border-radius:16px;
+        background:var(--rank-bg);
+        border:1px solid var(--rank-border);
+        box-shadow:
+            inset 0 1px 0 rgba(255,255,255,.22),
+            0 4px 10px rgba(0,0,0,.06);
+        min-width:165px;
+    }
+
+    .rank-label{
+        margin:0;
+        font-size:10px;
+        font-weight:900;
+        text-transform:uppercase;
+        letter-spacing:1px;
+        opacity:.9;
+    }
+
+    .rank-value{
+        margin:4px 0 0;
+        font-size:18px;
+        font-weight:1000;
+        line-height:1.2;
+        color:var(--text-main);
+        text-shadow:var(--shadow-soft);
+    }
+
+    .member-center{
+        grid-area:center;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
+
+    .member-center-badge {
+        width: 200px;
+        height: 200px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, .18);
+        border: 8px solid rgba(255, 255, 255, .30);
+
+        display: grid;
+        align-content: end;
+        justify-content: center;
+
+        box-shadow: inset 0 2px 10px rgba(255, 255, 255, .18),
+                    0 12px 24px rgba(0, 0, 0, .08);
+
+        font-size: 150px;
+    }
+
+    .member-bottom{
+        grid-area:info;
+        display:flex;
+        flex-direction:column;
+        justify-content:flex-end;
+        gap:14px;
+        align-self:end;
+    }
+
+    .member-label{
+        margin:0 0 5px;
+        font-size:11px;
+        font-weight:900;
+        letter-spacing:.8px;
+        text-transform:uppercase;
+        opacity:.92;
+    }
+
+    .emboss-name{
+        margin:0;
+        font-size:32px;
+        line-height:1.08;
+        font-weight:1000;
+        letter-spacing:1px;
+        text-transform:uppercase;
+        color:var(--text-main);
+        text-shadow:var(--shadow-emboss);
+        word-break:break-word;
+    }
+
+    .member-code-box{
+        margin-top:2px;
+        padding:12px 14px;
+        border-radius:16px;
+        background:var(--box-bg);
+        border:1px solid var(--box-border);
+        width:fit-content;
+        min-width:240px;
+        box-shadow:
+            inset 0 1px 0 rgba(255,255,255,.14),
+            0 4px 12px rgba(0,0,0,.05);
+    }
+
+    .member-code{
+        margin:0;
+        font-size:18px;
+        font-weight:1000;
+        letter-spacing:1.6px;
+        color:var(--text-main);
+        text-shadow:var(--shadow-soft);
+    }
+
+    .member-footer{
+        grid-area:footer;
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-end;
+        gap:12px;
+        margin-top:2px;
+    }
+
+    .member-footer small{
+        font-size:12px;
+        font-weight:800;
+        opacity:.95;
+    }
+
+    .member-chip{
+        padding:7px 11px;
+        border-radius:999px;
+        background:var(--box-bg);
+        border:1px solid var(--box-border);
+        font-size:11px;
+        font-weight:900;
+        letter-spacing:.8px;
+        text-transform:uppercase;
+        color:var(--text-soft);
+        text-shadow:var(--shadow-soft);
+    }
+
+    /* THEME COLORS */
+
+    /* 1. Thành viên mới / Khách hàng mới */
+    .theme-new{
+        background:
+            linear-gradient(145deg,#86cdfd 0%,#5dafe9 38%,#3788d8 100%);
+        color:#fff;
+
+        --text-main:#ffffff;
+        --text-soft:rgba(255,255,255,.94);
+        --text-faint:rgba(255,255,255,.82);
+
+        --shadow-soft:
+            0 1px 0 rgba(255,255,255,.10),
+            0 2px 6px rgba(0,29,61,.28);
+
+        --shadow-emboss:
+            0 1px 0 rgba(255,255,255,.16),
+            0 2px 0 rgba(0,38,79,.20),
+            0 7px 16px rgba(0,32,74,.28);
+
+        --box-bg:rgba(255,255,255,.15);
+        --box-border:rgba(255,255,255,.25);
+
+        --rank-bg:rgba(255,255,255,.18);
+        --rank-border:rgba(255,255,255,.26);
+
+        --watermark-color:rgba(255,255,255,.14);
+    }
+
+    /* 2. Thành viên đồng */
+    .theme-bronze{
+        background:
+            linear-gradient(145deg,#8f4d34 0%,#b86a4b 40%,#d79263 100%);
+        color:#fff9f4;
+
+        --text-main:#fffaf6;
+        --text-soft:rgba(255,248,242,.94);
+        --text-faint:rgba(255,240,230,.84);
+
+        --shadow-soft:
+            0 1px 0 rgba(255,255,255,.08),
+            0 2px 6px rgba(56,24,9,.30);
+
+        --shadow-emboss:
+            0 1px 0 rgba(255,255,255,.10),
+            0 2px 0 rgba(85,40,19,.25),
+            0 7px 16px rgba(70,31,14,.30);
+
+        --box-bg:rgba(255,255,255,.13);
+        --box-border:rgba(255,255,255,.24);
+
+        --rank-bg:rgba(255,255,255,.16);
+        --rank-border:rgba(255,255,255,.25);
+
+        --watermark-color:rgba(255,248,240,.12);
+    }
+
+    /* 3. Thành viên bạc */
+    .theme-silver{
+        background:
+            linear-gradient(145deg,#ffffff 0%,#edf2f7 42%,#d2dae5 100%);
+        color:#23384b;
+
+        --text-main:#1d3348;
+        --text-soft:rgba(29,51,72,.92);
+        --text-faint:rgba(44,64,84,.76);
+
+        --shadow-soft:
+            0 1px 0 rgba(255,255,255,.82),
+            0 2px 5px rgba(24,47,69,.10);
+
+        --shadow-emboss:
+            0 1px 0 rgba(255,255,255,.96),
+            0 2px 0 rgba(161,176,192,.45),
+            0 6px 12px rgba(20,44,66,.10);
+
+        --box-bg:rgba(255,255,255,.40);
+        --box-border:rgba(194,207,221,.90);
+
+        --rank-bg:rgba(255,255,255,.48);
+        --rank-border:rgba(193,207,220,.95);
+
+        --watermark-color:rgba(110,128,148,.14);
+    }
+
+    /* 4. Thành viên vàng */
+    .theme-gold{
+        background:
+            linear-gradient(145deg,#fff8cf 0%,#f6e38e 44%,#ddb85a 100%);
+        color:#5a430e;
+
+        --text-main:#4d3908;
+        --text-soft:rgba(77,57,8,.92);
+        --text-faint:rgba(92,69,15,.78);
+
+        --shadow-soft:
+            0 1px 0 rgba(255,255,255,.72),
+            0 2px 5px rgba(90,67,14,.12);
+
+        --shadow-emboss:
+            0 1px 0 rgba(255,255,255,.88),
+            0 2px 0 rgba(191,156,74,.36),
+            0 6px 12px rgba(111,84,18,.12);
+
+        --box-bg:rgba(255,255,255,.28);
+        --box-border:rgba(238,210,124,.88);
+
+        --rank-bg:rgba(255,255,255,.32);
+        --rank-border:rgba(233,204,118,.92);
+
+        --watermark-color:rgba(122,97,23,.14);
+    }
+
+    /* 5. Thành viên kim cương */
+    .theme-diamond{
+        background:
+            linear-gradient(145deg,#eef3f8 0%,#cfd8e5 45%,#9faaba 100%);
+        color:#243645;
+
+        --text-main:#1d3142;
+        --text-soft:rgba(29,49,66,.92);
+        --text-faint:rgba(42,61,78,.77);
+
+        --shadow-soft:
+            0 1px 0 rgba(255,255,255,.80),
+            0 2px 5px rgba(23,43,60,.10);
+
+        --shadow-emboss:
+            0 1px 0 rgba(255,255,255,.94),
+            0 2px 0 rgba(155,170,186,.42),
+            0 6px 12px rgba(23,43,60,.11);
+
+        --box-bg:rgba(255,255,255,.32);
+        --box-border:rgba(202,214,225,.92);
+
+        --rank-bg:rgba(255,255,255,.36);
+        --rank-border:rgba(196,209,221,.96);
+
+        --watermark-color:rgba(92,112,130,.14);
+    }
+    .theme-silver .rank-box,
+    .theme-gold .rank-box,
+    .theme-diamond .rank-box{
+        background:rgba(255,255,255,.35);
+        border-color:rgba(255,255,255,.42);
+    }
+
+    .theme-silver .emboss-name,
+    .theme-gold .emboss-name,
+    .theme-diamond .emboss-name,
+    .theme-silver .member-code,
+    .theme-gold .member-code,
+    .theme-diamond .member-code{
+        color:rgba(20,39,58,.95);
+        text-shadow:
+            0 1px 0 rgba(255,255,255,.55),
+            0 2px 6px rgba(0,0,0,.08);
+    }
+
+    .theme-silver .member-code-box,
+    .theme-gold .member-code-box,
+    .theme-diamond .member-code-box{
+        background:rgba(255,255,255,.26);
+        border-color:rgba(255,255,255,.42);
+    }
+
+    .theme-silver .watermark-text,
+    .theme-gold .watermark-text,
+    .theme-diamond .watermark-text{
+        color:rgba(255,255,255,.24);
+    }
+
+    .empty-note{
+        text-align:center;
+        color:#64748b;
+        font-weight:800;
+        font-size:15px;
+    }
+
+    @media (max-width: 820px){
+        .member-card{
+            width:min(96vw, 680px);
+        }
+
+        .card-content{
+            grid-template-columns:1fr .72fr;
+        }
+
+        .emboss-name{
+            font-size:32px;
+        }
+
+        .member-code{
+            font-size:18px;
+        }
+
+        .member-center-badge{
+            width:104px;
+            height:104px;
+            font-size:36px;
+        }
+    }
+
+    /* =========================
+       MOBILE - MEMBER CARD
+    ========================= */
+    @media (max-width: 640px){
+
+        .member-wrap{
+            min-height:
+                calc(
+                    100vh
+                    - var(--header-h)
+                    - 40px
+                );
+
+            padding:5px;
+
+            align-items:center;
+        }
+
+
+        .member-card{
+            width:100%;
+            max-width:560px;
+
+            aspect-ratio:16 / 9;
+
+            min-height:0;
+
+            padding:14px 15px;
+
+            border-radius:20px;
+        }
+
+
+        .card-content{
+            grid-template-columns:
+                1.25fr
+                .75fr;
+
+            grid-template-rows:
+                auto
+                1fr;
+
+            grid-template-areas:
+                "top top"
+                "info center";
+
+            gap:7px 10px;
+        }
+
+
+        .card-top{
+            flex-direction:row;
+
+            align-items:flex-start;
+        }
+
+
+        .club-mini-title{
+            font-size:8px;
+        }
+
+        .club-mini-name{
+            margin-top:2px;
+
+            font-size:18px;
+        }
+
+
+        .rank-box{
+            min-width:105px;
+
+            padding:6px 8px;
+
+            border-radius:11px;
+
+            text-align:right;
+        }
+
+        .rank-value{
+            margin:0;
+
+            font-size:10px;
+        }
+
+
+        .member-bottom{
+            gap:7px;
+        }
+
+
+        .emboss-name{
+            font-size:17px;
+
+            line-height:1.05;
+
+            letter-spacing:.3px;
+        }
+
+
+        .member-code-box{
+            min-width:0;
+
+            padding:7px 9px;
+
+            border-radius:10px;
+        }
+
+        .member-code{
+            font-size:11px;
+
+            letter-spacing:.7px;
+        }
+
+
+        .member-center{
+            justify-content:center;
+        }
+
+        .member-center-badge{
+            width:100px;
+            height:100px;
+
+            border-width:4px;
+
+            font-size:75px;
+        }
+
+
+        .watermark-text{
+            font-size:25px;
+
+            letter-spacing:1px;
+        }
+
+
+        .member-card::before{
+            width:130px;
+            height:130px;
+        }
+
+        .member-card::after{
+            width:110px;
+            height:110px;
+        }
+    }
+</style>
+
+{% endblock %}
+
+{% block content %}
+{% set rank_name = (member.hang_thanh_vien if member and member.hang_thanh_vien else 'Thành viên mới') %}
+
+{% if rank_name == 'Khách hàng mới' or rank_name == 'Thành viên mới' %}
+    {% set rank_class = 'theme-new' %}
+{% elif rank_name == 'Khách hàng đồng' or rank_name == 'Thành viên đồng' %}
+    {% set rank_class = 'theme-bronze' %}
+{% elif rank_name == 'Khách hàng bạc' or rank_name == 'Thành viên bạc' %}
+    {% set rank_class = 'theme-silver' %}
+{% elif rank_name == 'Khách hàng vàng' or rank_name == 'Thành viên vàng' %}
+    {% set rank_class = 'theme-gold' %}
+{% elif rank_name == 'Khách hàng kim cương' or rank_name == 'Thành viên kim cương' %}
+    {% set rank_class = 'theme-diamond' %}
+{% else %}
+    {% set rank_class = 'theme-new' %}
+{% endif %}
+
+<div class="member-wrap">
+    {% if member %}
+    <div class="member-card {{ rank_class }}">
+
+        <div class="watermark">
+            <div class="watermark-text">BILLIARDS
+THANH TRUNG</div>
+        </div>
+
+        <div class="card-content">
+
+            <div class="card-top">
+                <div class="club-mini">
+                    <p class="club-mini-title">Câu Lạc Bộ Billiards</p>
+                    <p class="club-mini-name">Thanh Trung</p>
+                </div>
+
+                <div class="rank-box">
+                    <p class="rank-value">{{ rank_name }}</p>
+                </div>
+            </div>
+
+            <div class="member-center">
+                <div class="member-center-badge">🎱</div>
+            </div>
+
+            <div class="member-bottom">
+                <div>
+                    <p class="emboss-name">{{ member.ho_va_ten or '---' }}</p>
+                </div>
+
+                <div class="member-code-box">
+                    <p class="member-code">{{ member.ma_thanh_vien or '---' }}</p>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+    {% else %}
+    <div class="empty-note">
+        Chưa có dữ liệu thành viên để hiển thị thẻ.
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

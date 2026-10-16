@@ -1,0 +1,631 @@
+{% extends "base.html" %}
+{% block title %}Thành Viên - Billiards Manager{% endblock %}
+
+{% block page_style %}
+<style>
+    .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:15px}
+    .page-head h1{margin:0;font-size:30px;font-weight:1000;color:#102a43}
+    .page-head p{margin:4px 0 0;color:#64748b;font-weight:700}
+
+    .panel{background:#fff;border:1px solid #dce7f1;border-radius:20px;box-shadow:0 12px 28px rgba(15,37,64,.07)}
+    .member-form-panel{padding:20px;margin-bottom:16px}
+    .panel-title{display:flex;align-items:center;gap:10px;margin-bottom:16px;font-weight:1000;font-size:20px;color:#123a61}
+    .panel-title i{color:#2563eb}
+
+    .member-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:14px}
+    .field{display:flex;flex-direction:column;gap:7px}
+    .field.wide{grid-column:span 2}
+    .field label{font-size:13px;font-weight:900;color:#334155}
+    .field label b{color:#dc2626}
+    .field input,.field select{
+        width:100%;height:44px;border:1px solid #cbd5e1;border-radius:12px;background:#f8fafc;
+        padding:0 12px;color:#0f172a;font-weight:700;outline:none;transition:.15s ease
+    }
+    .field input:focus,.field select:focus{border-color:#60a5fa;background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.11)}
+    .form-actions{display:flex;justify-content:flex-end;margin-top:16px}
+    .primary-btn{border:0;border-radius:13px;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-weight:950;padding:12px 18px;cursor:pointer;box-shadow:0 10px 22px rgba(37,99,235,.22)}
+    .primary-btn:hover{filter:brightness(1.04)}
+
+    .list-panel{padding:18px}
+    .list-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    .search-form{display:flex;gap:9px;flex:1;max-width:720px}
+    .search-wrap{position:relative;flex:1}
+    .search-wrap i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#7c8da1}
+    .search-wrap input{width:100%;height:44px;border:1px solid #cbd5e1;border-radius:13px;padding:0 13px 0 41px;font-weight:750;outline:none;background:#fff}
+    .search-wrap input:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+    .search-btn,.clear-btn{height:44px;border-radius:12px;padding:0 16px;font-weight:900;cursor:pointer}
+    .search-btn{border:0;background:#123a61;color:#fff}
+    .clear-btn{display:grid;place-items:center;text-decoration:none;border:1px solid #cbd5e1;background:#fff;color:#334155}
+    .count-badge{padding:9px 12px;border-radius:999px;background:#e8f3ff;color:#1d4ed8;font-size:13px;font-weight:950;white-space:nowrap}
+
+    .table-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:15px}
+    table{
+        width:100%;
+        border-collapse:collapse;
+        min-width:1200px;
+        background:#fff;
+    }
+
+    thead th{position:sticky;top:0;z-index:2;background:#eaf4ff;color:#153c63;text-align:left;font-size:12px;font-weight:1000;text-transform:uppercase;letter-spacing:.3px;padding:12px;border-bottom:1px solid #cfe1f2}
+    tbody td{padding:12px;border-bottom:1px solid #edf2f7;font-size:14px;font-weight:650;vertical-align:middle}
+    tbody tr:hover{background:#f8fbff}
+    tbody tr:last-child td{border-bottom:0}
+    .member-code{font-weight:950;color:#1d4ed8}
+    .member-name{font-weight:900;color:#102a43}
+    .muted{color:#64748b}
+    .actions{display:flex;gap:7px;align-items:center}
+    .icon-btn{width:36px;height:36px;border:0;border-radius:10px;display:grid;place-items:center;cursor:pointer}
+    .edit-btn{background:#dbeafe;color:#1d4ed8}
+    .delete-btn{background:#fee2e2;color:#dc2626;font-size:17px}
+    .empty-row td{text-align:center;padding:34px;color:#64748b;font-weight:800}
+
+    .modal-backdrop{display:none;position:fixed;inset:0;z-index:3000;background:rgba(15,23,42,.48);align-items:center;justify-content:center;padding:18px}
+    .modal-backdrop.show{display:flex}
+    .modal{width:min(760px,96vw);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;box-shadow:0 30px 80px rgba(15,23,42,.28)}
+    .modal-head{display:flex;justify-content:space-between;align-items:center;padding:17px 19px;border-bottom:1px solid #e2e8f0}
+    .modal-head h2{margin:0;font-size:22px;color:#123a61}
+    .modal-close{width:36px;height:36px;border:0;border-radius:10px;background:#eef2f7;color:#334155;font-size:21px;cursor:pointer}
+    .modal-body{padding:19px}
+    .modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:17px}
+    .secondary-btn{border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:12px;padding:11px 16px;font-weight:900;cursor:pointer}
+
+    @media(max-width:900px){.member-grid{grid-template-columns:repeat(2,minmax(160px,1fr))}.field.wide{grid-column:span 2}}
+    @media(max-width:650px){
+        .page-head{align-items:flex-start;flex-direction:column}.page-head h1{font-size:25px}
+        .member-form-panel,.list-panel{padding:14px;border-radius:16px}
+        .member-grid{grid-template-columns:1fr}.field.wide{grid-column:auto}
+        .list-toolbar{align-items:stretch;flex-direction:column}.search-form{max-width:none}.count-badge{align-self:flex-start}
+    }
+
+    .member-stat-card {
+        border: 1px solid #d7e3f4;
+        border-radius: 14px;
+        background: linear-gradient(
+            135deg,
+            #f8fbff 0%,
+            #eef6ff 100%
+        );
+        padding: 14px 16px;
+        min-height: 105px;
+        box-sizing: border-box;
+    }
+
+    .member-stat-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 12px;
+
+        font-size: 15px;
+        font-weight: 900;
+        color: #0f3767;
+    }
+
+    .member-stat-title i {
+        color: #e6a400;
+    }
+
+    .member-stat-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    .member-stat-item {
+        background: #ffffff;
+        border: 1px solid #dde8f5;
+        border-radius: 10px;
+        padding: 9px 10px;
+
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .member-stat-item span {
+        color: #6b7c93;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .member-stat-item strong {
+        color: #0b315c;
+        font-size: 13px;
+        font-weight: 900;
+    }
+
+    @media (max-width: 900px) {
+        .member-stat-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+
+    @media (max-width: 600px) {
+        .member-stat-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .rank-badge{
+        display:inline-flex;
+        align-items:center;
+
+        min-height:28px;
+
+        padding:5px 10px;
+
+        border-radius:999px;
+
+        background:#eef6ff;
+        border:1px solid #cfe3fb;
+
+        color:#145a96;
+
+        font-size:12px;
+        font-weight:850;
+
+        white-space:nowrap;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div>
+        <h1>Thành Viên</h1>
+        <p>Quản lý thông tin thành viên Câu Lạc Bộ Billiards Thanh Trung.</p>
+    </div>
+</div>
+
+<section class="panel member-form-panel">
+    <div class="panel-title"><i class="fa-solid fa-user-plus"></i> Thêm thành viên</div>
+    <form method="post" action="{{ url_for('them_thanh_vien') }}" autocomplete="off">
+        <div class="member-grid">
+            <div class="field">
+
+                <label>
+                    Mã thành viên
+                </label>
+
+                <input
+                    type="text"
+                    id="ma_thanh_vien_preview"
+                    name="ma_thanh_vien"
+                    placeholder="Tự động tạo"
+                    readonly
+                    tabindex="-1"
+                    style="
+                        background:#eef4fa;
+                        color:#1d4ed8;
+                        font-weight:900;
+                    "
+                >
+
+            </div>
+            <div class="field wide">
+                <label>Họ và tên <b>*</b></label>
+                <input
+                    type="text"
+                    id="ho_va_ten"
+                    name="ho_va_ten"
+                    placeholder="Nhập họ và tên"
+                    required
+                    oninput="updateMemberCodePreview()"
+                >
+            </div>
+
+            <div class="field">
+                <label>Giới tính</label>
+                <select name="gioi_tinh">
+                    <option value="">Chọn giới tính</option>
+                    <option value="Nam">Nam</option>
+                    <option value="Nữ">Nữ</option>
+                    <option value="Khác">Khác</option>
+                </select>
+            </div>
+
+            <div class="field">
+
+                <label>
+                    Ngày sinh <b>*</b>
+                </label>
+
+                <input
+                    type="text"
+                    name="ngay_sinh"
+                    id="ngay_sinh"
+                    placeholder="dd-mm-yyyy"
+                    maxlength="10"
+                    inputmode="numeric"
+                    required
+                    oninput="
+                        formatBirthDateInput(this);
+                        updateMemberCodePreview();
+                    "
+                >
+
+            </div>
+
+            <div class="field">
+
+                <label>
+                    Số điện thoại <b>*</b>
+                </label>
+
+                <input
+                    type="tel"
+                    id="so_dien_thoai"
+                    name="so_dien_thoai"
+                    placeholder="Nhập đủ 10 số"
+                    inputmode="numeric"
+                    minlength="10"
+                    maxlength="10"
+                    pattern="[0-9]{10}"
+                    required
+                    oninput="
+                        this.value =
+                            this.value
+                                .replace(/\D/g, '')
+                                .slice(0, 10);
+
+                        updateMemberCodePreview();
+                    "
+                >
+
+            </div>
+
+            <div class="field wide">
+                <label>Địa chỉ</label>
+                <input type="text" name="dia_chi" placeholder="Nhập địa chỉ">
+            </div>
+        </div>
+        <div class="form-actions">
+            <button class="primary-btn" type="submit"><i class="fa-solid fa-plus"></i> Thêm thành viên</button>
+        </div>
+    </form>
+</section>
+
+<section class="panel list-panel">
+    <div class="list-toolbar">
+        <form method="get" action="{{ url_for('thanh_vien') }}" class="search-form">
+            <div class="search-wrap">
+                <i class="fa-solid fa-magnifying-glass"></i>
+                <input type="text" name="q" value="{{ q or '' }}" placeholder="Tìm theo họ tên, số điện thoại hoặc ngày sinh YYYY-MM-DD">
+            </div>
+            <button type="submit" class="search-btn">Tìm</button>
+            {% if q %}<a class="clear-btn" href="{{ url_for('thanh_vien') }}">Xóa lọc</a>{% endif %}
+        </form>
+        <div class="count-badge">{{ rows|length }} thành viên</div>
+    </div>
+
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã thành viên</th>
+                    <th>Họ và tên</th>
+                    <th>Giới tính</th>
+                    <th>Ngày sinh</th>
+                    <th>Địa chỉ</th>
+                    <th>Số điện thoại</th>
+
+                    <th>Thành viên</th>
+
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for r in rows %}
+                <tr>
+                    <td class="member-code">{{ r.ma_thanh_vien }}</td>
+                    <td class="member-name">{{ r.ho_va_ten }}</td>
+                    <td>{{ r.gioi_tinh or '—' }}</td>
+                    <td>{{ r.ngay_sinh_hien_thi or '—' }}</td>
+                    <td>{{ r.dia_chi or '—' }}</td>
+                    <td>{{ r.so_dien_thoai or '—' }}</td>
+
+                    <td>
+                        <span class="rank-badge">
+                            {{ r.hang_thanh_vien or 'Chưa xếp hạng' }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <div class="actions">
+                            <button type="button" class="icon-btn edit-btn" title="Chỉnh sửa"
+                                onclick='openEditModal({{ r|tojson }})'>
+                                <i class="fa-solid fa-pen"></i>
+                            </button>
+                            <form method="post" action="{{ url_for('xoa_thanh_vien', member_id=r.id) }}" onsubmit="return confirm('Ken có chắc muốn xóa thành viên này không?')">
+                                <input type="hidden" name="return_q" value="{{ q or '' }}">
+                                <button type="submit" class="icon-btn delete-btn" title="Xóa">×</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr class="empty-row"><td colspan="8">Chưa có thành viên phù hợp.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<div id="editModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event)">
+    <div class="modal">
+        <div class="modal-head">
+            <h2>Chỉnh sửa thành viên</h2>
+            <button type="button" class="modal-close" onclick="closeEditModal()">×</button>
+        </div>
+        <div class="modal-body">
+            <form id="editForm" method="post" autocomplete="off">
+                <input type="hidden" name="return_q" value="{{ q or '' }}">
+                <div class="member-grid">
+                    <div class="field">
+                        <label>Mã thành viên <b>*</b></label>
+                        <input id="edit_ma_thanh_vien" type="text" name="ma_thanh_vien" required>
+                    </div>
+                    <div class="field wide">
+                        <label>Họ và tên <b>*</b></label>
+                        <input id="edit_ho_va_ten" type="text" name="ho_va_ten" required>
+                    </div>
+                    <div class="field">
+                        <label>Giới tính</label>
+                        <select id="edit_gioi_tinh" name="gioi_tinh">
+                            <option value="">Chọn giới tính</option>
+                            <option value="Nam">Nam</option>
+                            <option value="Nữ">Nữ</option>
+                            <option value="Khác">Khác</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Ngày sinh</label>
+                        <input
+                            id="edit_ngay_sinh"
+                            type="text"
+                            name="ngay_sinh"
+                            placeholder="dd-mm-yyyy"
+                            maxlength="10"
+                            inputmode="numeric"
+                            oninput="formatBirthDateInput(this)"
+                        >
+                    </div>
+                    <div class="field">
+                        <label>
+                            Số điện thoại <b>*</b>
+                        </label>
+
+                        <input
+                            id="edit_so_dien_thoai"
+                            type="tel"
+                            name="so_dien_thoai"
+                            inputmode="numeric"
+                            minlength="10"
+                            maxlength="10"
+                            pattern="[0-9]{10}"
+                            required
+                            oninput="
+                                this.value =
+                                    this.value
+                                        .replace(/\D/g, '')
+                                        .slice(0,10);
+                            "
+                        >
+                    </div>
+                    <div class="field wide">
+                        <label>Địa chỉ</label>
+                        <input id="edit_dia_chi" type="text" name="dia_chi">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="secondary-btn" onclick="closeEditModal()">Đóng</button>
+                    <button type="submit" class="primary-btn"><i class="fa-solid fa-floppy-disk"></i> Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_script %}
+<script>
+function openEditModal(member){
+    const modal = document.getElementById('editModal');
+    const form = document.getElementById('editForm');
+    form.action = `/thanh-vien/${member.id}/cap-nhat`;
+
+    document.getElementById('edit_ma_thanh_vien').value = member.ma_thanh_vien || '';
+    document.getElementById('edit_ho_va_ten').value = member.ho_va_ten || '';
+    document.getElementById('edit_gioi_tinh').value = member.gioi_tinh || '';
+    document.getElementById('edit_ngay_sinh').value =
+        member.ngay_sinh_hien_thi || '';
+    document.getElementById('edit_dia_chi').value = member.dia_chi || '';
+    document.getElementById('edit_so_dien_thoai').value = member.so_dien_thoai || '';
+
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeEditModal(){
+    document.getElementById('editModal').classList.remove('show');
+    document.body.style.overflow = '';
+}
+
+function closeModalOnBackdrop(event){
+    if(event.target.id === 'editModal') closeEditModal();
+}
+
+document.addEventListener('keydown', function(event){
+    if(event.key === 'Escape') closeEditModal();
+});
+
+function formatBirthDateInput(input) {
+    let value = input.value.replace(/\D/g, '').slice(0, 8);
+
+    if (value.length >= 5) {
+        value =
+            value.slice(0, 2) + '-' +
+            value.slice(2, 4) + '-' +
+            value.slice(4);
+    } else if (value.length >= 3) {
+        value =
+            value.slice(0, 2) + '-' +
+            value.slice(2);
+    }
+
+    input.value = value;
+}
+
+function removeVietnameseAccents(text) {
+
+    return String(text || '')
+        .replace(/Đ/g, 'D')
+        .replace(/đ/g, 'd')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+}
+
+
+function updateMemberCodePreview() {
+
+    const nameInput =
+        document.getElementById(
+            'ho_va_ten'
+        );
+
+    const birthInput =
+        document.getElementById(
+            'ngay_sinh'
+        );
+
+    const phoneInput =
+        document.getElementById(
+            'so_dien_thoai'
+        );
+
+    const codeInput =
+        document.getElementById(
+            'ma_thanh_vien_preview'
+        );
+
+
+    if (
+        !nameInput ||
+        !birthInput ||
+        !phoneInput ||
+        !codeInput
+    ) {
+        return;
+    }
+
+
+    const fullName =
+        nameInput.value
+            .trim()
+            .replace(/\s+/g, ' ');
+
+
+    const birth =
+        birthInput.value.trim();
+
+
+    const phone =
+        phoneInput.value
+            .replace(/\D/g, '');
+
+
+    if (
+        !fullName ||
+        birth.length !== 10 ||
+        phone.length !== 10
+    ) {
+
+        codeInput.value = '';
+
+        return;
+    }
+
+
+    const words =
+        fullName
+            .split(' ')
+            .filter(Boolean);
+
+
+    if (!words.length) {
+
+        codeInput.value = '';
+
+        return;
+    }
+
+
+    let initials = '';
+
+
+    if (words.length > 1) {
+
+        words
+            .slice(0, -1)
+            .forEach(word => {
+
+                const cleanWord =
+                    removeVietnameseAccents(
+                        word
+                    );
+
+                if (cleanWord) {
+
+                    initials +=
+                        cleanWord
+                            .charAt(0)
+                            .toUpperCase();
+                }
+            });
+    }
+
+
+    const lastName =
+        removeVietnameseAccents(
+            words[words.length - 1]
+        )
+        .replace(
+            /[^A-Za-z0-9]/g,
+            ''
+        )
+        .toUpperCase();
+
+
+    /*
+       dd-mm-yyyy
+       01-01-1993
+             ↑↑
+    */
+    const year =
+        birth.slice(6, 10);
+
+
+    if (!/^\d{4}$/.test(year)) {
+
+        codeInput.value = '';
+
+        return;
+    }
+
+
+    const year2 =
+        year.slice(-2);
+
+
+    const phone3 =
+        phone.slice(-3);
+
+
+    codeInput.value =
+        initials
+        + lastName
+        + year2
+        + phone3;
+}
+</script>
+{% endblock %}

@@ -1,0 +1,4293 @@
+{% extends "base.html" %}
+{% block title %}Hoạt Động - Billiards Manager{% endblock %}
+
+{% block page_style %}
+<style>
+    .activity-page{
+        display:flex;
+        flex-direction:column;
+        gap:18px;
+    }
+
+    .page-head{
+        display:flex;
+        justify-content:space-between;
+        align-items:flex-end;
+        gap:14px;
+    }
+    .page-head h1{
+        margin:0;
+        font-size:30px;
+        font-weight:1000;
+        color:#102a43;
+    }
+    .page-head p{
+        margin:6px 0 0;
+        color:#64748b;
+        font-weight:700;
+    }
+
+    .panel{
+        background:#fff;
+        border:1px solid #dce7f1;
+        border-radius:20px;
+        box-shadow:0 12px 28px rgba(15,37,64,.07);
+    }
+
+    .legend-panel{
+        padding:14px 18px;
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:14px;
+        flex-wrap:wrap;
+    }
+    .legend-title{
+        font-size:18px;
+        font-weight:1000;
+        color:#123a61;
+    }
+    .legend-items{
+        display:flex;
+        gap:12px;
+        flex-wrap:wrap;
+    }
+    .legend-badge{
+        display:flex;
+        align-items:center;
+        gap:8px;
+        padding:8px 12px;
+        border-radius:999px;
+        background:#f8fafc;
+        border:1px solid #dbe7f3;
+        font-weight:900;
+        color:#334155;
+    }
+    .legend-dot{
+        width:14px;
+        height:14px;
+        border-radius:50%;
+        box-shadow:inset 0 0 0 2px rgba(255,255,255,.5);
+    }
+    .legend-dot.idle{background:#94a3b8;}
+    .legend-dot.active{background:#16a34a;}
+
+    .tables-panel{
+        padding:18px;
+    }
+    .tables-grid{
+        display:grid;
+        grid-template-columns:repeat(4, minmax(220px,1fr));
+        gap:18px;
+        align-items:start;
+    }
+
+    .table-card{
+        border:1px solid #d9e5f1;
+        border-radius:20px;
+        background:linear-gradient(180deg,#fbfdff 0%,#f6faff 100%);
+        padding:14px;
+        box-shadow:0 10px 24px rgba(15,37,64,.06);
+        transition:.18s ease;
+    }
+    .table-card.is-active{
+        border-color:#86efac;
+        box-shadow:0 14px 30px rgba(22,163,74,.14);
+        transform:translateY(-2px);
+    }
+    .table-top{
+        display:flex;
+        justify-content:space-between;
+        align-items:center;
+        gap:10px;
+        margin-bottom:12px;
+    }
+    .table-name{
+        font-size:20px;
+        font-weight:1000;
+        color:#123a61;
+    }
+    .table-status{
+        padding:7px 10px;
+        border-radius:999px;
+        font-size:12px;
+        font-weight:950;
+        border:1px solid #cbd5e1;
+        background:#eef2f7;
+        color:#475569;
+        white-space:nowrap;
+    }
+    .table-status.active{
+        background:#dcfce7;
+        border-color:#86efac;
+        color:#166534;
+    }
+
+    .pool-table{
+        position:relative;
+        width:100%;
+        aspect-ratio: 1.75 / 1;
+        border-radius:20px;
+        padding:16px;
+        box-sizing:border-box;
+        background:linear-gradient(180deg,#6d3a1a 0%,#8a4c22 50%,#6d3a1a 100%);
+        box-shadow:inset 0 0 0 2px rgba(73,33,12,.4);
+        overflow:hidden;
+    }
+    .pool-table.idle{
+        filter:grayscale(1) brightness(.93);
+    }
+    .pool-table.active{
+        filter:none;
+    }
+    .table-cloth{
+        position:relative;
+        width:100%;
+        height:100%;
+        border-radius:14px;
+        background:radial-gradient(circle at center, #6fda79 0%, #49a85f 54%, #327c47 100%);
+        box-shadow:inset 0 0 0 6px rgba(31,89,43,.28);
+    }
+    .pool-table.idle .table-cloth{
+        background:radial-gradient(circle at center, #cbd5e1 0%, #9aa7b7 54%, #768397 100%);
+        box-shadow:inset 0 0 0 6px rgba(96,110,128,.24);
+    }
+    .pocket{
+        position:absolute;
+        width:17px;
+        height:17px;
+        border-radius:50%;
+        background:#111827;
+        box-shadow:0 2px 5px rgba(0,0,0,.32);
+    }
+    .pocket.tl{left:-3px;top:-3px;}
+    .pocket.tc{left:50%;top:-4px;transform:translateX(-50%);}
+    .pocket.tr{right:-3px;top:-3px;}
+    .pocket.bl{left:-3px;bottom:-3px;}
+    .pocket.bc{left:50%;bottom:-4px;transform:translateX(-50%);}
+    .pocket.br{right:-3px;bottom:-3px;}
+
+    .table-number-circle{
+        position:absolute;
+        inset:50% auto auto 50%;
+        transform:translate(-50%, -50%);
+        width:70px;
+        height:70px;
+        border-radius:50%;
+        background:rgba(255,255,255,.88);
+        border:4px solid rgba(18,58,97,.15);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        font-size:45px;
+        font-weight:1000;
+        color:#123a61;
+        box-shadow:0 10px 22px rgba(0,0,0,.14);
+    }
+
+    .table-meta{
+        margin-top:12px;
+        display:grid;
+        gap:9px;
+    }
+    .table-timer{
+        min-height:44px;
+        border-radius:14px;
+        background:#f8fafc;
+        border:1px dashed #cbd5e1;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        padding:7px 8px;
+        text-align:center;
+    }
+    .table-timer strong{
+        font-size:18px;
+        color:#123a61;
+        font-weight:1000;
+    }
+    .table-timer small{
+        margin-top:2px;
+        color:#64748b;
+        font-weight:800;
+    }
+    .table-actions{
+        display:flex;
+        gap:10px;
+    }
+    .table-btn{
+        flex:1;
+        height:45px;
+        border:0;
+        border-radius:13px;
+        font-size:15px;
+        font-weight:950;
+        cursor:pointer;
+        transition:.15s ease;
+    }
+    .start-btn{
+        background:linear-gradient(135deg,#16a34a,#15803d);
+        color:#fff;
+        box-shadow:0 10px 22px rgba(22,163,74,.18);
+    }
+    .end-btn{
+        background:linear-gradient(135deg,#ef4444,#dc2626);
+        color:#fff;
+        box-shadow:0 10px 22px rgba(239,68,68,.18);
+    }
+    .table-btn:hover{filter:brightness(1.04)}
+
+    .modal-backdrop{
+        display:none;
+        position:fixed;
+        inset:0;
+        z-index:4000;
+        background:rgba(15,23,42,.52);
+        align-items:center;
+        justify-content:center;
+        padding:22px;
+    }
+    .modal-backdrop.show{display:flex;}
+    .modal{
+        width:min(980px, 96vw);
+        max-height:92vh;
+        overflow:auto;
+        background:#fff;
+        border-radius:22px;
+        box-shadow:0 30px 80px rgba(15,23,42,.28);
+    }
+    .modal.small{width:min(620px,94vw);}
+    .modal-head{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        padding:18px 20px;
+        border-bottom:1px solid #e2e8f0;
+        position:sticky;
+        top:0;
+        background:#fff;
+        z-index:1;
+    }
+    .modal-head h2{
+        margin:0;
+        font-size:23px;
+        color:#123a61;
+    }
+    .modal-close{
+        width:38px;height:38px;border:0;border-radius:12px;background:#eef2f7;color:#334155;font-size:21px;cursor:pointer;
+    }
+    .modal-body{padding:18px 20px 22px;}
+    .modal-section{
+        border:1px solid #e2e8f0;
+        border-radius:18px;
+        padding:15px;
+        background:#f8fbff;
+        margin-bottom:14px;
+    }
+    .section-head{
+        display:flex;
+        align-items:center;
+        gap:9px;
+        margin-bottom:12px;
+        font-size:17px;
+        font-weight:1000;
+        color:#123a61;
+    }
+    .section-head i{color:#2563eb;}
+    .section-grid{
+        display:grid;
+        grid-template-columns:repeat(2, minmax(220px, 1fr));
+        gap:12px 14px;
+    }
+    .info-box{
+        border-radius:14px;
+        background:#fff;
+        border:1px solid #dbe7f3;
+        padding:10px 12px;
+        min-height:48px;
+    }
+    .info-box span{
+        display:block;
+        color:#64748b;
+        font-size:12px;
+        font-weight:900;
+        margin-bottom:4px;
+    }
+    .info-box strong{
+        display:block;
+        color:#102a43;
+        font-size:14px;
+        font-weight:950;
+        line-height:1.45;
+        word-break:break-word;
+    }
+    .member-grid,
+    .invoice-summary-grid{
+        display:grid;
+        grid-template-columns:repeat(2,minmax(220px,1fr));
+        gap:12px 14px;
+    }
+    .field{display:flex;flex-direction:column;gap:7px;}
+    .field.full{grid-column:1 / -1;}
+    .field label{
+        color:#334155;
+        font-weight:900;
+        font-size:13px;
+    }
+    .field input,
+    .field select{
+        width:100%;
+        height:44px;
+        border:1px solid #cbd5e1;
+        border-radius:12px;
+        background:#fff;
+        padding:0 12px;
+        color:#0f172a;
+        font-weight:700;
+        outline:none;
+        box-sizing:border-box;
+    }
+    .field input:focus,
+    .field select:focus{
+        border-color:#60a5fa;
+        box-shadow:0 0 0 3px rgba(37,99,235,.11);
+    }
+    .member-info-preview{
+        border:1px dashed #cbd5e1;
+        border-radius:14px;
+        background:#fff;
+        padding:12px;
+        color:#334155;
+        font-weight:700;
+        line-height:1.55;
+        min-height:74px;
+    }
+
+    .service-rows{display:flex;flex-direction:column;gap:12px;}
+    .service-row{
+        display:grid;
+        grid-template-columns:minmax(180px,1.6fr) 110px 52px 52px;
+        gap:10px;
+        align-items:end;
+    }
+    .qty-control{
+        display:flex;
+        align-items:center;
+        height:44px;
+        border:1px solid #cbd5e1;
+        border-radius:12px;
+        overflow:hidden;
+        background:#fff;
+    }
+    .qty-btn{
+        width:38px;
+        height:100%;
+        border:0;
+        background:#eef2f7;
+        color:#123a61;
+        font-size:18px;
+        font-weight:1000;
+        cursor:pointer;
+    }
+    .qty-input{
+        flex:1;
+        height:100%;
+        border:0 !important;
+        text-align:center;
+        font-weight:900;
+        background:#fff;
+        outline:none;
+    }
+    .add-service-btn,
+    .remove-service-btn{
+        width:44px;
+        height:44px;
+        border:0;
+        border-radius:12px;
+        color:#fff;
+        font-size:20px;
+        font-weight:1000;
+        cursor:pointer;
+    }
+    .add-service-btn{background:linear-gradient(135deg,#16a34a,#15803d);}
+    .remove-service-btn{background:linear-gradient(135deg,#ef4444,#dc2626);}
+
+    .discount-row{
+        display:grid;
+        grid-template-columns:1.3fr 1fr;
+        gap:12px;
+    }
+
+    .member-benefit-box{
+        margin-bottom:14px;
+        padding:14px;
+        border:1px solid #dbe7f3;
+        border-radius:16px;
+        background:linear-gradient(180deg,#ffffff,#f8fbff);
+    }
+
+    .member-benefit-box.is-disabled{opacity:.72}
+
+    .member-benefit-note{
+        margin-top:7px;
+        color:#64748b;
+        font-size:12px;
+        font-weight:750;
+        line-height:1.45;
+    }
+
+    .member-benefit-note.good{color:#15803d}
+    .member-benefit-note.warn{color:#b45309}
+
+    .field select:disabled,
+    .field input:disabled{
+        background:#f1f5f9;
+        color:#94a3b8;
+        cursor:not-allowed;
+    }
+
+    .payment-summary{
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+    }
+
+    .table-fee-box{
+        border:1px solid #dbe7f3;
+        border-radius:14px;
+        overflow:hidden;
+        background:#fff;
+    }
+
+    .table-fee-head,
+    .table-fee-detail-row{
+        display:grid;
+        grid-template-columns:minmax(0,1.4fr) 140px 130px;
+        gap:10px;
+        align-items:center;
+    }
+
+    .table-fee-head{
+        padding:9px 12px;
+        background:#eef6ff;
+        color:#52677c;
+        font-size:11px;
+        font-weight:950;
+        text-transform:uppercase;
+    }
+
+    .table-fee-detail-row{
+        padding:10px 12px;
+        border-top:1px dashed #d9e5f1;
+        color:#123a61;
+        font-size:12px;
+        font-weight:800;
+    }
+
+    .table-fee-detail-row > :nth-child(2){
+        text-align:center;
+    }
+
+    .table-fee-detail-row > :nth-child(3){
+        text-align:right;
+        font-weight:1000;
+    }
+
+    .table-fee-total{
+        display:flex;
+        align-items:center;
+        justify-content:space-between;
+        gap:12px;
+        padding:11px 12px;
+        border-top:1px solid #dbe7f3;
+        background:#f8fbff;
+        color:#123a61;
+        font-weight:1000;
+    }
+
+    @media(max-width:640px){
+        .table-fee-head,
+        .table-fee-detail-row{
+            grid-template-columns:minmax(0,1fr) 90px 90px;
+            gap:6px;
+            font-size:10px;
+        }
+    }
+    .pay-line{
+        display:flex;
+        justify-content:space-between;
+        gap:12px;
+        align-items:center;
+        padding:12px 14px;
+        border-radius:14px;
+        background:#fff;
+        border:1px solid #dbe7f3;
+        font-weight:850;
+        color:#123a61;
+    }
+    .pay-line.total{
+        background:linear-gradient(135deg,#dbeafe,#eff6ff);
+        border-color:#93c5fd;
+        color:#0f172a;
+        font-size:17px;
+        font-weight:1000;
+    }
+
+    .modal-actions{
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+        flex-wrap:wrap;
+        margin-top:8px;
+    }
+    .secondary-btn,
+    .primary-btn,
+    .danger-btn{
+        height:46px;
+        border-radius:13px;
+        padding:0 18px;
+        border:0;
+        font-weight:950;
+        cursor:pointer;
+    }
+    .secondary-btn{
+        background:#eef2f7;
+        color:#334155;
+    }
+    .primary-btn{
+        background:linear-gradient(135deg,#2563eb,#1d4ed8);
+        color:#fff;
+        box-shadow:0 10px 22px rgba(37,99,235,.18);
+    }
+    .danger-btn{
+        background:linear-gradient(135deg,#ef4444,#dc2626);
+        color:#fff;
+        box-shadow:0 10px 22px rgba(239,68,68,.18);
+    }
+
+
+    .receipt-modal{
+        width:min(620px,96vw);
+        background:#eef3f8;
+        padding:14px;
+    }
+
+    .receipt-sheet{
+        width:100%;
+        max-width:148mm;
+        min-height:190mm;
+
+        margin:0 auto;
+
+        padding:12mm 10mm;
+
+        background:#fff;
+        color:#111827;
+
+        box-sizing:border-box;
+        border-radius:10px;
+
+        font-family:
+            "Segoe UI",
+            Arial,
+            Tahoma,
+            sans-serif;
+
+        font-synthesis:none;
+        -webkit-font-smoothing:antialiased;
+        -moz-osx-font-smoothing:grayscale;
+        font-size:13px;
+    }
+
+
+    /* =========================
+       HEADER HÓA ĐƠN
+    ========================= */
+
+    .receipt-brand{
+        text-align:center;
+
+        border-bottom:2px solid #123a61;
+
+        padding-bottom:10px;
+        margin-bottom:14px;
+    }
+
+    .receipt-club-small{
+        font-size:16px;
+        line-height:1.3;
+
+        font-weight:800;
+
+        color:#123a61;
+    }
+
+    .receipt-club-name{
+        margin-top:3px;
+
+        font-size:25px;
+        line-height:1.2;
+
+        font-weight:700;
+
+        color:#0b4f91;
+    }
+
+    .receipt-title{
+        margin-top:10px;
+
+        font-family:
+            "Segoe UI",
+            Arial,
+            Tahoma,
+            sans-serif;
+
+        font-size:25px;
+        line-height:2;
+
+        font-weight:800;
+
+        letter-spacing:.5px;
+
+        color:#111827;
+    }
+
+    .receipt-code,
+    .receipt-date{
+        margin-top:4px;
+
+        font-size:11px;
+        line-height:1.35;
+
+        font-weight:600;
+
+        color:#475569;
+    }
+
+
+    /* =========================
+       NỘI DUNG
+    ========================= */
+
+    .receipt-section{
+        margin-top:16px;
+    }
+
+    .receipt-section-title{
+        margin-bottom:7px;
+
+        font-size:14px;
+        line-height:1.3;
+
+        font-weight:700;
+
+        color:#111827;
+    }
+
+
+    /* 3 cột:
+       Nội dung | SL / thời lượng | Thành tiền
+    */
+
+    .receipt-row{
+        display:grid;
+
+        grid-template-columns:
+            minmax(0,1fr)
+            92px
+            118px;
+
+        column-gap:14px;
+
+        align-items:center;
+
+        padding:7px 0;
+
+        border-bottom:1px dashed #cbd5e1;
+
+        font-size:12px;
+        line-height:1.4;
+    }
+
+
+    /* Cột giữa */
+
+    .receipt-row > span:nth-child(2){
+        text-align:center;
+        justify-self:center;
+    }
+
+
+    /* Cột thành tiền */
+
+    .receipt-row > span:nth-child(3),
+    .receipt-row > strong{
+        width:100%;
+
+        text-align:right;
+        justify-self:end;
+
+        white-space:nowrap;
+    }
+
+
+    /* Header bảng */
+
+    .receipt-header-row{
+        padding-top:5px;
+        padding-bottom:6px;
+
+        border-bottom:1px solid #94a3b8;
+
+        font-size:10px;
+        line-height:1.25;
+
+        font-weight:800;
+
+        text-transform:uppercase;
+
+        color:#64748b;
+    }
+
+    .receipt-header-row > span:nth-child(3){
+        text-align:right;
+    }
+
+
+    /* =========================
+       TỔNG TIỀN
+    ========================= */
+
+    .receipt-total-box{
+        margin-top:17px;
+
+        padding-top:8px;
+
+        border-top:2px solid #123a61;
+    }
+
+    .receipt-total-box > div{
+        display:flex;
+
+        justify-content:space-between;
+        align-items:center;
+
+        gap:18px;
+
+        padding:6px 0;
+
+        font-size:13px;
+        line-height:1.35;
+
+        color:#111827;
+    }
+
+
+    /* Tổng cộng */
+
+    .receipt-subtotal-row{
+        font-weight:800;
+    }
+
+
+    /* GIẢM GIÁ
+       đỏ + chữ mảnh
+    */
+
+    .receipt-discount-row{
+        color:#dc2626 !important;
+
+        font-weight:500 !important;
+    }
+
+    .receipt-discount-row span,
+    .receipt-discount-row strong{
+        color:#dc2626 !important;
+
+        font-weight:500 !important;
+    }
+
+
+    /* THÀNH TIỀN
+       xanh lá + lớn + đậm
+    */
+
+    .receipt-grand-total{
+        margin-top:5px !important;
+
+        padding-top:10px !important;
+
+        border-top:1px solid #cbd5e1;
+
+        color:#15803d !important;
+
+        font-size:19px !important;
+
+        font-weight:1000 !important;
+    }
+
+    .receipt-grand-total span,
+    .receipt-grand-total strong{
+        color:#15803d !important;
+
+        font-size:19px !important;
+
+        font-weight:1000 !important;
+    }
+
+
+    /* =========================
+       KHÁCH HÀNG
+    ========================= */
+
+    .receipt-customer{
+        margin-top:14px;
+
+        padding-top:10px;
+
+        border-top:1px dashed #cbd5e1;
+
+        font-size:11px;
+        line-height:1.6;
+
+        color:#334155;
+    }
+
+    .receipt-thanks{
+        margin-top:20px;
+
+        text-align:center;
+
+        font-size:12px;
+
+        font-weight:800;
+
+        font-style:italic;
+    }
+
+    .receipt-actions{
+        display:flex;
+
+        justify-content:center;
+
+        gap:10px;
+
+        margin-top:20px;
+    }
+
+    @media print {
+        @page { size: A5 portrait; margin: 8mm; }
+        body * { visibility:hidden !important; }
+        #receiptPrintArea, #receiptPrintArea * { visibility:visible !important; }
+        #receiptPrintArea {
+            position:absolute;
+            left:0;
+            top:0;
+            width:100%;
+            max-width:none;
+            min-height:auto;
+            margin:0;
+            padding:0;
+            border-radius:0;
+            box-shadow:none;
+        }
+        #receiptPrintArea .receipt-actions { display:none !important; }
+    }
+
+    @media (max-width: 1200px){
+        .tables-grid{grid-template-columns:repeat(3,minmax(220px,1fr));}
+    }
+    @media (max-width: 900px){
+        .tables-grid{grid-template-columns:repeat(2,minmax(220px,1fr));}
+        .service-row{grid-template-columns:1fr 110px 52px 52px;}
+        .member-grid,.invoice-summary-grid,.section-grid{grid-template-columns:1fr;}
+        .discount-row{grid-template-columns:1fr;}
+    }
+    @media (max-width: 640px){
+        .page-head{flex-direction:column;align-items:flex-start;}
+        .page-head h1{font-size:26px;}
+        .tables-panel{padding:14px;}
+        .tables-grid{grid-template-columns:1fr;}
+        .legend-panel{padding:12px 14px;}
+        .modal-backdrop{padding:12px;}
+        .modal-body,.modal-head{padding-left:14px;padding-right:14px;}
+        .service-row{grid-template-columns:1fr;}
+        .add-service-btn,.remove-service-btn{width:100%;}
+    }
+
+    .cart-btn{
+        width:52px;
+        height:45px;
+        flex:0 0 52px;
+
+        border:0;
+        border-radius:13px;
+
+        position:relative;
+
+        display:flex;
+        align-items:center;
+        justify-content:center;
+
+        font-size:18px;
+
+        transition:.15s ease;
+    }
+
+    .cart-btn.enabled{
+        background:
+            linear-gradient(
+                135deg,
+                #2563eb,
+                #1d4ed8
+            );
+
+        color:#fff;
+
+        cursor:pointer;
+
+        box-shadow:
+            0 10px 22px
+            rgba(37,99,235,.20);
+    }
+
+    .cart-btn.disabled{
+        background:#e2e8f0;
+        color:#94a3b8;
+        cursor:not-allowed;
+    }
+
+    .cart-count{
+        position:absolute;
+
+        right:-5px;
+        top:-7px;
+
+        min-width:20px;
+        height:20px;
+
+        padding:0 5px;
+
+        border-radius:999px;
+
+        background:#ef4444;
+        color:#fff;
+
+        border:2px solid #fff;
+
+        display:flex;
+        align-items:center;
+        justify-content:center;
+
+        font-size:10px;
+        font-weight:1000;
+
+        box-sizing:border-box;
+    }
+
+    .cart-order-row{
+        display:grid;
+        grid-template-columns:minmax(0, 1fr) 70px 36px;
+        gap:12px;
+        align-items:center;
+
+        padding:10px 12px;
+        margin-bottom:8px;
+
+        border:1px solid #dbe7f3;
+        border-radius:12px;
+        background:#fff;
+    }
+
+    .cart-order-name{
+        min-width:0;
+        font-weight:850;
+        color:#123a61;
+    }
+
+    .cart-order-qty{
+        width:70px;
+        text-align:center;
+
+        font-weight:950;
+        color:#123a61;
+    }
+
+    .cart-order-remove{
+        width:30px;
+        height:30px;
+
+        justify-self:end;
+
+        border:0;
+        border-radius:9px;
+
+        background:#fee2e2;
+        color:#dc2626;
+
+        font-weight:1000;
+        cursor:pointer;
+    }
+
+.member-benefit-condition{
+    margin-top:7px;
+    padding:9px 11px;
+    border:1px solid #f5c36a;
+    border-radius:11px;
+    background:#fff8e8;
+    color:#9a5a00;
+    font-size:11px;
+    line-height:1.5;
+    font-weight:750;
+}
+.member-benefit-condition strong{
+    color:#7c4700;
+    font-weight:950;
+}
+
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="activity-page">
+    <div class="page-head">
+        <div>
+            <h1>Hoạt Động</h1>
+            <p>Quản lý hoạt động {{ setup_config.club.table_count }} bàn bida, theo dõi thời gian chơi và tạo hóa đơn sau khi kết thúc bàn.</p>
+        </div>
+    </div>
+
+    <section class="panel legend-panel">
+        <div class="legend-title">Trạng thái bàn</div>
+        <div class="legend-items">
+            <div class="legend-badge"><span class="legend-dot idle"></span> Bàn trống / chưa hoạt động: <b id="idleTableCount">{{ setup_config.club.table_count }}</b></div>
+            <div class="legend-badge"><span class="legend-dot active"></span> Bàn đang hoạt động: <b id="activeTableCount">0</b></div>
+        </div>
+    </section>
+
+    <section class="panel tables-panel">
+        <div id="tablesGrid" class="tables-grid"></div>
+    </section>
+</div>
+
+<div
+    id="cartModal"
+    class="modal-backdrop"
+    onclick="closeModalOnBackdrop(event, 'cartModal')"
+>
+
+    <div class="modal small">
+
+        <div class="modal-head">
+
+            <h2>
+                <i class="fa-solid fa-cart-shopping"></i>
+                Dịch vụ thêm
+            </h2>
+
+            <button
+                type="button"
+                class="modal-close"
+                onclick="closeModal('cartModal')"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <div class="modal-body">
+
+
+            <div class="modal-section">
+
+                <div class="section-head">
+
+                    <i class="fa-solid fa-plus"></i>
+
+                    Thêm dịch vụ
+
+                </div>
+
+
+                <div class="service-row">
+
+                    <div class="field">
+
+                        <label>
+                            Dịch vụ
+                        </label>
+
+                        <select id="cartServiceSelect">
+
+                            <option value="">
+                                -- Chọn dịch vụ --
+                            </option>
+
+                        </select>
+
+                    </div>
+
+
+                    <div class="field">
+
+                        <label>
+                            Số lượng
+                        </label>
+
+                        <div class="qty-control">
+
+                            <button
+                                type="button"
+                                class="qty-btn"
+                                onclick="changeCartDraftQty(-1)"
+                            >
+                                −
+                            </button>
+
+                            <input
+                                id="cartDraftQty"
+                                class="qty-input"
+                                value="1"
+                                readonly
+                            >
+
+                            <button
+                                type="button"
+                                class="qty-btn"
+                                onclick="changeCartDraftQty(1)"
+                            >
+                                +
+                            </button>
+
+                        </div>
+
+                    </div>
+
+
+                    <button
+                        type="button"
+                        class="add-service-btn"
+                        onclick="addServiceToCart()"
+                    >
+                        +
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <div class="modal-section">
+
+                <div class="section-head">
+
+                    <i class="fa-solid fa-basket-shopping"></i>
+
+                    Dịch vụ đã Order
+
+                </div>
+
+
+                <div id="cartOrderList">
+                </div>
+
+            </div>
+
+
+            <div class="modal-actions">
+
+                <button
+                    type="button"
+                    class="secondary-btn"
+                    onclick="closeModal('cartModal')"
+                >
+                    Thoát
+                </button>
+
+                <button
+                    type="button"
+                    class="primary-btn"
+                    onclick="confirmTableCart()"
+                >
+                    Xác nhận
+                </button>
+
+            </div>
+
+
+        </div>
+
+    </div>
+
+</div>
+
+<div id="endConfirmModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'endConfirmModal')">
+    <div class="modal small">
+        <div class="modal-head">
+            <h2>Xác nhận kết thúc bàn</h2>
+            <button type="button" class="modal-close" onclick="closeModal('endConfirmModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-section">
+                <div class="section-head"><i class="fa-solid fa-circle-info"></i> Thông tin bàn đang hoạt động</div>
+                <div class="section-grid">
+                    <div class="info-box"><span>Bàn số</span><strong id="confirmTableNo">—</strong></div>
+                    <div class="info-box"><span>Thời gian bắt đầu</span><strong id="confirmStartTime">—</strong></div>
+                    <div class="info-box"><span>Thời gian kết thúc</span><strong id="confirmEndTime">—</strong></div>
+                    <div class="info-box"><span>Tổng thời gian chơi</span><strong id="confirmDuration">—</strong></div>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="secondary-btn" onclick="closeModal('endConfirmModal')">Hủy</button>
+                <button type="button" class="danger-btn" onclick="confirmFinishTable()">Kết thúc</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="invoiceModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'invoiceModal')">
+    <div class="modal">
+        <div class="modal-head">
+            <h2>Tạo hóa đơn</h2>
+            <button type="button" class="modal-close" onclick="closeModal('invoiceModal')">×</button>
+        </div>
+        <div class="modal-body">
+            <div class="modal-section">
+                <div class="section-head"><i class="fa-solid fa-user"></i> Khung 1: Chọn thành viên / khách hàng</div>
+                <div class="member-grid">
+                    <div class="field full">
+                        <label>Chọn thành viên</label>
+                        <select id="invoiceMemberSelect" onchange="handleMemberSelect(this.value)">
+                            <option value="">Khách lẻ / chưa chọn thành viên</option>
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Tên khách hàng</label>
+                        <input id="invoiceCustomerName" type="text" placeholder="Nhập họ tên khách hàng">
+                    </div>
+                    <div class="field">
+                        <label>Số điện thoại</label>
+                        <input id="invoiceCustomerPhone" type="text" placeholder="Nhập số điện thoại">
+                    </div>
+                    <div class="field full">
+                        <label>Thông tin thành viên</label>
+                        <div id="invoiceMemberInfo" class="member-info-preview">Chưa chọn thành viên.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="section-head"><i class="fa-solid fa-clock"></i> Khung 2: Thời gian hoạt động bàn</div>
+                <div class="invoice-summary-grid">
+                    <div class="info-box"><span>Bàn số</span><strong id="billTableNo">—</strong></div>
+                    <div class="info-box"><span>Thời gian bắt đầu</span><strong id="billStartTime">—</strong></div>
+                    <div class="info-box"><span>Thời gian kết thúc</span><strong id="billEndTime">—</strong></div>
+                    <div class="info-box"><span>Tổng thời gian chơi</span><strong id="billDuration">—</strong></div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="section-head"><i class="fa-solid fa-mug-hot"></i> Khung 3: Dịch vụ thêm</div>
+                <div id="serviceRows" class="service-rows"></div>
+            </div>
+
+            <div class="modal-section">
+                <div class="section-head"><i class="fa-solid fa-tags"></i> Khung 4: Giảm giá</div>
+
+                <div id="memberBenefitBox" class="member-benefit-box is-disabled">
+                    <div class="field full">
+                        <label>Voucher / Quà tặng giảm tiền của thành viên</label>
+
+                        <select
+                            id="memberBenefitSelect"
+                            disabled
+                            onchange="handleMemberBenefitChange()"
+                        >
+                            <option value="">
+                                Hãy chọn Thành viên hoặc Đăng ký thành viên
+                            </option>
+                        </select>
+
+                        <div id="memberBenefitNote" class="member-benefit-note">
+                            Chỉ áp dụng Voucher hoặc Quà tặng có giá trị tiền.
+                            Quà vật phẩm như gấu bông, nước... không được quy đổi vào hóa đơn.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="discount-row">
+                    <div class="field">
+                        <label>Giá trị giảm thủ công</label>
+                        <input
+                            id="discountValue"
+                            type="text"
+                            inputmode="numeric"
+                            value="0"
+                            placeholder="Nhập số giảm"
+                            oninput="formatDiscountInput(this)"
+                        >
+                    </div>
+
+                    <div class="field">
+                        <label>Loại giảm thủ công</label>
+                        <select
+                            id="discountType"
+                            onchange="handleDiscountTypeChange()"
+                        >
+                            <option value="amount">Giảm tiền</option>
+                            <option value="percent">Giảm %</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-section">
+                <div class="section-head"><i class="fa-solid fa-receipt"></i> Khung 5: Thanh toán</div>
+                <div class="payment-summary">
+                    <div class="table-fee-box">
+                        <div class="table-fee-head">
+                            <span id="playChargeLabel">Bàn số —</span>
+                            <span>Tổng thời lượng</span>
+                            <span style="text-align:right">Tổng tiền</span>
+                        </div>
+
+                        <div id="playChargeBreakdown"></div>
+
+                        <div class="table-fee-total">
+                            <span>Tổng tiền bàn</span>
+                            <strong id="playChargeAmount">0 đ</strong>
+                        </div>
+                    </div>
+
+                    <div class="pay-line"><span>Dịch vụ thêm</span><strong id="serviceChargeAmount">0 đ</strong></div>
+                    <div class="pay-line"><span>Giảm giá</span><strong id="discountAmount">0 đ</strong></div>
+                    <div class="pay-line total"><span>Tổng cộng</span><strong id="grandTotalAmount">0 đ</strong></div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="secondary-btn" onclick="closeModal('invoiceModal')">Đóng</button>
+                <button type="button" id="saveInvoiceBtn" class="primary-btn" onclick="saveInvoice()">Lưu hóa đơn</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="receiptModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'receiptModal')">
+    <div class="modal receipt-modal">
+        <div id="receiptPrintArea" class="receipt-sheet">
+            <div class="receipt-brand">
+                <div class="receipt-club-small">{{ setup_config.club.title }}</div>
+                <div class="receipt-club-name">{{ setup_config.club.name }}</div>
+                <div class="receipt-title">HÓA ĐƠN DỊCH VỤ</div>
+                <div id="receiptInvoiceCode" class="receipt-code">—</div>
+                <div id="receiptCreatedAt" class="receipt-date">Ngày lập: —</div>
+            </div>
+
+            <div class="receipt-section">
+                <div class="receipt-section-title">Thuê bàn</div>
+                <div class="receipt-row receipt-header-row">
+                    <span>Nội dung</span><span>Thời lượng</span><span>Thành tiền</span>
+                </div>
+                <div id="receiptTableRows"></div>
+
+                <div class="receipt-row">
+                    <span><strong id="receiptTable">Bàn số —</strong></span>
+                    <span><strong id="receiptDuration">—</strong></span>
+                    <strong id="receiptTableAmount">0 đ</strong>
+                </div>
+            </div>
+
+            <div class="receipt-section">
+                <div class="receipt-section-title">Dịch vụ thêm</div>
+                <div class="receipt-row receipt-header-row">
+                    <span>Dịch vụ</span><span>Số lượng</span><span>Thành tiền</span>
+                </div>
+                <div id="receiptServiceRows"></div>
+            </div>
+
+            <div class="receipt-total-box">
+
+                <div class="receipt-subtotal-row">
+                    <span>Tổng cộng</span>
+                    <strong id="receiptSubtotal">0 đ</strong>
+                </div>
+
+                <div class="receipt-discount-row">
+                    <span id="receiptDiscountLabel">Giảm giá</span>
+                    <strong id="receiptDiscount">0 đ</strong>
+                </div>
+
+                <div class="receipt-grand-total">
+                    <span>Thành tiền</span>
+                    <strong id="receiptGrandTotal">0 đ</strong>
+                </div>
+
+            </div>
+
+            <div class="receipt-customer" id="receiptCustomerInfo"></div>
+            <div class="receipt-thanks">Cảm ơn Quý khách và hẹn gặp lại!</div>
+
+            <div class="receipt-actions">
+                <button type="button" class="secondary-btn" onclick="closeModal('receiptModal')">Thoát</button>
+                <button type="button" class="primary-btn" onclick="printReceipt()"><i class="fa-solid fa-print"></i> In hóa đơn</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block page_script %}
+<script>
+const TABLE_COUNT = Number(
+    {{ setup_config.club.table_count|default(12)|tojson }}
+);
+
+const BILLING_RATES =
+    {{ setup_config.pricing|default([])|tojson }};
+
+const SERVICES =
+    {{ setup_config.services|default([])|tojson }}
+    .map(item => ({
+        id: item.code,
+        name: item.name,
+        price: Number(item.price || 0)
+    }));
+
+function parseClockToMinutes(value) {
+    const text = String(value || '').trim();
+
+    if (text === '24:00') {
+        return 24 * 60;
+    }
+
+    const parts = text.split(':');
+
+    if (parts.length !== 2) {
+        return 0;
+    }
+
+    return (
+        Number(parts[0] || 0) * 60
+        + Number(parts[1] || 0)
+    );
+}
+
+function roundTableMoney1000(value) {
+    const amount = Math.max(
+        0,
+        Number(value || 0)
+    );
+
+    let thousands =
+        Math.floor(
+            amount / 1000
+        );
+
+    const remainder =
+        amount
+        - thousands * 1000;
+
+    if (remainder > 500) {
+        thousands += 1;
+    }
+
+    return thousands * 1000;
+}
+
+
+function formatBillingMinutes(minutes) {
+    const total = Math.max(
+        0,
+        Number(minutes || 0)
+    );
+
+    const hours =
+        Math.floor(
+            total / 60
+        );
+
+    const remain =
+        total % 60;
+
+    if (hours && remain) {
+        return `${hours} giờ ${remain} phút`;
+    }
+
+    if (hours) {
+        return `${hours} giờ`;
+    }
+
+    return `${remain} phút`;
+}
+
+
+function calculatePlayChargeDetail(
+    startDate,
+    endDate
+) {
+    if (
+        !startDate
+        || !endDate
+        || endDate <= startDate
+    ) {
+        return {
+            total: 0,
+            totalMinutes: 0,
+            details: []
+        };
+    }
+
+    const segments = [];
+
+    const cursor = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        0, 0, 0, 0
+    );
+
+    const lastDay = new Date(
+        endDate.getFullYear(),
+        endDate.getMonth(),
+        endDate.getDate(),
+        0, 0, 0, 0
+    );
+
+    while (cursor <= lastDay) {
+
+        BILLING_RATES.forEach(rate => {
+
+            const startMin =
+                parseClockToMinutes(
+                    rate.start
+                );
+
+            const endMin =
+                parseClockToMinutes(
+                    rate.end
+                );
+
+            if (endMin <= startMin) {
+                return;
+            }
+
+            const bandStart =
+                new Date(
+                    cursor.getTime()
+                    + startMin * 60000
+                );
+
+            const bandEnd =
+                new Date(
+                    cursor.getTime()
+                    + endMin * 60000
+                );
+
+            const overlapStart =
+                new Date(
+                    Math.max(
+                        startDate.getTime(),
+                        bandStart.getTime()
+                    )
+                );
+
+            const overlapEnd =
+                new Date(
+                    Math.min(
+                        endDate.getTime(),
+                        bandEnd.getTime()
+                    )
+                );
+
+            if (
+                overlapEnd
+                <= overlapStart
+            ) {
+                return;
+            }
+
+            const exactMinutes =
+                (
+                    overlapEnd.getTime()
+                    - overlapStart.getTime()
+                )
+                / 60000;
+
+            segments.push({
+                ten_khung:
+                    rate.label
+                    || `${rate.start} → ${rate.end}`,
+
+                khung_gio:
+                    `${rate.start} → ${rate.end}`,
+
+                tu_gio:
+                    rate.start,
+
+                den_gio:
+                    rate.end,
+
+                don_gia_gio:
+                    Number(
+                        rate.price_per_hour
+                        || 0
+                    ),
+
+                exactMinutes:
+                    exactMinutes,
+
+                so_phut:
+                    Math.floor(
+                        exactMinutes
+                    )
+            });
+        });
+
+        cursor.setDate(
+            cursor.getDate() + 1
+        );
+    }
+
+    const totalMinutes = Math.max(
+        1,
+        Math.ceil(
+            (
+                endDate.getTime()
+                - startDate.getTime()
+            )
+            / 60000
+        )
+    );
+
+    let floorSum = segments.reduce(
+        (sum, segment) =>
+            sum
+            + Number(
+                segment.so_phut
+                || 0
+            ),
+        0
+    );
+
+    let minutesToAdd =
+        Math.max(
+            0,
+            totalMinutes - floorSum
+        );
+
+    const order =
+        segments
+        .map(
+            (segment, index) => ({
+                index,
+                remainder:
+                    segment.exactMinutes
+                    - Math.floor(
+                        segment.exactMinutes
+                    )
+            })
+        )
+        .sort(
+            (a, b) =>
+                b.remainder
+                - a.remainder
+        );
+
+    order
+    .slice(
+        0,
+        minutesToAdd
+    )
+    .forEach(item => {
+        segments[
+            item.index
+        ].so_phut += 1;
+    });
+
+    const details =
+        segments
+        .filter(
+            segment =>
+                Number(
+                    segment.so_phut
+                    || 0
+                ) > 0
+        )
+        .map(segment => {
+
+            const rawAmount =
+                segment.don_gia_gio
+                * segment.so_phut
+                / 60;
+
+            const amount =
+                roundTableMoney1000(
+                    rawAmount
+                );
+
+            return {
+                ten_khung:
+                    segment.ten_khung,
+
+                khung_gio:
+                    segment.khung_gio,
+
+                tu_gio:
+                    segment.tu_gio,
+
+                den_gio:
+                    segment.den_gio,
+
+                so_phut:
+                    segment.so_phut,
+
+                thoi_luong_hien_thi:
+                    formatBillingMinutes(
+                        segment.so_phut
+                    ),
+
+                don_gia_gio:
+                    segment.don_gia_gio,
+
+                thanh_tien:
+                    amount
+            };
+        });
+
+    return {
+        total:
+            details.reduce(
+                (sum, item) =>
+                    sum
+                    + Number(
+                        item.thanh_tien
+                        || 0
+                    ),
+                0
+            ),
+
+        totalMinutes:
+            totalMinutes,
+
+        details:
+            details
+    };
+}
+
+
+function calculatePlayCharge(
+    startDate,
+    endDate
+) {
+    return (
+        calculatePlayChargeDetail(
+            startDate,
+            endDate
+        ).total
+    );
+}
+
+
+const membersData = {{ members|default([])|tojson }};
+
+let memberBenefitOptions = [];
+let selectedMemberBenefit = null;
+
+const initialBanStates =
+    {{ ban_states|default([])|tojson }};
+
+
+function parseStoredServices(raw) {
+
+    const text = String(raw || '').trim();
+
+    if (!text || text === '[]') {
+        return [];
+    }
+
+    const content = text
+        .replace(/^\[/, '')
+        .replace(/\]$/, '')
+        .trim();
+
+    if (!content) {
+        return [];
+    }
+
+    return content
+        .split(',')
+        .map(part => {
+
+            const item = part.trim();
+
+            const match = item.match(
+                /^(.*?)\s+x(\d+)$/i
+            );
+
+            if (!match) {
+                return null;
+            }
+
+            const serviceName =
+                match[1].trim();
+
+            const quantity =
+                Number(match[2] || 1);
+
+            const service =
+                SERVICES.find(
+                    s => s.name === serviceName
+                );
+
+            return {
+                serviceId:
+                    service
+                        ? service.id
+                        : '',
+
+                name: serviceName,
+
+                quantity:
+                    Math.max(1, quantity)
+            };
+        })
+        .filter(Boolean);
+}
+
+
+const tablesState =
+    Array.from(
+        { length: TABLE_COUNT },
+        (_, index) => {
+
+            const tableNo =
+                index + 1;
+
+            const saved =
+                initialBanStates.find(
+                    row =>
+                        Number(row.ban_so)
+                        === tableNo
+                ) || {};
+
+            const active =
+                saved.dang_hoat_dong
+                === true;
+
+            const startedAt =
+                active
+                && saved.thoi_gian_bat_dau
+                    ? new Date(
+                        saved.thoi_gian_bat_dau
+                    )
+                    : null;
+
+            return {
+                tableNo: tableNo,
+
+                active: active,
+
+                startedAt:
+                    startedAt,
+
+                intervalRef: null,
+
+                endedAt: null,
+
+                finalDurationMinutes: 0,
+
+                cart:
+                    parseStoredServices(
+                        saved.dich_vu_them
+                    )
+            };
+        }
+    );
+
+let currentConfirmTable = null;
+let currentInvoiceTable = null;
+let currentCartTable = null;
+
+let cartDraft = [];
+
+let cartDraftQty = 1;
+
+function openTableCart(tableNo) {
+
+    const table =
+        getTable(tableNo);
+
+    if (!table || !table.active) {
+
+        alert(
+            'Bàn chưa hoạt động.'
+        );
+
+        return;
+    }
+
+
+    currentCartTable =
+        tableNo;
+
+
+    cartDraft =
+        (table.cart || [])
+        .map(item => ({
+            serviceId:
+                item.serviceId || '',
+
+            name:
+                item.name || '',
+
+            quantity:
+                Number(
+                    item.quantity || 1
+                )
+        }));
+
+
+    cartDraftQty = 1;
+
+
+    populateCartServices();
+
+    renderCartOrderList();
+
+
+    document.getElementById(
+        'cartDraftQty'
+    ).value = 1;
+
+
+    openModal(
+        'cartModal'
+    );
+}
+
+function populateCartServices() {
+
+    const select =
+        document.getElementById(
+            'cartServiceSelect'
+        );
+
+    if (!select) {
+        return;
+    }
+
+
+    select.innerHTML =
+        `
+        <option value="">
+            -- Chọn dịch vụ --
+        </option>
+        `
+        +
+        SERVICES.map(service => `
+
+            <option value="${service.id}">
+
+                ${service.name}
+                -
+                ${formatMoney(service.price)}
+
+            </option>
+
+        `).join('');
+}
+
+function changeCartDraftQty(delta) {
+
+    cartDraftQty =
+        Math.max(
+            1,
+            cartDraftQty + delta
+        );
+
+    const qtyInput =
+        document.getElementById(
+            'cartDraftQty'
+        );
+
+    if (qtyInput) {
+        qtyInput.value =
+            cartDraftQty;
+    }
+}
+
+function addServiceToCart() {
+
+    const serviceId =
+        document.getElementById(
+            'cartServiceSelect'
+        ).value;
+
+
+    if (!serviceId) {
+
+        alert(
+            'Ken chưa chọn dịch vụ.'
+        );
+
+        return;
+    }
+
+
+    const service =
+        SERVICES.find(
+            item =>
+                item.id === serviceId
+        );
+
+
+    if (!service) {
+        return;
+    }
+
+
+    const existing =
+        cartDraft.find(
+            item =>
+                item.serviceId
+                === serviceId
+        );
+
+
+    if (existing) {
+
+        existing.quantity +=
+            cartDraftQty;
+
+    }
+
+    else {
+
+        cartDraft.push({
+
+            serviceId:
+                service.id,
+
+            name:
+                service.name,
+
+            quantity:
+                cartDraftQty
+        });
+    }
+
+
+    cartDraftQty = 1;
+
+    document.getElementById(
+        'cartDraftQty'
+    ).value = 1;
+
+
+    document.getElementById(
+        'cartServiceSelect'
+    ).value = '';
+
+
+    renderCartOrderList();
+}
+
+function renderCartOrderList() {
+
+    const box =
+        document.getElementById(
+            'cartOrderList'
+        );
+
+
+    if (!cartDraft.length) {
+
+        box.innerHTML = `
+            <div
+                style="
+                    text-align:center;
+                    padding:20px;
+                    color:#64748b;
+                    font-weight:800;
+                "
+            >
+                Chưa có dịch vụ nào.
+            </div>
+        `;
+
+        return;
+    }
+
+
+    box.innerHTML =
+        cartDraft.map(
+            (item, index) => `
+
+                <div class="cart-order-row">
+
+                    <div class="cart-order-name">
+                        ${escapeHtml(item.name)}
+                    </div>
+
+                    <div class="cart-order-qty">
+                        x${item.quantity}
+                    </div>
+
+                    <button
+                        type="button"
+                        class="cart-order-remove"
+                        onclick="removeCartItem(${index})"
+                    >
+                        ×
+                    </button>
+
+                </div>
+
+            `
+        ).join('');
+}
+
+function removeCartItem(index) {
+
+    cartDraft.splice(
+        index,
+        1
+    );
+
+    renderCartOrderList();
+}
+
+async function confirmTableCart() {
+
+    if (!currentCartTable) {
+        return;
+    }
+
+
+    const table =
+        getTable(
+            currentCartTable
+        );
+
+
+    if (!table || !table.active) {
+
+        alert(
+            'Bàn không còn hoạt động.'
+        );
+
+        return;
+    }
+
+
+    const payload = {
+
+        dich_vu:
+            cartDraft.map(
+                item => ({
+                    ten:
+                        item.name,
+
+                    so_luong:
+                        item.quantity
+                })
+            )
+    };
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/ban/${currentCartTable}/gio-hang`,
+                {
+                    method:
+                        'POST',
+
+                    headers: {
+                        'Content-Type':
+                            'application/json'
+                    },
+
+                    body:
+                        JSON.stringify(
+                            payload
+                        )
+                }
+            );
+
+
+        const data =
+            await response.json();
+
+
+        if (
+            !response.ok
+            || !data.ok
+        ) {
+
+            throw new Error(
+                data.message
+                || 'Không lưu được giỏ hàng.'
+            );
+        }
+
+
+        table.cart =
+            cartDraft.map(
+                item => ({
+                    ...item
+                })
+            );
+
+
+        closeModal(
+            'cartModal'
+        );
+
+
+        renderTables();
+
+
+    }
+
+    catch (error) {
+
+        console.error(
+            error
+        );
+
+        alert(
+            error.message
+            || 'Không lưu được giỏ hàng.'
+        );
+    }
+}
+
+
+function updateStatusCounts() {
+    const activeCount = tablesState.filter(table => table.active).length;
+    const idleCount = tablesState.length - activeCount;
+
+    const activeEl = document.getElementById('activeTableCount');
+    const idleEl = document.getElementById('idleTableCount');
+
+    if (activeEl) activeEl.textContent = activeCount;
+    if (idleEl) idleEl.textContent = idleCount;
+}
+
+function renderTables() {
+    const grid = document.getElementById('tablesGrid');
+    grid.innerHTML = tablesState.map(table => {
+        const stateClass = table.active ? 'is-active' : '';
+        const clothClass = table.active ? 'active' : 'idle';
+        const statusClass = table.active ? 'active' : '';
+        const statusText = table.active ? 'Đang hoạt động' : 'Đang trống';
+        const timerText = table.active ? formatDurationShort(Date.now() - table.startedAt.getTime()) : '00:00:00';
+        const timerSub = table.active ? `Bắt đầu: ${formatDateTime(table.startedAt)}` : 'Chưa bắt đầu';
+
+        return `
+            <div class="table-card ${stateClass}" id="tableCard_${table.tableNo}">
+                <div class="table-top">
+                    <div class="table-name">Bàn ${table.tableNo}</div>
+                    <div class="table-status ${statusClass}" id="status_${table.tableNo}">${statusText}</div>
+                </div>
+
+                <div class="pool-table ${clothClass}" id="pool_${table.tableNo}">
+                    <div class="table-cloth">
+                        <span class="pocket tl"></span>
+                        <span class="pocket tc"></span>
+                        <span class="pocket tr"></span>
+                        <span class="pocket bl"></span>
+                        <span class="pocket bc"></span>
+                        <span class="pocket br"></span>
+                        <div class="table-number-circle">${table.tableNo}</div>
+                    </div>
+                </div>
+
+                <div class="table-meta">
+                    <div class="table-timer">
+                        <strong id="timer_${table.tableNo}">${timerText}</strong>
+                        <small id="timerSub_${table.tableNo}">${timerSub}</small>
+                    </div>
+                    <div class="table-actions">
+
+                        ${
+                            table.active
+
+                            ? `
+                            <button
+                                class="table-btn end-btn"
+                                onclick="requestEndTable(${table.tableNo})"
+                            >
+                                Kết thúc
+                            </button>
+                            `
+
+                            : `
+                            <button
+                                class="table-btn start-btn"
+                                onclick="startTable(${table.tableNo})"
+                            >
+                                Bắt đầu
+                            </button>
+                            `
+                        }
+
+
+                        <button
+                            class="cart-btn ${table.active ? 'enabled' : 'disabled'}"
+                            ${table.active ? '' : 'disabled'}
+                            onclick="openTableCart(${table.tableNo})"
+                            title="Dịch vụ thêm"
+                        >
+                            <i class="fa-solid fa-cart-shopping"></i>
+
+                            ${
+                                table.cart &&
+                                table.cart.length
+
+                                ? `
+                                <span class="cart-count">
+                                    ${table.cart.reduce(
+                                        (sum, item) =>
+                                            sum
+                                            + Number(
+                                                item.quantity || 0
+                                            ),
+                                        0
+                                    )}
+                                </span>
+                                `
+
+                                : ''
+                            }
+
+                        </button>
+
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    updateStatusCounts();
+}
+
+async function startTable(tableNo) {
+
+    const table = getTable(tableNo);
+
+    if (
+        !table
+        || table.active
+    ) {
+        return;
+    }
+
+
+    const button =
+        document.querySelector(
+            `#tableCard_${tableNo} .start-btn`
+        );
+
+
+    if (button) {
+
+        button.disabled = true;
+
+        button.textContent =
+            'Đang bắt đầu...';
+    }
+
+
+    try {
+
+        const response =
+            await fetch(
+                `/api/ban/${tableNo}/bat-dau`,
+                {
+                    method: 'POST',
+
+                    headers: {
+                        'Accept':
+                            'application/json'
+                    }
+                }
+            );
+
+
+        /*
+         * Không gọi response.json() ngay.
+         * Nếu Flask trả HTML 404/500 thì mình
+         * vẫn đọc được nội dung mà không crash JS.
+         */
+        const raw =
+            await response.text();
+
+
+        let data = null;
+
+
+        try {
+
+            data =
+                JSON.parse(
+                    raw
+                );
+
+        } catch (parseError) {
+
+            console.error(
+                'START TABLE RAW RESPONSE:',
+                raw
+            );
+
+
+            throw new Error(
+                `Server trả về dữ liệu không phải JSON `
+                + `(HTTP ${response.status}). `
+                + `Kiểm tra Terminal Flask.`
+            );
+        }
+
+
+        if (
+            !response.ok
+            || !data.ok
+        ) {
+
+            throw new Error(
+                data.message
+                || 'Không bắt đầu được bàn.'
+            );
+        }
+
+
+        table.active = true;
+
+        table.startedAt =
+            new Date(
+                data.thoi_gian_bat_dau
+            );
+
+        table.endedAt = null;
+
+        table.finalDurationMinutes = 0;
+
+        table.cart = [];
+
+
+        /*
+         * Không tạo setInterval riêng cho bàn.
+         * Timer chung của trang sẽ xử lý.
+         */
+        renderTables();
+
+        updateTableTimer(
+            tableNo
+        );
+
+        updateStatusCounts();
+
+    }
+
+    catch (error) {
+
+        console.error(
+            '[START TABLE ERROR]',
+            error
+        );
+
+
+        alert(
+            error.message
+            || 'Không bắt đầu được bàn.'
+        );
+    }
+
+    finally {
+
+        /*
+         * Sau renderTables(), button cũ có thể
+         * đã bị thay khỏi DOM nên phải tìm lại.
+         */
+        const currentButton =
+            document.querySelector(
+                `#tableCard_${tableNo} .start-btn`
+            );
+
+
+        if (
+            currentButton
+            && !table.active
+        ) {
+
+            currentButton.disabled = false;
+
+            currentButton.textContent =
+                'Bắt đầu';
+        }
+    }
+}
+
+function updateTableTimer(tableNo) {
+
+    const table =
+        getTable(
+            tableNo
+        );
+
+    if (
+        !table
+        || !table.active
+        || !table.startedAt
+    ) {
+        return;
+    }
+
+
+    const timerEl =
+        document.getElementById(
+            `timer_${tableNo}`
+        );
+
+    const timerSubEl =
+        document.getElementById(
+            `timerSub_${tableNo}`
+        );
+
+
+    if (timerEl) {
+
+        timerEl.textContent =
+            formatDurationShort(
+                Date.now()
+                - table.startedAt.getTime()
+            );
+    }
+
+
+    if (timerSubEl) {
+
+        timerSubEl.textContent =
+            `Bắt đầu: ${formatDateTime(table.startedAt)}`;
+    }
+}
+
+function requestEndTable(tableNo) {
+    const table = getTable(tableNo);
+    if (!table || !table.active || !table.startedAt) return;
+
+    currentConfirmTable = tableNo;
+    const now = new Date();
+    const durationMinutes = diffMinutes(table.startedAt, now);
+
+    document.getElementById('confirmTableNo').textContent = `Bàn ${tableNo}`;
+    document.getElementById('confirmStartTime').textContent = formatDateTime(table.startedAt);
+    document.getElementById('confirmEndTime').textContent = formatDateTime(now);
+    document.getElementById('confirmDuration').textContent = formatMinutesHuman(durationMinutes);
+
+    openModal('endConfirmModal');
+}
+
+function confirmFinishTable() {
+    if (!currentConfirmTable) return;
+
+    const table = getTable(currentConfirmTable);
+    if (!table || !table.active || !table.startedAt) {
+        closeModal('endConfirmModal');
+        return;
+    }
+
+    table.endedAt = new Date();
+    table.finalDurationMinutes = diffMinutes(table.startedAt, table.endedAt);
+
+    if (table.intervalRef) {
+        clearInterval(table.intervalRef);
+        table.intervalRef = null;
+    }
+
+    closeModal('endConfirmModal');
+    openInvoiceModal(table.tableNo);
+}
+
+function openInvoiceModal(tableNo) {
+    const table = getTable(tableNo);
+    if (!table) return;
+    currentInvoiceTable = tableNo;
+
+    document.getElementById('billTableNo').textContent = `Bàn ${tableNo}`;
+    document.getElementById('billStartTime').textContent = table.startedAt ? formatDateTime(table.startedAt) : '—';
+    document.getElementById('billEndTime').textContent = table.endedAt ? formatDateTime(table.endedAt) : '—';
+    document.getElementById('billDuration').textContent = formatMinutesHuman(table.finalDurationMinutes);
+    document.getElementById('playChargeLabel').textContent = `Bàn số ${tableNo}`;
+
+    document.getElementById('invoiceCustomerName').value = '';
+    document.getElementById('invoiceCustomerPhone').value = '';
+    document.getElementById('invoiceMemberSelect').value = '';
+    document.getElementById('invoiceMemberInfo').innerHTML = 'Chưa chọn thành viên.';
+    document.getElementById('discountValue').value = 0;
+    document.getElementById('discountType').value = 'amount';
+
+    resetMemberBenefitSelector(
+        'Hãy chọn Thành viên hoặc Đăng ký thành viên'
+    );
+
+    serviceState =
+        (table.cart || [])
+        .map(item => ({
+
+            serviceId:
+                item.serviceId
+                || (
+                    SERVICES.find(
+                        s =>
+                            s.name
+                            === item.name
+                    ) || {}
+                ).id
+                || '',
+
+            quantity:
+                Number(
+                    item.quantity || 1
+                )
+        }));
+
+
+    if (!serviceState.length) {
+
+        serviceState = [
+            {
+                serviceId: '',
+                quantity: 1
+            }
+        ];
+    }
+    renderServiceRows(serviceState);
+    updateInvoiceSummary();
+    openModal('invoiceModal');
+}
+
+function populateMemberOptions() {
+    const select = document.getElementById('invoiceMemberSelect');
+    if (!select) return;
+
+    const currentValue = select.value;
+    select.innerHTML = '<option value="">Khách lẻ / chưa chọn thành viên</option>' + membersData.map(member => {
+        return `<option value="${member.id}">${member.ma_thanh_vien} - ${member.ho_va_ten}</option>`;
+    }).join('');
+    select.value = currentValue;
+}
+
+
+function resetMemberBenefitSelector(message) {
+    const select = document.getElementById('memberBenefitSelect');
+    const note = document.getElementById('memberBenefitNote');
+    const box = document.getElementById('memberBenefitBox');
+
+    memberBenefitOptions = [];
+    selectedMemberBenefit = null;
+
+    if (select) {
+        select.disabled = true;
+        select.innerHTML = `
+            <option value="">
+                ${escapeHtml(message || 'Hãy chọn Thành viên hoặc Đăng ký thành viên')}
+            </option>
+        `;
+    }
+
+    if (box) box.classList.add('is-disabled');
+
+    if (note) {
+        note.className = 'member-benefit-note';
+        note.textContent =
+            'Chỉ áp dụng Voucher hoặc Quà tặng có giá trị tiền. '
+            + 'Quà vật phẩm như gấu bông, nước... không được quy đổi vào hóa đơn.';
+    }
+
+    setManualDiscountEnabled(true, true);
+}
+
+
+function setManualDiscountEnabled(enabled, resetValue=false) {
+    const valueInput = document.getElementById('discountValue');
+    const typeSelect = document.getElementById('discountType');
+
+    if (valueInput) valueInput.disabled = !enabled;
+    if (typeSelect) typeSelect.disabled = !enabled;
+
+    if (resetValue && enabled) {
+        if (valueInput) valueInput.value = '0';
+        if (typeSelect) typeSelect.value = 'amount';
+    }
+
+    updateInvoiceSummary();
+}
+
+
+function getVoucherConditionContext(){
+    const table=currentInvoiceTable ? getTable(currentInvoiceTable) : null;
+
+    let playMinutes=0;
+    let playCharge=0;
+
+    if(table && table.startedAt && table.endedAt){
+        const result=calculatePlayChargeDetail(
+            table.startedAt,
+            table.endedAt
+        );
+
+        playMinutes=Number(result.totalMinutes || table.finalDurationMinutes || 0);
+        playCharge=Number(result.total || 0);
+    }
+
+    let serviceCharge=0;
+
+    serviceState.forEach(item=>{
+        const service=SERVICES.find(s=>s.id===item.serviceId);
+        if(service){
+            serviceCharge += Number(service.price || 0) * Number(item.quantity || 0);
+        }
+    });
+
+    return {
+        tong_tien: playCharge + serviceCharge,
+        thoi_luong_phut: playMinutes,
+        tien_dich_vu: serviceCharge
+    };
+}
+
+
+function formatConditionRequirement(condition){
+    const type=String(condition?.loai || '').toUpperCase();
+    const required=Number(condition?.gia_tri || 0);
+
+    if(type==='TONG_TIEN'){
+        return `Tổng tiền phải đạt ít nhất ${formatMoney(required)}`;
+    }
+
+    if(type==='THOI_LUONG'){
+        return `Thời lượng chơi phải đạt ít nhất ${formatMinutesHuman(required)}`;
+    }
+
+    if(type==='DICH_VU'){
+        return `Dịch vụ thêm phải đạt ít nhất ${formatMoney(required)}`;
+    }
+
+    return '';
+}
+
+
+function evaluateMemberBenefitConditions(item){
+    const conditions=Array.isArray(item?.dieu_kien)
+        ? item.dieu_kien
+        : [];
+
+    if(!conditions.length){
+        return {
+            ok:true,
+            unmet:[],
+            lines:[]
+        };
+    }
+
+    const context=getVoucherConditionContext();
+    const unmet=[];
+
+    conditions.forEach(condition=>{
+        const type=String(condition?.loai || '').toUpperCase();
+        const required=Number(condition?.gia_tri || 0);
+        let passed=true;
+
+        if(type==='TONG_TIEN'){
+            passed=context.tong_tien >= required;
+        }else if(type==='THOI_LUONG'){
+            passed=context.thoi_luong_phut >= required;
+        }else if(type==='DICH_VU'){
+            passed=context.tien_dich_vu >= required;
+        }
+
+        if(!passed){
+            const line=formatConditionRequirement(condition);
+            if(line) unmet.push(line);
+        }
+    });
+
+    return {
+        ok:unmet.length===0,
+        unmet:unmet,
+        lines:Array.isArray(item?.dieu_kien_dong)
+            ? item.dieu_kien_dong
+            : []
+    };
+}
+
+
+function renderMemberBenefitOptions(){
+    const select=document.getElementById('memberBenefitSelect');
+    if(!select || !memberBenefitOptions.length) return;
+
+    const currentCode=selectedMemberBenefit
+        ? String(selectedMemberBenefit.ma || '')
+        : '';
+
+    let stillSelectedIndex='';
+
+    const html=memberBenefitOptions.map((item,index)=>{
+        const prefix=item.loai==='VOUCHER' ? 'Voucher' : 'Quà tặng';
+        const check=evaluateMemberBenefitConditions(item);
+        const code=String(item.ma || '');
+        const selected=(currentCode && currentCode===code && check.ok);
+
+        if(selected){
+            stillSelectedIndex=String(index);
+        }
+
+        const conditionTag=check.ok
+            ? ''
+            : ' | Chưa đủ điều kiện';
+
+        return `
+            <option
+                value="${index}"
+                ${check.ok ? '' : 'disabled'}
+                ${selected ? 'selected' : ''}
+            >
+                ${prefix} | ${escapeHtml(code)}
+                | ${escapeHtml(item.gia_tri_hien_thi || '')}
+                ${conditionTag}
+            </option>
+        `;
+    }).join('');
+
+    select.innerHTML=
+        `<option value="">-- Không sử dụng Voucher/Quà tặng --</option>`
+        + html;
+
+    if(stillSelectedIndex!==''){
+        select.value=stillSelectedIndex;
+    }else if(currentCode){
+        selectedMemberBenefit=null;
+        select.value='';
+
+        const note=document.getElementById('memberBenefitNote');
+        if(note){
+            note.className='member-benefit-note warn';
+            note.textContent=
+                'Voucher vừa chọn chưa còn đủ điều kiện theo hóa đơn hiện tại. '
+                + 'Hệ thống đã bỏ chọn Voucher để tránh áp dụng sai.';
+        }
+    }
+}
+
+
+async function loadMemberBenefits(memberCode) {
+    const select = document.getElementById('memberBenefitSelect');
+    const note = document.getElementById('memberBenefitNote');
+    const box = document.getElementById('memberBenefitBox');
+
+    selectedMemberBenefit = null;
+    memberBenefitOptions = [];
+
+    if (!select) return;
+
+    if (!memberCode) {
+        resetMemberBenefitSelector(
+            'Hãy chọn Thành viên hoặc Đăng ký thành viên'
+        );
+        return;
+    }
+
+    select.disabled = true;
+    select.innerHTML = `
+        <option value="">
+            Đang tải Voucher / Quà giảm tiền...
+        </option>
+    `;
+
+    if (box) box.classList.add('is-disabled');
+
+    try {
+        const response = await fetch(
+            `/api/thanh-vien/${encodeURIComponent(memberCode)}/uu-dai-tien`
+        );
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.message || 'Không tải được Voucher/Quà giảm tiền.'
+            );
+        }
+
+        memberBenefitOptions =
+            Array.isArray(data.items) ? data.items : [];
+
+        if (!memberBenefitOptions.length) {
+            select.disabled = true;
+            select.innerHTML = `
+                <option value="">
+                    Hiện tại bạn chưa có Voucher/Quà giảm tiền
+                </option>
+            `;
+
+            if (box) box.classList.add('is-disabled');
+
+            if (note) {
+                note.className = 'member-benefit-note warn';
+                note.textContent =
+                    'Thành viên hiện không có Voucher hoặc Quà tặng bằng tiền có thể sử dụng.';
+            }
+
+            setManualDiscountEnabled(true, true);
+            return;
+        }
+
+        select.disabled = false;
+        renderMemberBenefitOptions();
+
+        if (box) box.classList.remove('is-disabled');
+
+        if (note) {
+            const eligibleCount = memberBenefitOptions.filter(
+                item => evaluateMemberBenefitConditions(item).ok
+            ).length;
+
+            note.className = eligibleCount
+                ? 'member-benefit-note good'
+                : 'member-benefit-note warn';
+
+            note.textContent = eligibleCount
+                ? `Có ${eligibleCount}/${memberBenefitOptions.length} Voucher/Quà giảm tiền đang đủ điều kiện sử dụng.`
+                : 'Có Voucher/Quà giảm tiền nhưng hóa đơn hiện tại chưa đạt điều kiện sử dụng.';
+        }
+
+        setManualDiscountEnabled(true, true);
+
+    } catch (error) {
+        console.error(error);
+
+        select.disabled = true;
+        select.innerHTML = `
+            <option value="">
+                Không tải được Voucher/Quà giảm tiền
+            </option>
+        `;
+
+        if (note) {
+            note.className = 'member-benefit-note warn';
+            note.textContent =
+                error.message || 'Không tải được Voucher/Quà giảm tiền.';
+        }
+
+        setManualDiscountEnabled(true, true);
+    }
+}
+
+
+function handleMemberBenefitChange() {
+    const select = document.getElementById('memberBenefitSelect');
+    const note = document.getElementById('memberBenefitNote');
+
+    if (!select || select.value === '') {
+        selectedMemberBenefit = null;
+        setManualDiscountEnabled(true, true);
+
+        if (note) {
+            note.className = 'member-benefit-note';
+            note.textContent =
+                'Không sử dụng Voucher/Quà tặng. Có thể nhập giảm giá thủ công bên dưới.';
+        }
+        return;
+    }
+
+    const index = Number(select.value);
+    const item = memberBenefitOptions[index] || null;
+
+    if (!item) {
+        selectedMemberBenefit = null;
+        setManualDiscountEnabled(true, true);
+        return;
+    }
+
+    const conditionCheck =
+        evaluateMemberBenefitConditions(item);
+
+    if (!conditionCheck.ok) {
+        selectedMemberBenefit = null;
+        select.value = '';
+
+        if (note) {
+            note.className = 'member-benefit-note warn';
+            note.innerHTML =
+                '<strong>Chưa đủ điều kiện Voucher:</strong><br>'
+                + conditionCheck.unmet
+                    .map(line => '• ' + escapeHtml(line))
+                    .join('<br>');
+        }
+
+        updateInvoiceSummary();
+        return;
+    }
+
+    selectedMemberBenefit = item;
+
+    // Voucher/Quà là một lớp ưu đãi riêng.
+    // Giảm giá thủ công vẫn luôn mở để CLB có thể giảm thêm.
+    setManualDiscountEnabled(true, false);
+
+    if (note) {
+        const conditionText =
+            Array.isArray(item.dieu_kien_dong)
+            && item.dieu_kien_dong.length
+                ? ' Điều kiện: ' + item.dieu_kien_dong.join(' ')
+                : '';
+
+        note.className = 'member-benefit-note good';
+        note.textContent =
+            `${item.loai === 'VOUCHER' ? 'Voucher' : 'Quà tặng'} `
+            + `${item.ma} sẽ giảm ${item.gia_tri_hien_thi}.`
+            + conditionText
+            + ' CLB vẫn có thể nhập giảm giá thủ công thêm bên dưới.';
+    }
+
+    updateInvoiceSummary();
+}
+
+
+function handleMemberSelect(memberId) {
+    const member =
+        membersData.find(
+            item => String(item.id) === String(memberId)
+        );
+
+    const infoBox =
+        document.getElementById('invoiceMemberInfo');
+
+    if (!member) {
+        infoBox.innerHTML = 'Chưa chọn thành viên.';
+
+        document.getElementById('invoiceCustomerName').value = '';
+        document.getElementById('invoiceCustomerPhone').value = '';
+
+        resetMemberBenefitSelector(
+            'Hãy chọn Thành viên hoặc Đăng ký thành viên'
+        );
+        return;
+    }
+
+    document.getElementById('invoiceCustomerName').value =
+        member.ho_va_ten || '';
+
+    document.getElementById('invoiceCustomerPhone').value =
+        member.so_dien_thoai || '';
+
+    infoBox.innerHTML = `
+        <strong>${member.ho_va_ten || '—'}</strong>
+        Mã thành viên: ${member.ma_thanh_vien || '—'}<br>
+        Số điện thoại: ${member.so_dien_thoai || '—'}<br>
+        Giới tính: ${member.gioi_tinh || '—'}<br>
+        Ngày sinh: ${member.ngay_sinh || '—'}<br>
+        Địa chỉ: ${member.dia_chi || '—'}<br>
+        Hạng thành viên: ${member.hang_thanh_vien || '—'}
+    `;
+
+    loadMemberBenefits(
+        member.ma_thanh_vien || ''
+    );
+}
+
+
+function renderServiceRows(rows) {
+
+    const container =
+        document.getElementById(
+            'serviceRows'
+        );
+
+    if (!container) {
+        return;
+    }
+
+
+    container.innerHTML =
+        rows.map(
+            (row, index) => {
+
+                const isLast =
+                    index === rows.length - 1;
+
+
+                const options =
+                    `
+                    <option
+                        value=""
+                        ${!row.serviceId ? 'selected' : ''}
+                    >
+                        -- Chọn dịch vụ --
+                    </option>
+                    `
+                    +
+                    SERVICES.map(
+                        service => {
+
+                            const selected =
+                                row.serviceId === service.id
+                                    ? 'selected'
+                                    : '';
+
+                            return `
+                                <option
+                                    value="${service.id}"
+                                    ${selected}
+                                >
+                                    ${service.name}
+                                    -
+                                    ${formatMoney(service.price)}
+                                </option>
+                            `;
+                        }
+                    ).join('');
+
+
+                return `
+                    <div
+                        class="service-row"
+                        data-index="${index}"
+                    >
+
+                        <div class="field">
+
+                            <label>
+                                Dịch vụ ${index + 1}
+                            </label>
+
+                            <select
+                                onchange="
+                                    changeService(
+                                        ${index},
+                                        this.value
+                                    )
+                                "
+                            >
+                                ${options}
+                            </select>
+
+                        </div>
+
+
+                        <div class="field">
+
+                            <label>
+                                Số lượng
+                            </label>
+
+                            <div class="qty-control">
+
+                                <button
+                                    type="button"
+                                    class="qty-btn"
+                                    onclick="
+                                        changeQty(
+                                            ${index},
+                                            -1
+                                        )
+                                    "
+                                >
+                                    −
+                                </button>
+
+
+                                <input
+                                    class="qty-input"
+                                    type="text"
+                                    readonly
+                                    value="${row.quantity}"
+                                >
+
+
+                                <button
+                                    type="button"
+                                    class="qty-btn"
+                                    onclick="
+                                        changeQty(
+                                            ${index},
+                                            1
+                                        )
+                                    "
+                                >
+                                    +
+                                </button>
+
+                            </div>
+
+                        </div>
+
+
+                        ${
+                            isLast
+
+                            ? `
+                                <button
+                                    type="button"
+                                    class="add-service-btn"
+                                    title="Thêm dịch vụ"
+                                    onclick="addServiceRow()"
+                                >
+                                    +
+                                </button>
+                            `
+
+                            : `
+                                <div></div>
+                            `
+                        }
+
+
+                        <button
+                            type="button"
+                            class="remove-service-btn"
+                            title="Xóa dịch vụ"
+                            onclick="
+                                removeServiceRow(
+                                    ${index}
+                                )
+                            "
+                        >
+                            ×
+                        </button>
+
+                    </div>
+                `;
+            }
+        ).join('');
+}
+
+let serviceState = [{ serviceId: '', quantity: 1 }];
+
+function addServiceRow() {
+    serviceState.push({ serviceId: '', quantity: 1 });
+    renderServiceRows(serviceState);
+    updateInvoiceSummary();
+}
+
+function removeServiceRow(index) {
+
+    if (!serviceState[index]) {
+        return;
+    }
+
+
+    /*
+       Nếu chỉ còn duy nhất 1 dòng
+       thì không xóa mất giao diện.
+
+       Chỉ reset dòng đó về trống.
+    */
+    if (serviceState.length === 1) {
+
+        serviceState[0] = {
+            serviceId: '',
+            quantity: 1
+        };
+
+    } else {
+
+        serviceState.splice(
+            index,
+            1
+        );
+    }
+
+
+    renderServiceRows(
+        serviceState
+    );
+
+    updateInvoiceSummary();
+}
+
+function changeService(index, value) {
+    if (!serviceState[index]) return;
+    serviceState[index].serviceId = value;
+    updateInvoiceSummary();
+}
+
+function changeQty(index, delta) {
+    if (!serviceState[index]) return;
+    const nextValue = Math.max(1, Number(serviceState[index].quantity || 1) + delta);
+    serviceState[index].quantity = nextValue;
+    renderServiceRows(serviceState);
+    updateInvoiceSummary();
+}
+
+function parseMoneyInput(value) {
+
+    return Number(
+        String(value || '')
+            .replace(/[^\d]/g, '')
+        || 0
+    );
+}
+
+
+function formatDiscountInput(input) {
+
+    const raw =
+        String(input.value || '')
+            .replace(/[^\d]/g, '');
+
+    if (!raw) {
+        input.value = '';
+        updateInvoiceSummary();
+        return;
+    }
+
+    input.value =
+        Number(raw)
+            .toLocaleString('en-US');
+
+    updateInvoiceSummary();
+}
+
+function updateInvoiceSummary() {
+    if (!currentInvoiceTable) return;
+
+    const table = getTable(currentInvoiceTable);
+    if (!table) return;
+
+    // Mỗi khi thời lượng / dịch vụ / tổng tiền thay đổi,
+    // cập nhật lại Voucher nào đang đủ điều kiện.
+    if (memberBenefitOptions.length) {
+        renderMemberBenefitOptions();
+    }
+
+    const playMinutes =
+        Number(table.finalDurationMinutes || 0);
+
+    const playChargeResult =
+        calculatePlayChargeDetail(
+            table.startedAt,
+            table.endedAt
+        );
+
+    const playCharge =
+        playChargeResult.total;
+
+    let serviceCharge = 0;
+
+    serviceState.forEach(item => {
+        const service =
+            SERVICES.find(s => s.id === item.serviceId);
+
+        if (service) {
+            serviceCharge +=
+                service.price * Number(item.quantity || 0);
+        }
+    });
+
+    const subtotal =
+        playCharge + serviceCharge;
+
+    // ==========================================
+    // GIẢM GIÁ KẾT HỢP
+    // 1. Trừ Voucher/Quà tiền trước
+    // 2. Sau đó mới áp dụng giảm thủ công trên số tiền còn lại
+    // ==========================================
+    const benefitDiscount = selectedMemberBenefit
+        ? Math.min(
+            Number(selectedMemberBenefit.gia_tri || 0),
+            subtotal
+        )
+        : 0;
+
+    const afterBenefit = Math.max(
+        0,
+        subtotal - benefitDiscount
+    );
+
+    const discountValue = parseMoneyInput(
+        document.getElementById('discountValue').value
+    );
+
+    const discountType =
+        document.getElementById('discountType').value;
+
+    let manualDiscount = 0;
+
+    if (discountType === 'percent') {
+        manualDiscount =
+            afterBenefit
+            * Math.min(
+                Math.max(discountValue, 0),
+                100
+            )
+            / 100;
+    } else {
+        manualDiscount = Math.min(
+            Math.max(discountValue, 0),
+            afterBenefit
+        );
+    }
+
+    const discountAmount = Math.min(
+        subtotal,
+        benefitDiscount + manualDiscount
+    );
+
+    const grandTotal =
+        Math.max(0, subtotal - discountAmount);
+
+    const breakdownBox =
+        document.getElementById(
+            'playChargeBreakdown'
+        );
+
+    if (breakdownBox) {
+        breakdownBox.innerHTML =
+            playChargeResult.details.length
+
+            ? playChargeResult.details
+                .map(item => `
+                    <div class="table-fee-detail-row">
+                        <span>
+                            Thời gian ${escapeHtml(item.khung_gio)}
+                            <small style="display:block;color:#64748b;margin-top:2px">
+                                ${formatMoney(item.don_gia_gio)}/giờ
+                            </small>
+                        </span>
+
+                        <span>
+                            ${escapeHtml(item.thoi_luong_hien_thi)}
+                        </span>
+
+                        <strong>
+                            ${formatMoney(item.thanh_tien)}
+                        </strong>
+                    </div>
+                `)
+                .join('')
+
+            : `
+                <div class="table-fee-detail-row">
+                    <span>Chưa có thời gian tính phí</span>
+                    <span>0 phút</span>
+                    <strong>0 đ</strong>
+                </div>
+            `;
+    }
+
+    document.getElementById(
+        'playChargeAmount'
+    ).textContent =
+        formatMoney(
+            playCharge
+        );
+
+    document.getElementById('serviceChargeAmount').textContent =
+        formatMoney(serviceCharge);
+
+    document.getElementById('discountAmount').textContent =
+        '-' + formatMoney(discountAmount);
+
+    document.getElementById('grandTotalAmount').textContent =
+        formatMoney(grandTotal);
+}
+
+
+function getSelectedServicesForInvoice() {
+    return serviceState.map(item => {
+        const service = SERVICES.find(s => s.id === item.serviceId);
+        if (!service) return null;
+        const quantity = Math.max(1, Number(item.quantity || 1));
+        return {
+            ten: service.name,
+            so_luong: quantity,
+            don_gia: service.price,
+            thanh_tien: service.price * quantity
+        };
+    }).filter(Boolean);
+}
+
+async function saveInvoice() {
+    if (!currentInvoiceTable) return;
+
+    const table = getTable(currentInvoiceTable);
+
+    if (!table || !table.startedAt || !table.endedAt) {
+        alert('Thiếu thông tin thời gian hoạt động của bàn.');
+        return;
+    }
+
+    const select =
+        document.getElementById('invoiceMemberSelect');
+
+    const memberId =
+        select && select.value
+            ? Number(select.value)
+            : null;
+
+    const member =
+        membersData.find(
+            item => Number(item.id) === memberId
+        ) || null;
+
+    if (selectedMemberBenefit && !member) {
+        alert(
+            'Voucher/Quà tặng chỉ áp dụng cho thành viên. '
+            + 'Hãy chọn Thành viên hoặc Đăng ký thành viên.'
+        );
+        return;
+    }
+
+    const payload = {
+        ma_thanh_vien:
+            member
+                ? (member.ma_thanh_vien || null)
+                : null,
+
+        ho_va_ten:
+            (document.getElementById('invoiceCustomerName').value || '').trim()
+            || null,
+
+        so_dien_thoai:
+            (document.getElementById('invoiceCustomerPhone').value || '').trim()
+            || null,
+
+        ban_so: table.tableNo,
+
+        thoi_gian_bat_dau:
+            table.startedAt.toISOString(),
+
+        thoi_gian_ket_thuc:
+            table.endedAt.toISOString(),
+
+        dich_vu:
+            getSelectedServicesForInvoice(),
+
+        // Giảm thủ công luôn được gửi riêng, kể cả khi có Voucher/Quà.
+        loai_giam_gia:
+            document.getElementById('discountType').value
+            || 'amount',
+
+        gia_tri_giam:
+            parseMoneyInput(
+                document.getElementById('discountValue').value
+            ),
+
+        uu_dai_loai:
+            selectedMemberBenefit
+                ? (selectedMemberBenefit.loai || null)
+                : null,
+
+        uu_dai_ma:
+            selectedMemberBenefit
+                ? (selectedMemberBenefit.ma || null)
+                : null
+    };
+
+    const saveBtn =
+        document.getElementById('saveInvoiceBtn');
+
+    const oldText =
+        saveBtn ? saveBtn.innerHTML : '';
+
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = 'Đang lưu...';
+    }
+
+    try {
+        const response = await fetch('/api/hoa-don', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) {
+            throw new Error(
+                data.message || 'Không lưu được hóa đơn.'
+            );
+        }
+
+        table.active = false;
+        table.startedAt = null;
+        table.endedAt = null;
+        table.finalDurationMinutes = 0;
+        table.cart = [];
+
+        if (table.intervalRef) {
+            clearInterval(table.intervalRef);
+            table.intervalRef = null;
+        }
+
+        selectedMemberBenefit = null;
+        memberBenefitOptions = [];
+
+        renderTables();
+
+        closeModal('invoiceModal');
+        renderReceipt(data.hoa_don);
+        openModal('receiptModal');
+
+    } catch (error) {
+        console.error(error);
+
+        alert(
+            error.message || 'Không lưu được hóa đơn.'
+        );
+
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML =
+                oldText || 'Lưu hóa đơn';
+        }
+    }
+}
+
+
+function handleDiscountTypeChange() {
+
+    const type =
+        document.getElementById(
+            'discountType'
+        ).value;
+
+    const input =
+        document.getElementById(
+            'discountValue'
+        );
+
+    const value =
+        parseMoneyInput(
+            input.value
+        );
+
+    if (type === 'percent') {
+
+        input.value =
+            Math.min(
+                value,
+                100
+            );
+
+    } else {
+
+        input.value =
+            value.toLocaleString(
+                'en-US'
+            );
+    }
+
+    updateInvoiceSummary();
+}
+
+function renderReceipt(invoice) {
+    document.getElementById('receiptInvoiceCode').textContent = invoice.ma_hoa_don || '—';
+    document.getElementById('receiptCreatedAt').textContent = 'Ngày lập: ' + (invoice.ngay_lap_hien_thi || '—');
+    document.getElementById(
+        'receiptTable'
+    ).textContent =
+        `Bàn số ${invoice.ban_so || '—'}`;
+
+    document.getElementById(
+        'receiptDuration'
+    ).textContent =
+        formatMinutesHuman(
+            invoice.thoi_luong_choi_phut
+            || 0
+        );
+
+    document.getElementById(
+        'receiptTableAmount'
+    ).textContent =
+        formatMoney(
+            invoice.tien_ban
+            || 0
+        );
+
+    const tableRowsBox =
+        document.getElementById(
+            'receiptTableRows'
+        );
+
+    const tableDetails =
+        Array.isArray(
+            invoice.chi_tiet_tien_ban
+        )
+            ? invoice.chi_tiet_tien_ban
+            : [];
+
+    if (tableRowsBox) {
+        tableRowsBox.innerHTML =
+            tableDetails.length
+
+            ? tableDetails
+                .map(item => `
+                    <div class="receipt-row">
+                        <span>
+                            Thời gian ${escapeHtml(item.khung_gio || '')}
+                            <small style="display:block;color:#64748b">
+                                ${formatMoney(item.don_gia_gio || 0)}/giờ
+                            </small>
+                        </span>
+
+                        <span>
+                            ${escapeHtml(
+                                item.thoi_luong_hien_thi
+                                || formatBillingMinutes(
+                                    item.so_phut || 0
+                                )
+                            )}
+                        </span>
+
+                        <strong>
+                            ${formatMoney(
+                                item.thanh_tien
+                                || 0
+                            )}
+                        </strong>
+                    </div>
+                `)
+                .join('')
+
+            : '';
+    }
+
+    const serviceBox = document.getElementById('receiptServiceRows');
+    const services = Array.isArray(invoice.dich_vu_chi_tiet) ? invoice.dich_vu_chi_tiet : [];
+    if (!services.length) {
+        serviceBox.innerHTML = `<div class="receipt-row"><span>Không sử dụng</span><span>—</span><strong>0 đ</strong></div>`;
+    } else {
+        serviceBox.innerHTML = services.map(item => `
+            <div class="receipt-row">
+                <span>${escapeHtml(item.ten || '')}</span>
+                <span>${Number(item.so_luong || 0)}</span>
+                <strong>${formatMoney(item.thanh_tien || 0)}</strong>
+            </div>
+        `).join('');
+    }
+
+    document.getElementById('receiptSubtotal').textContent = formatMoney(invoice.tong_tien || 0);
+    document.getElementById('receiptDiscount').textContent = '-' + formatMoney(invoice.so_tien_giam || 0);
+    const discountLabel = document.getElementById('receiptDiscountLabel');
+    if (discountLabel) {
+        discountLabel.textContent =
+            invoice.ma_uu_dai
+                ? `Giảm giá (${invoice.ma_uu_dai})`
+                : 'Giảm giá';
+    }
+
+    document.getElementById('receiptGrandTotal').textContent = formatMoney(invoice.thanh_tien || 0);
+
+    const customerBits = [];
+    if (invoice.ho_va_ten) customerBits.push(`<b>Khách hàng:</b> ${escapeHtml(invoice.ho_va_ten)}`);
+    if (invoice.ma_thanh_vien) customerBits.push(`<b>Mã thành viên:</b> ${escapeHtml(invoice.ma_thanh_vien)}`);
+    if (invoice.so_dien_thoai) customerBits.push(`<b>SĐT:</b> ${escapeHtml(invoice.so_dien_thoai)}`);
+    document.getElementById('receiptCustomerInfo').innerHTML = customerBits.join('<br>');
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function printReceipt() {
+
+    const receipt =
+        document.getElementById(
+            'receiptPrintArea'
+        );
+
+    if (!receipt) {
+        return;
+    }
+
+
+    const printWindow =
+        window.open(
+            '',
+            '_blank',
+            'width=700,height=900'
+        );
+
+
+    if (!printWindow) {
+
+        alert(
+            'Trình duyệt đang chặn cửa sổ in.'
+        );
+
+        return;
+    }
+
+
+    const receiptHtml =
+        receipt.cloneNode(true);
+
+
+    /*
+        Không in 2 nút:
+        Thoát / In hóa đơn
+    */
+    const actions =
+        receiptHtml.querySelector(
+            '.receipt-actions'
+        );
+
+    if (actions) {
+        actions.remove();
+    }
+
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+
+        <html lang="vi">
+
+        <head>
+
+            <meta charset="UTF-8">
+
+            <title>Hóa đơn dịch vụ</title>
+
+            <style>
+
+                @page {
+                    size: A5 portrait;
+                    margin: 8mm;
+                }
+
+                * {
+                    box-sizing: border-box;
+                }
+
+                html,
+                body {
+                    margin: 0;
+                    padding: 0;
+
+                    background: #fff;
+
+                    font-family:
+                        "Segoe UI",
+                        Arial,
+                        Tahoma,
+                        sans-serif;
+
+                    font-synthesis:none;
+                    -webkit-font-smoothing:antialiased;
+
+                    color: #111827;
+                }
+
+                body {
+                    width: 100%;
+                }
+
+                .receipt-sheet {
+                    width: 100%;
+                    max-width: none;
+
+                    min-height: 0;
+
+                    margin: 0;
+                    padding: 0;
+
+                    background: #fff;
+
+                    font-size: 11px;
+                    line-height: 1.35;
+                }
+
+
+                .receipt-brand {
+                    text-align: center;
+
+                    padding-bottom: 8px;
+                    margin-bottom: 10px;
+
+                    border-bottom:
+                        1.5px solid #123a61;
+                }
+
+                .receipt-club-small {
+                    font-size: 14px;
+                    font-weight: 800;
+                    color: #123a61;
+                }
+
+                .receipt-club-name {
+                    margin-top: 2px;
+
+                    font-size: 21px;
+                    font-weight: 800;
+
+                    color: #0b4f91;
+                }
+
+                .receipt-title {
+                    margin-top: 7px;
+
+                    font-size: 16px;
+                    font-weight: 800;
+
+                    color: #111827;
+                }
+
+                .receipt-code,
+                .receipt-date {
+                    margin-top: 2px;
+
+                    font-size: 9px;
+                    font-weight: 500;
+
+                    color: #475569;
+                }
+
+
+                .receipt-section {
+                    margin-top: 11px;
+                }
+
+                .receipt-section-title {
+                    margin-bottom: 5px;
+
+                    font-size: 12px;
+                    font-weight: 900;
+                }
+
+
+                .receipt-row {
+                    display: grid;
+
+                    grid-template-columns:
+                        minmax(0, 1fr)
+                        70px
+                        92px;
+
+                    column-gap: 10px;
+
+                    align-items: center;
+
+                    padding: 5px 0;
+
+                    border-bottom:
+                        1px dashed #cbd5e1;
+
+                    font-size: 10px;
+                }
+
+
+                .receipt-row > span:nth-child(2) {
+                    text-align: center;
+                }
+
+                .receipt-row > span:nth-child(3),
+                .receipt-row > strong {
+                    text-align: right;
+
+                    white-space: nowrap;
+                }
+
+
+                .receipt-header-row {
+                    font-size: 8px;
+
+                    font-weight: 800;
+
+                    text-transform: uppercase;
+
+                    color: #64748b;
+
+                    border-bottom:
+                        1px solid #94a3b8;
+                }
+
+
+                .receipt-total-box {
+                    margin-top: 12px;
+
+                    padding-top: 5px;
+
+                    border-top:
+                        1.5px solid #123a61;
+                }
+
+
+                .receipt-total-box > div {
+                    display: flex;
+
+                    justify-content: space-between;
+
+                    gap: 15px;
+
+                    padding: 4px 0;
+
+                    font-size: 11px;
+                }
+
+
+                .receipt-subtotal-row {
+                    font-weight: 800;
+                }
+
+
+                .receipt-discount-row,
+                .receipt-discount-row span,
+                .receipt-discount-row strong {
+                    color: #dc2626;
+
+                    font-weight: 400;
+                }
+
+
+                .receipt-grand-total,
+                .receipt-grand-total span,
+                .receipt-grand-total strong {
+                    color: #15803d;
+
+                    font-size: 15px;
+
+                    font-weight: 800;
+                }
+
+
+                .receipt-grand-total {
+                    margin-top: 3px;
+
+                    padding-top: 7px !important;
+
+                    border-top:
+                        1px solid #cbd5e1;
+                }
+
+
+                .receipt-customer {
+                    margin-top: 10px;
+
+                    padding-top: 7px;
+
+                    border-top:
+                        1px dashed #cbd5e1;
+
+                    font-size: 9px;
+
+                    line-height: 1.5;
+
+                    color: #334155;
+                }
+
+
+                .receipt-thanks {
+                    margin-top: 14px;
+
+                    text-align: center;
+
+                    font-size: 10px;
+
+                    font-weight: 800;
+
+                    font-style: italic;
+                }
+
+            </style>
+
+        </head>
+
+        <body>
+
+            ${receiptHtml.outerHTML}
+
+        </body>
+
+        </html>
+    `);
+
+
+    printWindow.document.close();
+
+
+    printWindow.onload =
+        function () {
+
+            printWindow.focus();
+
+            setTimeout(
+                function () {
+
+                    printWindow.print();
+
+                },
+                200
+            );
+        };
+}
+
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    modal.classList.remove('show');
+    if (!document.querySelector('.modal-backdrop.show')) {
+        document.body.style.overflow = '';
+    }
+}
+
+function closeModalOnBackdrop(event, id) {
+    if (event.target.id === id) closeModal(id);
+}
+
+function getTable(tableNo) {
+    return tablesState.find(item => item.tableNo === tableNo);
+}
+
+function diffMinutes(start, end) {
+    const diffMs = Math.max(0, end.getTime() - start.getTime());
+    return Math.max(1, Math.round(diffMs / 60000));
+}
+
+function formatDurationShort(durationMs) {
+    const totalSeconds = Math.max(0, Math.floor(durationMs / 1000));
+    const hours = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+    const minutes = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+    const seconds = String(totalSeconds % 60).padStart(2, '0');
+    return `${hours}:${minutes}:${seconds}`;
+}
+
+function formatMinutesHuman(totalMinutes) {
+    const minutes = Math.max(0, Number(totalMinutes || 0));
+    const hours = Math.floor(minutes / 60);
+    const remain = minutes % 60;
+
+    if (hours > 0 && remain > 0) return `${hours} giờ ${remain} phút`;
+    if (hours > 0 && remain === 0) return `${hours} giờ`;
+    return `${remain} phút`;
+}
+
+function formatDateTime(dateObj) {
+    if (!dateObj) return '—';
+    const dd = String(dateObj.getDate()).padStart(2, '0');
+    const mm = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const yyyy = dateObj.getFullYear();
+    const hh = String(dateObj.getHours()).padStart(2, '0');
+    const mi = String(dateObj.getMinutes()).padStart(2, '0');
+    const ss = String(dateObj.getSeconds()).padStart(2, '0');
+    return `${dd}/${mm}/${yyyy} ${hh}:${mi}:${ss}`;
+}
+
+function formatMoney(value) {
+    return new Intl.NumberFormat('vi-VN').format(Math.round(Number(value || 0))) + ' đ';
+}
+
+document.addEventListener('keydown', function(event){
+    if (event.key === 'Escape') {
+        closeModal('endConfirmModal');
+        closeModal('invoiceModal');
+    }
+});
+
+let activityTimer = null;
+
+
+function updateAllActiveTableTimers() {
+
+    if (document.hidden) {
+        return;
+    }
+
+    tablesState.forEach(
+        table => {
+
+            if (
+                table.active
+                && table.startedAt
+            ) {
+
+                const timerEl =
+                    document.getElementById(
+                        `timer_${table.tableNo}`
+                    );
+
+                if (timerEl) {
+
+                    timerEl.textContent =
+                        formatDurationShort(
+                            Date.now()
+                            - table.startedAt.getTime()
+                        );
+                }
+            }
+        }
+    );
+}
+
+
+function startActivityTimer() {
+
+    if (activityTimer) {
+        clearInterval(
+            activityTimer
+        );
+    }
+
+    activityTimer =
+        setInterval(
+            updateAllActiveTableTimers,
+            1000
+        );
+}
+
+
+document.addEventListener(
+    'visibilitychange',
+    function () {
+
+        if (!document.hidden) {
+
+            updateAllActiveTableTimers();
+        }
+    }
+);
+
+
+(function initActivityPage() {
+
+    renderTables();
+
+    updateStatusCounts();
+
+    populateMemberOptions();
+
+    renderServiceRows(
+        serviceState
+    );
+
+    updateAllActiveTableTimers();
+
+    startActivityTimer();
+
+})();
+</script>
+{% endblock %}

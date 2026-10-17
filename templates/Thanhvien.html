@@ -566,11 +566,11 @@
                 <div class="member-grid">
                     <div class="field">
                         <label>Mã thành viên <b>*</b></label>
-                        <input id="edit_ma_thanh_vien" type="text" name="ma_thanh_vien" required>
+                        <input id="edit_ma_thanh_vien" type="text" name="ma_thanh_vien" readonly tabindex="-1" style="background:#eef4fa;color:#1d4ed8;font-weight:900">
                     </div>
                     <div class="field wide">
                         <label>Họ và tên <b>*</b></label>
-                        <input id="edit_ho_va_ten" type="text" name="ho_va_ten" required>
+                        <input id="edit_ho_va_ten" type="text" name="ho_va_ten" required oninput="updateEditMemberCodePreview()">
                     </div>
                     <div class="field">
                         <label>Giới tính</label>
@@ -590,7 +590,7 @@
                             placeholder="dd-mm-yyyy"
                             maxlength="10"
                             inputmode="numeric"
-                            oninput="formatBirthDateInput(this)"
+                            oninput="formatBirthDateInput(this); updateEditMemberCodePreview()"
                         >
                     </div>
                     <div class="field">
@@ -612,6 +612,7 @@
                                     this.value
                                         .replace(/\D/g, '')
                                         .slice(0,10);
+                                updateEditMemberCodePreview();
                             "
                         >
                     </div>
@@ -647,6 +648,42 @@ function openEditModal(member){
 
     modal.classList.add('show');
     document.body.style.overflow = 'hidden';
+}
+
+
+function updateEditMemberCodePreview(){
+    const nameInput = document.getElementById('edit_ho_va_ten');
+    const birthInput = document.getElementById('edit_ngay_sinh');
+    const phoneInput = document.getElementById('edit_so_dien_thoai');
+    const codeInput = document.getElementById('edit_ma_thanh_vien');
+
+    if(!nameInput || !birthInput || !phoneInput || !codeInput) return;
+
+    const fullName = nameInput.value.trim().replace(/\s+/g, ' ');
+    const birth = birthInput.value.trim();
+    const phone = phoneInput.value.replace(/\D/g, '');
+
+    if(!fullName || birth.length !== 10 || phone.length !== 10) return;
+
+    const words = fullName.split(' ').filter(Boolean);
+    if(!words.length) return;
+
+    let initials = '';
+    if(words.length > 1){
+        words.slice(0, -1).forEach(word => {
+            const cleanWord = removeVietnameseAccents(word);
+            if(cleanWord) initials += cleanWord.charAt(0).toUpperCase();
+        });
+    }
+
+    const lastName = removeVietnameseAccents(words[words.length - 1])
+        .replace(/[^A-Za-z0-9]/g, '')
+        .toUpperCase();
+
+    const year = birth.slice(6, 10);
+    if(!/^\d{4}$/.test(year)) return;
+
+    codeInput.value = initials + lastName + year.slice(-2) + phone.slice(-3);
 }
 
 function closeEditModal(){

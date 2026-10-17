@@ -5,6 +5,11 @@ import re
 import unicodedata
 import hmac
 import json
+import copy
+import time
+import io
+import tarfile
+import hashlib
 from urllib.parse import quote_plus
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -58,6 +63,127 @@ ADMIN_TABLE = "admin_info"
 
 SETUP_FILE = BASE_DIR / "club_setup.json"
 
+# ==========================================================
+# BACKUP SYSTEM
+# - Lưu logical backup vào Supabase Storage (private bucket)
+# - Auto: 00:00 / 12:00 / 18:00, giữ 9 bản gần nhất
+# - Manual/Safety giữ riêng, không làm mất nhịp 9 bản tự động
+# ==========================================================
+BACKUP_BUCKET = (os.getenv("BACKUP_BUCKET") or "system-backups").strip()
+BACKUP_AUTO_PREFIX = (os.getenv("BACKUP_AUTO_PREFIX") or "automatic").strip("/")
+BACKUP_MANUAL_PREFIX = (os.getenv("BACKUP_MANUAL_PREFIX") or "manual").strip("/")
+BACKUP_SAFETY_PREFIX = (os.getenv("BACKUP_SAFETY_PREFIX") or "safety").strip("/")
+BACKUP_AUTO_KEEP = max(1, int(os.getenv("BACKUP_AUTO_KEEP") or 9))
+BACKUP_MANUAL_KEEP = max(1, int(os.getenv("BACKUP_MANUAL_KEEP") or 3))
+BACKUP_SAFETY_KEEP = max(1, int(os.getenv("BACKUP_SAFETY_KEEP") or 3))
+BACKUP_EXPORT_PAGE_SIZE = 1000
+
+BACKUP_TABLES = (
+    TABLE_NAME,
+    INVOICE_TABLE,
+    ACTIVITY_TABLE,
+    PROMOTION_TABLE,
+    PROMOTION_MILESTONE_TABLE,
+    PROMOTION_REDEEM_TABLE,
+    PROMOTION_VOUCHER_TABLE,
+    ADMIN_TABLE,
+)
+
+# Xóa theo thứ tự con -> cha; khôi phục theo thứ tự cha -> con.
+BACKUP_DELETE_ORDER = (
+    PROMOTION_REDEEM_TABLE,
+    PROMOTION_VOUCHER_TABLE,
+    PROMOTION_MILESTONE_TABLE,
+    INVOICE_TABLE,
+    ACTIVITY_TABLE,
+    PROMOTION_TABLE,
+    TABLE_NAME,
+    ADMIN_TABLE,
+)
+
+BACKUP_RESTORE_ORDER = (
+    ADMIN_TABLE,
+    TABLE_NAME,
+    PROMOTION_TABLE,
+    PROMOTION_MILESTONE_TABLE,
+    INVOICE_TABLE,
+    PROMOTION_REDEEM_TABLE,
+    PROMOTION_VOUCHER_TABLE,
+    ACTIVITY_TABLE,
+)
+
+# Cache cấu hình JSON theo mtime để tránh đọc file lặp lại ở mọi request.
+_SETUP_CACHE = {"mtime_ns": None, "data": None}
+
+DEFAULT_MEMBER_RANKS = [
+    {
+        "code": "NEW",
+        "name": "Khách hàng mới",
+        "icon": "🆕",
+        "min_plays": 1,
+        "min_spend": 1000,
+        "discount_percent": 0,
+        "inactive_months": 0,
+        "gift_text": "Thành viên nhận được 1 chai nước suối.",
+        "birthday_text": "Nhận được voucher giảm giá trong tháng sinh nhật.",
+    },
+    {
+        "code": "LOYAL",
+        "name": "Khách hàng thân thiết",
+        "icon": "💚",
+        "min_plays": 6,
+        "min_spend": 1000000,
+        "discount_percent": 5,
+        "inactive_months": 3,
+        "gift_text": "Thành viên nhận được 1 chai nước suối.",
+        "birthday_text": "Nhận được voucher giảm giá trong tháng sinh nhật.",
+    },
+    {
+        "code": "BRONZE",
+        "name": "Khách hàng đồng",
+        "icon": "🥉",
+        "min_plays": 11,
+        "min_spend": 3000000,
+        "discount_percent": 10,
+        "inactive_months": 2,
+        "gift_text": "Thành viên nhận được 1 chai nước suối.",
+        "birthday_text": "Nhận được voucher giảm giá trong tháng sinh nhật.",
+    },
+    {
+        "code": "SILVER",
+        "name": "Khách hàng bạc",
+        "icon": "🥈",
+        "min_plays": 16,
+        "min_spend": 5500000,
+        "discount_percent": 15,
+        "inactive_months": 2,
+        "gift_text": "Thành viên nhận được 1 chai nước suối.",
+        "birthday_text": "Nhận được voucher giảm giá trong tháng sinh nhật.",
+    },
+    {
+        "code": "GOLD",
+        "name": "Khách hàng vàng",
+        "icon": "🥇",
+        "min_plays": 21,
+        "min_spend": 9000000,
+        "discount_percent": 20,
+        "inactive_months": 1,
+        "gift_text": "Thành viên nhận được 1 chai nước suối.",
+        "birthday_text": "Nhận được voucher giảm giá trong tháng sinh nhật.",
+    },
+    {
+        "code": "DIAMOND",
+        "name": "Khách hàng kim cương",
+        "icon": "💎",
+        "min_plays": 26,
+        "min_spend": 15000000,
+        "discount_percent": 25,
+        "inactive_months": 1,
+        "gift_text": "Thành viên nhận được 1 chai nước suối.",
+        "birthday_text": "Nhận được voucher giảm giá trong tháng sinh nhật.",
+    },
+]
+
 DEFAULT_SETUP = {
     "club": {
         "title": "Câu Lạc Bộ Billiards",
@@ -106,6 +232,7 @@ DEFAULT_SETUP = {
         "account_number": "",
         "note_template": "Khách lẻ hoặc mã Thành Viên",
     },
+    "member_ranks": json.loads(json.dumps(DEFAULT_MEMBER_RANKS, ensure_ascii=False)),
 }
 
 BANK_OPTIONS = [
@@ -254,29 +381,90 @@ def normalize_setup_config(raw=None):
                     payment.get(key)
                 )
 
+    raw_ranks = raw.get("member_ranks")
+    clean_ranks = []
+
+    for index, default_rank in enumerate(DEFAULT_MEMBER_RANKS):
+        source = {}
+
+        if isinstance(raw_ranks, list):
+            for candidate in raw_ranks:
+                if (
+                    isinstance(candidate, dict)
+                    and clean_text(candidate.get("code")).upper()
+                    == default_rank["code"]
+                ):
+                    source = candidate
+                    break
+
+            if not source and index < len(raw_ranks) and isinstance(raw_ranks[index], dict):
+                source = raw_ranks[index]
+
+        def _rank_int(key, default_value=0, minimum=0, maximum=None):
+            try:
+                value = int(float(source.get(key, default_value)))
+            except (TypeError, ValueError):
+                value = int(default_value)
+            value = max(minimum, value)
+            if maximum is not None:
+                value = min(maximum, value)
+            return value
+
+        clean_ranks.append({
+            "code": default_rank["code"],
+            "name": clean_text(source.get("name")) or default_rank["name"],
+            "icon": clean_text(source.get("icon")) or default_rank["icon"],
+            "min_plays": _rank_int("min_plays", default_rank["min_plays"], 0, 1000000),
+            "min_spend": _rank_int("min_spend", default_rank["min_spend"], 0, 1000000000000),
+            "discount_percent": _rank_int("discount_percent", default_rank["discount_percent"], 0, 100),
+            "inactive_months": _rank_int("inactive_months", default_rank["inactive_months"], 0, 120),
+            "gift_text": clean_text(source.get("gift_text")) or default_rank["gift_text"],
+            "birthday_text": clean_text(source.get("birthday_text")) or default_rank["birthday_text"],
+        })
+
+    result["member_ranks"] = clean_ranks
+
     return result
 
 
 def load_setup_config():
+    """
+    Đọc club_setup.json có cache theo thời gian sửa file.
+    Trả về deepcopy để route có thể chỉnh config an toàn trước khi save.
+    """
+    try:
+        mtime_ns = SETUP_FILE.stat().st_mtime_ns if SETUP_FILE.exists() else None
+    except OSError:
+        mtime_ns = None
+
+    cached = _SETUP_CACHE.get("data")
+    if cached is not None and _SETUP_CACHE.get("mtime_ns") == mtime_ns:
+        return copy.deepcopy(cached)
+
     if not SETUP_FILE.exists():
         config = normalize_setup_config()
         save_setup_config(config)
-        return config
+        return copy.deepcopy(config)
 
     try:
-        raw = json.loads(
-            SETUP_FILE.read_text(
-                encoding="utf-8"
-            )
-        )
-        return normalize_setup_config(raw)
+        raw = json.loads(SETUP_FILE.read_text(encoding="utf-8"))
+        config = normalize_setup_config(raw)
+
+        try:
+            current_mtime = SETUP_FILE.stat().st_mtime_ns
+        except OSError:
+            current_mtime = mtime_ns
+
+        _SETUP_CACHE["mtime_ns"] = current_mtime
+        _SETUP_CACHE["data"] = copy.deepcopy(config)
+        return copy.deepcopy(config)
 
     except Exception as exc:
-        print(
-            "[SETUP LOAD ERROR]",
-            type(exc).__name__
-        )
-        return normalize_setup_config()
+        print("[SETUP LOAD ERROR]", type(exc).__name__)
+        config = normalize_setup_config()
+        _SETUP_CACHE["mtime_ns"] = mtime_ns
+        _SETUP_CACHE["data"] = copy.deepcopy(config)
+        return config
 
 
 def save_setup_config(config):
@@ -299,7 +487,51 @@ def save_setup_config(config):
         SETUP_FILE
     )
 
+    try:
+        _SETUP_CACHE["mtime_ns"] = SETUP_FILE.stat().st_mtime_ns
+    except OSError:
+        _SETUP_CACHE["mtime_ns"] = None
+    _SETUP_CACHE["data"] = copy.deepcopy(normalized)
+
     return normalized
+
+
+MEMBER_RANK_ALIASES = [
+    {"khách hàng mới", "thành viên mới", "chưa xếp hạng"},
+    {"khách hàng thân thiết", "thành viên thân thiết"},
+    {"khách hàng đồng", "thành viên đồng"},
+    {"khách hàng bạc", "thành viên bạc"},
+    {"khách hàng vàng", "thành viên vàng"},
+    {"khách hàng kim cương", "thành viên kim cương"},
+]
+
+
+def normalize_rank_name(value):
+    return re.sub(r"\\s+", " ", clean_text(value).lower()).strip()
+
+
+def get_member_rank_index(value, ranks=None):
+    ranks = ranks if isinstance(ranks, list) and ranks else DEFAULT_MEMBER_RANKS
+    normalized = normalize_rank_name(value)
+
+    if not normalized:
+        return 0
+
+    for index, rank in enumerate(ranks):
+        if normalize_rank_name(rank.get("name")) == normalized:
+            return index
+
+    for index, aliases in enumerate(MEMBER_RANK_ALIASES):
+        if normalized in aliases:
+            return min(index, len(ranks) - 1)
+
+    return 0
+
+
+def member_rank_display_name(value, ranks=None):
+    ranks = ranks if isinstance(ranks, list) and ranks else DEFAULT_MEMBER_RANKS
+    index = get_member_rank_index(value, ranks)
+    return clean_text(ranks[index].get("name")) or DEFAULT_MEMBER_RANKS[index]["name"]
 
 
 def parse_clock_minutes(value):
@@ -1788,6 +2020,10 @@ ENDPOINT_PERMISSION_MAP = {
 
     # Setup
     "setup": "setup",
+    "api_backup_list": "setup",
+    "api_backup_create": "setup",
+    "api_backup_download": "setup",
+    "api_backup_restore": "setup",
 
     # Quản trị Admin
     "them_admin": "quan_tri_admin",
@@ -1827,21 +2063,39 @@ def admin_row_permissions(admin_row):
     )
 
 
-def get_current_admin():
-    cached = getattr(
-        g,
-        "_current_admin",
-        None
-    )
+# Cache Admin ngắn hạn để mỗi lần chuyển menu không phải gọi Supabase lại.
+# g vẫn là cache theo request; cache dưới đây dùng giữa các request.
+_ADMIN_CACHE = {}
+_ADMIN_CACHE_TTL_SECONDS = 12
 
-    if cached is not None:
-        return cached or None
+
+def invalidate_admin_cache(admin_id=None):
+    if admin_id is None:
+        _ADMIN_CACHE.clear()
+        return
+    _ADMIN_CACHE.pop(str(admin_id), None)
+
+
+def get_current_admin():
+    cached_request = getattr(g, "_current_admin", None)
+    if cached_request is not None:
+        return cached_request or None
 
     admin_id = session.get("admin_id")
-
     if not admin_id:
         g._current_admin = {}
         return None
+
+    cache_key = str(admin_id)
+    now_mono = time.monotonic()
+    cached_global = _ADMIN_CACHE.get(cache_key)
+
+    if cached_global:
+        cached_at, cached_admin = cached_global
+        if now_mono - cached_at < _ADMIN_CACHE_TTL_SECONDS:
+            admin = copy.deepcopy(cached_admin) if cached_admin else None
+            g._current_admin = admin or {}
+            return admin
 
     try:
         rows = (
@@ -1864,26 +2118,18 @@ def get_current_admin():
         )
 
         admin = rows[0] if rows else None
-
-        if (
-            not admin
-            or not bool(admin.get("active"))
-        ):
+        if not admin or not bool(admin.get("active")):
+            _ADMIN_CACHE[cache_key] = (now_mono, None)
             g._current_admin = {}
             return None
 
-        admin["quyen_han_chuan"] = (
-            admin_row_permissions(admin)
-        )
-
+        admin["quyen_han_chuan"] = admin_row_permissions(admin)
+        _ADMIN_CACHE[cache_key] = (now_mono, copy.deepcopy(admin))
         g._current_admin = admin
         return admin
 
     except Exception as exc:
-        print(
-            "[LOAD CURRENT ADMIN ERROR]",
-            repr(exc)
-        )
+        print("[LOAD CURRENT ADMIN ERROR]", repr(exc))
         g._current_admin = {}
         return None
 
@@ -2548,6 +2794,18 @@ def member_information():
 
 
         member = rows[0]
+
+        setup_config = load_setup_config()
+        member_ranks = setup_config.get("member_ranks") or DEFAULT_MEMBER_RANKS
+        member_rank_index = get_member_rank_index(
+            member.get("hang_thanh_vien"),
+            member_ranks
+        )
+        member["hang_thanh_vien_index"] = member_rank_index
+        member["hang_thanh_vien_hien_thi"] = (
+            member_ranks[member_rank_index].get("name")
+            or DEFAULT_MEMBER_RANKS[member_rank_index]["name"]
+        )
 
 
     except Exception as exc:
@@ -4230,29 +4488,164 @@ def them_thanh_vien():
     return redirect(url_for("thanh_vien"))
 
 
+def sync_member_references(old_code, new_code, ho_va_ten, so_dien_thoai):
+    """
+    Đồng bộ các bảng đang liên kết thành viên bằng ma_thanh_vien.
+
+    Lưu ý: Supabase REST không tạo transaction đa bảng trong một request.
+    Hàm này vì vậy cập nhật theo thứ tự và ném lỗi nếu bất kỳ bước nào thất bại.
+    """
+    old_code = clean_text(old_code).upper()
+    new_code = clean_text(new_code).upper()
+    ho_va_ten = clean_text(ho_va_ten)
+    so_dien_thoai = re.sub(r"\D", "", clean_text(so_dien_thoai))
+
+    if not old_code or not new_code:
+        raise ValueError("Mã thành viên không hợp lệ để đồng bộ.")
+
+    # Hóa đơn đang lưu cả mã, họ tên và SĐT -> đồng bộ đầy đủ.
+    (
+        supabase
+        .table(INVOICE_TABLE)
+        .update({
+            "ma_thanh_vien": new_code,
+            "ho_va_ten": ho_va_ten or None,
+            "so_dien_thoai": so_dien_thoai or None,
+            "updated_at": datetime.now().astimezone().isoformat(),
+        })
+        .eq("ma_thanh_vien", old_code)
+        .execute()
+    )
+
+    # Quà đã đổi / đang chờ nhận liên kết bằng mã thành viên.
+    (
+        supabase
+        .table(PROMOTION_REDEEM_TABLE)
+        .update({
+            "ma_thanh_vien": new_code,
+            "updated_at": datetime.now().astimezone().isoformat(),
+        })
+        .eq("ma_thanh_vien", old_code)
+        .execute()
+    )
+
+    # Voucher liên kết bằng mã thành viên.
+    (
+        supabase
+        .table(PROMOTION_VOUCHER_TABLE)
+        .update({
+            "ma_thanh_vien": new_code,
+            "updated_at": datetime.now().astimezone().isoformat(),
+        })
+        .eq("ma_thanh_vien", old_code)
+        .execute()
+    )
+
+
 @app.post("/thanh-vien/<int:member_id>/cap-nhat")
 def cap_nhat_thanh_vien(member_id):
-    payload = member_payload(request.form)
-    error = validate_member(payload)
-    if error:
-        flash(error, "danger")
-        return redirect(url_for("thanh_vien"))
+    return_q = clean_text(request.form.get("return_q"))
+    return_page = clean_text(request.form.get("return_page")) or 1
+    return_per_page = clean_text(request.form.get("return_per_page")) or 20
 
     try:
-        supabase.table(TABLE_NAME).update(payload).eq("id", member_id).execute()
-        flash("Đã cập nhật thành viên.", "success")
+        # 1. Lấy hồ sơ cũ để biết mã đang được các bảng khác sử dụng.
+        old_rows = (
+            supabase
+            .table(TABLE_NAME)
+            .select("id,ma_thanh_vien,ho_va_ten,ngay_sinh,so_dien_thoai")
+            .eq("id", member_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+
+        if not old_rows:
+            raise ValueError("Không tìm thấy thành viên cần cập nhật.")
+
+        old_member = old_rows[0]
+        old_code = clean_text(old_member.get("ma_thanh_vien")).upper()
+
+        # 2. Chuẩn hóa dữ liệu mới.
+        payload = member_payload(request.form)
+        payload["so_dien_thoai"] = re.sub(
+            r"\D",
+            "",
+            clean_text(request.form.get("so_dien_thoai"))
+        )
+
+        # Mã thành viên không cho nhập tay. Sinh lại từ Họ tên + Ngày sinh + SĐT.
+        new_code = generate_unique_member_code(
+            payload.get("ho_va_ten"),
+            request.form.get("ngay_sinh"),
+            payload.get("so_dien_thoai"),
+            exclude_id=member_id,
+        )
+
+        if not new_code:
+            raise ValueError(
+                "Không thể tạo mã thành viên. Vui lòng kiểm tra họ tên, ngày sinh và số điện thoại."
+            )
+
+        payload["ma_thanh_vien"] = new_code
+
+        error = validate_member(payload)
+        if error:
+            raise ValueError(error)
+
+        # 3. Nếu mã thay đổi, đồng bộ toàn bộ bảng liên quan trước.
+        if new_code != old_code:
+            sync_member_references(
+                old_code=old_code,
+                new_code=new_code,
+                ho_va_ten=payload.get("ho_va_ten"),
+                so_dien_thoai=payload.get("so_dien_thoai"),
+            )
+        else:
+            # Mã không đổi nhưng tên/SĐT có thể đổi -> vẫn cập nhật hóa đơn để dữ liệu thống nhất.
+            (
+                supabase
+                .table(INVOICE_TABLE)
+                .update({
+                    "ho_va_ten": payload.get("ho_va_ten") or None,
+                    "so_dien_thoai": payload.get("so_dien_thoai") or None,
+                    "updated_at": datetime.now().astimezone().isoformat(),
+                })
+                .eq("ma_thanh_vien", old_code)
+                .execute()
+            )
+
+        # 4. Cập nhật hồ sơ chính sau cùng.
+        (
+            supabase
+            .table(TABLE_NAME)
+            .update(payload)
+            .eq("id", member_id)
+            .execute()
+        )
+
+        # Nếu chính thành viên này đang đăng nhập, đổi mã trong session ngay.
+        if clean_text(session.get("member_code")).upper() == old_code:
+            session["member_code"] = new_code
+
+        flash(
+            f"Đã cập nhật thành viên và đồng bộ dữ liệu liên quan. Mã hiện tại: {new_code}",
+            "success"
+        )
+
     except Exception as exc:
-        print("[UPDATE THANHVIEN ERROR]", repr(exc))
+        print("[UPDATE THANHVIEN SYNC ERROR]", repr(exc))
         message = str(exc)
         if "duplicate key" in message.lower() or "unique" in message.lower():
-            message = "Mã thành viên đã tồn tại."
+            message = "Mã thành viên hoặc dữ liệu liên quan đang bị trùng."
         flash(f"Không cập nhật được thành viên: {message}", "danger")
 
     return redirect(url_for(
         "thanh_vien",
-        q=clean_text(request.form.get("return_q")),
-        page=clean_text(request.form.get("return_page")) or 1,
-        per_page=clean_text(request.form.get("return_per_page")) or 20
+        q=return_q,
+        page=return_page,
+        per_page=return_per_page
     ))
 
 
@@ -6959,6 +7352,473 @@ def api_uu_dai_tien_thanh_vien(
 
 
 
+
+# ==========================================================
+# BACKUP / RESTORE
+# ==========================================================
+def _backup_storage_bucket():
+    return supabase.storage.from_(BACKUP_BUCKET)
+
+
+def _backup_prefix_for_kind(kind):
+    kind = clean_text(kind).lower()
+    if kind == "manual":
+        return BACKUP_MANUAL_PREFIX, BACKUP_MANUAL_KEEP
+    if kind == "safety":
+        return BACKUP_SAFETY_PREFIX, BACKUP_SAFETY_KEEP
+    return BACKUP_AUTO_PREFIX, BACKUP_AUTO_KEEP
+
+
+def _backup_export_table(table_name):
+    rows = []
+    offset = 0
+
+    while True:
+        result = (
+            supabase
+            .table(table_name)
+            .select("*")
+            .range(
+                offset,
+                offset + BACKUP_EXPORT_PAGE_SIZE - 1
+            )
+            .execute()
+        )
+
+        batch = result.data or []
+        rows.extend(batch)
+
+        if len(batch) < BACKUP_EXPORT_PAGE_SIZE:
+            break
+
+        offset += BACKUP_EXPORT_PAGE_SIZE
+
+    return rows
+
+
+def _backup_add_bytes(tar, arcname, data_bytes):
+    info = tarfile.TarInfo(name=arcname)
+    info.size = len(data_bytes)
+    info.mtime = int(time.time())
+    tar.addfile(info, io.BytesIO(data_bytes))
+
+
+def _backup_json_bytes(value):
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        indent=2,
+        default=str,
+    ).encode("utf-8")
+
+
+def _backup_list_prefix(prefix):
+    try:
+        items = _backup_storage_bucket().list(prefix) or []
+    except Exception as exc:
+        raise RuntimeError(
+            f"Không đọc được Supabase Storage bucket '{BACKUP_BUCKET}': {exc}"
+        ) from exc
+
+    output = []
+
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+
+        name = clean_text(item.get("name"))
+        if not name or not name.endswith(".tar.gz"):
+            continue
+
+        metadata = item.get("metadata") or {}
+        try:
+            size = int(metadata.get("size") or item.get("size") or 0)
+        except (TypeError, ValueError):
+            size = 0
+
+        dt = None
+        match = re.search(r"(\d{8})-(\d{6})", name)
+        if match:
+            try:
+                dt = datetime.strptime(
+                    match.group(1) + match.group(2),
+                    "%Y%m%d%H%M%S"
+                ).replace(tzinfo=VIETNAM_TZ)
+            except ValueError:
+                dt = None
+
+        output.append({
+            "name": name,
+            "path": f"{prefix}/{name}",
+            "size": size,
+            "created_at": (
+                dt.isoformat()
+                if dt else clean_text(item.get("created_at"))
+            ),
+            "created_at_hien_thi": (
+                dt.strftime("%d/%m/%Y %H:%M")
+                if dt else clean_text(item.get("created_at"))
+            ),
+        })
+
+    output.sort(
+        key=lambda x: x.get("name") or "",
+        reverse=True
+    )
+    return output
+
+
+def _backup_prune(prefix, keep):
+    items = _backup_list_prefix(prefix)
+    old_items = items[keep:]
+
+    if old_items:
+        paths = [item["path"] for item in old_items]
+        _backup_storage_bucket().remove(paths)
+
+    return len(old_items)
+
+
+def create_system_backup(kind="automatic"):
+    """
+    Tạo logical backup gồm club_setup.json + toàn bộ các bảng chính,
+    nén tar.gz và upload vào Supabase Storage.
+    """
+    prefix, keep = _backup_prefix_for_kind(kind)
+    now = datetime.now(VIETNAM_TZ)
+    filename = f"backup-{now:%Y%m%d-%H%M%S}.tar.gz"
+    remote_path = f"{prefix}/{filename}"
+
+    table_data = {}
+    row_counts = {}
+
+    for table_name in BACKUP_TABLES:
+        rows = _backup_export_table(table_name)
+        table_data[table_name] = rows
+        row_counts[table_name] = len(rows)
+
+    setup_config = load_setup_config()
+
+    manifest = {
+        "format": "bida-logical-backup",
+        "version": 1,
+        "created_at": now.isoformat(),
+        "timezone": "Asia/Ho_Chi_Minh",
+        "kind": kind,
+        "bucket": BACKUP_BUCKET,
+        "tables": row_counts,
+        "setup_file": "app_config/club_setup.json",
+    }
+
+    archive_buffer = io.BytesIO()
+    with tarfile.open(
+        fileobj=archive_buffer,
+        mode="w:gz"
+    ) as tar:
+        _backup_add_bytes(
+            tar,
+            "manifest.json",
+            _backup_json_bytes(manifest)
+        )
+        _backup_add_bytes(
+            tar,
+            "app_config/club_setup.json",
+            _backup_json_bytes(setup_config)
+        )
+
+        for table_name, rows in table_data.items():
+            _backup_add_bytes(
+                tar,
+                f"database/{table_name}.json",
+                _backup_json_bytes(rows)
+            )
+
+    archive_bytes = archive_buffer.getvalue()
+    sha256 = hashlib.sha256(archive_bytes).hexdigest()
+
+    bucket = _backup_storage_bucket()
+    file_options = {
+        "content-type": "application/gzip",
+        "upsert": "false",
+    }
+
+    try:
+        bucket.upload(
+            remote_path,
+            archive_bytes,
+            file_options=file_options,
+        )
+    except TypeError:
+        # Tương thích một số phiên bản supabase-py cũ.
+        bucket.upload(
+            remote_path,
+            archive_bytes,
+            file_options,
+        )
+
+    deleted = _backup_prune(prefix, keep)
+
+    return {
+        "ok": True,
+        "name": filename,
+        "path": remote_path,
+        "kind": kind,
+        "size": len(archive_bytes),
+        "sha256": sha256,
+        "row_counts": row_counts,
+        "deleted_old": deleted,
+        "created_at": now.isoformat(),
+    }
+
+
+def list_system_backups():
+    items = []
+
+    for kind, prefix in (
+        ("automatic", BACKUP_AUTO_PREFIX),
+        ("manual", BACKUP_MANUAL_PREFIX),
+        ("safety", BACKUP_SAFETY_PREFIX),
+    ):
+        for item in _backup_list_prefix(prefix):
+            item["kind"] = kind
+            items.append(item)
+
+    items.sort(
+        key=lambda x: x.get("name") or "",
+        reverse=True
+    )
+    return items
+
+
+def _backup_read_json_from_tar(tar, name):
+    member = tar.getmember(name)
+    file_obj = tar.extractfile(member)
+    if file_obj is None:
+        raise ValueError(f"Backup thiếu file {name}.")
+    return json.loads(file_obj.read().decode("utf-8"))
+
+
+def _backup_delete_all_rows(table_name):
+    # Chỉ delete khi bảng thực sự có dữ liệu, tránh filter giả gây lỗi.
+    first_rows = (
+        supabase
+        .table(table_name)
+        .select("id")
+        .limit(1)
+        .execute()
+        .data
+        or []
+    )
+
+    if not first_rows:
+        return
+
+    first_id = first_rows[0].get("id")
+    if first_id is None:
+        raise RuntimeError(
+            f"Bảng {table_name} không có cột id để restore an toàn."
+        )
+
+    # id >= 0 bao phủ các identity id thông thường trong hệ thống.
+    (
+        supabase
+        .table(table_name)
+        .delete()
+        .gte("id", 0)
+        .execute()
+    )
+
+
+def _backup_prepare_restore_rows(table_name, rows):
+    cleaned = []
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+
+        item = dict(row)
+        # Không restore identity ID để tránh lệch PostgreSQL sequence.
+        item.pop("id", None)
+
+        # created_by có thể là ID admin cũ; khi ID được sinh lại thì bỏ liên kết này.
+        if table_name == ADMIN_TABLE and "created_by" in item:
+            item["created_by"] = None
+
+        cleaned.append(item)
+    return cleaned
+
+
+def restore_system_backup(remote_path):
+    remote_path = clean_text(remote_path).strip("/")
+    allowed_prefixes = (
+        BACKUP_AUTO_PREFIX + "/",
+        BACKUP_MANUAL_PREFIX + "/",
+        BACKUP_SAFETY_PREFIX + "/",
+    )
+
+    if not remote_path.endswith(".tar.gz") or not remote_path.startswith(allowed_prefixes):
+        raise ValueError("Đường dẫn backup không hợp lệ.")
+
+    archive_bytes = _backup_storage_bucket().download(remote_path)
+    if not archive_bytes:
+        raise ValueError("Không tải được file backup.")
+
+    # Trước restore luôn tạo một safety backup riêng.
+    safety_backup = create_system_backup(kind="safety")
+
+    with tarfile.open(
+        fileobj=io.BytesIO(bytes(archive_bytes)),
+        mode="r:gz"
+    ) as tar:
+        manifest = _backup_read_json_from_tar(
+            tar,
+            "manifest.json"
+        )
+
+        if manifest.get("format") != "bida-logical-backup":
+            raise ValueError("File không đúng định dạng backup của hệ thống.")
+
+        version = int(manifest.get("version") or 0)
+        if version != 1:
+            raise ValueError(
+                f"Phiên bản backup {version} chưa được hỗ trợ."
+            )
+
+        setup_config = _backup_read_json_from_tar(
+            tar,
+            "app_config/club_setup.json"
+        )
+
+        restore_data = {}
+        for table_name in BACKUP_TABLES:
+            restore_data[table_name] = _backup_read_json_from_tar(
+                tar,
+                f"database/{table_name}.json"
+            )
+
+    # Xóa dữ liệu cũ từ bảng con tới bảng cha.
+    for table_name in BACKUP_DELETE_ORDER:
+        _backup_delete_all_rows(table_name)
+
+    # Khôi phục từ bảng cha tới bảng con, theo batch nhỏ.
+    restored_counts = {}
+    for table_name in BACKUP_RESTORE_ORDER:
+        rows = _backup_prepare_restore_rows(
+            table_name,
+            restore_data.get(table_name) or []
+        )
+
+        restored_counts[table_name] = len(rows)
+        for start in range(0, len(rows), 200):
+            batch = rows[start:start + 200]
+            if batch:
+                (
+                    supabase
+                    .table(table_name)
+                    .insert(batch)
+                    .execute()
+                )
+
+    save_setup_config(setup_config)
+
+    # Session hiện tại có thể chứa admin_id cũ; buộc đăng nhập lại sau restore.
+    session.clear()
+
+    return {
+        "ok": True,
+        "restored": restored_counts,
+        "safety_backup": safety_backup.get("path"),
+    }
+
+
+@app.get("/api/setup/backups")
+def api_backup_list():
+    try:
+        items = list_system_backups()
+        return jsonify({
+            "ok": True,
+            "bucket": BACKUP_BUCKET,
+            "auto_keep": BACKUP_AUTO_KEEP,
+            "items": items,
+        })
+    except Exception as exc:
+        print("[BACKUP LIST ERROR]", repr(exc))
+        return jsonify({
+            "ok": False,
+            "message": f"Không tải được danh sách backup: {exc}",
+        }), 500
+
+
+@app.post("/api/setup/backups/create")
+def api_backup_create():
+    try:
+        result = create_system_backup(kind="manual")
+        return jsonify(result)
+    except Exception as exc:
+        print("[BACKUP CREATE ERROR]", repr(exc))
+        return jsonify({
+            "ok": False,
+            "message": f"Không tạo được backup: {exc}",
+        }), 500
+
+
+@app.get("/api/setup/backups/download")
+def api_backup_download():
+    try:
+        remote_path = clean_text(
+            request.args.get("path")
+        ).strip("/")
+
+        allowed_prefixes = (
+            BACKUP_AUTO_PREFIX + "/",
+            BACKUP_MANUAL_PREFIX + "/",
+            BACKUP_SAFETY_PREFIX + "/",
+        )
+
+        if not remote_path.endswith(".tar.gz") or not remote_path.startswith(allowed_prefixes):
+            raise ValueError("Đường dẫn backup không hợp lệ.")
+
+        content = _backup_storage_bucket().download(remote_path)
+        filename = remote_path.rsplit("/", 1)[-1]
+
+        return (
+            bytes(content),
+            200,
+            {
+                "Content-Type": "application/gzip",
+                "Content-Disposition": f'attachment; filename="{filename}"',
+                "Cache-Control": "no-store",
+            },
+        )
+    except Exception as exc:
+        print("[BACKUP DOWNLOAD ERROR]", repr(exc))
+        return jsonify({
+            "ok": False,
+            "message": f"Không tải được backup: {exc}",
+        }), 500
+
+
+@app.post("/api/setup/backups/restore")
+def api_backup_restore():
+    current_admin = get_current_admin()
+    if not current_admin or not bool(current_admin.get("is_owner")):
+        return jsonify({
+            "ok": False,
+            "message": "Chỉ Admin Chủ được phép khôi phục dữ liệu.",
+        }), 403
+
+    try:
+        data = request.get_json(silent=True) or {}
+        remote_path = clean_text(data.get("path"))
+        result = restore_system_backup(remote_path)
+        return jsonify(result)
+    except Exception as exc:
+        print("[BACKUP RESTORE ERROR]", repr(exc))
+        return jsonify({
+            "ok": False,
+            "message": f"Không khôi phục được backup: {exc}",
+        }), 500
+
+
 @app.route(
     "/setup",
     methods=["GET", "POST"]
@@ -7277,6 +8137,85 @@ def setup():
                 config["services"] = (
                     services
                 )
+
+            elif section == "member_ranks":
+                old_ranks = list(config.get("member_ranks") or DEFAULT_MEMBER_RANKS)
+
+                codes = request.form.getlist("rank_code")
+                names = request.form.getlist("rank_name")
+                icons = request.form.getlist("rank_icon")
+                min_plays_values = request.form.getlist("rank_min_plays")
+                min_spend_values = request.form.getlist("rank_min_spend")
+                discount_values = request.form.getlist("rank_discount")
+                inactive_values = request.form.getlist("rank_inactive_months")
+                gift_values = request.form.getlist("rank_gift_text")
+                birthday_values = request.form.getlist("rank_birthday_text")
+
+                ranks = []
+
+                for index, default_rank in enumerate(DEFAULT_MEMBER_RANKS):
+                    code = default_rank["code"]
+                    name = clean_text(names[index] if index < len(names) else "")
+                    icon = clean_text(icons[index] if index < len(icons) else "") or default_rank["icon"]
+
+                    if not name:
+                        raise ValueError(f"Hạng số {index + 1} chưa có tên.")
+
+                    try:
+                        min_plays = max(0, int(min_plays_values[index] if index < len(min_plays_values) else 0))
+                    except (TypeError, ValueError):
+                        min_plays = 0
+
+                    min_spend = parse_money_value(
+                        min_spend_values[index] if index < len(min_spend_values) else "0"
+                    )
+
+                    try:
+                        discount_percent = max(0, min(100, int(discount_values[index] if index < len(discount_values) else 0)))
+                    except (TypeError, ValueError):
+                        discount_percent = 0
+
+                    try:
+                        inactive_months = max(0, min(120, int(inactive_values[index] if index < len(inactive_values) else 0)))
+                    except (TypeError, ValueError):
+                        inactive_months = 0
+
+                    ranks.append({
+                        "code": code,
+                        "name": name,
+                        "icon": icon,
+                        "min_plays": min_plays,
+                        "min_spend": min_spend,
+                        "discount_percent": discount_percent,
+                        "inactive_months": inactive_months,
+                        "gift_text": clean_text(gift_values[index] if index < len(gift_values) else ""),
+                        "birthday_text": clean_text(birthday_values[index] if index < len(birthday_values) else ""),
+                    })
+
+                # Bảo đảm điều kiện tăng dần để tránh hạng sau dễ hơn hạng trước.
+                for index in range(1, len(ranks)):
+                    if ranks[index]["min_plays"] < ranks[index - 1]["min_plays"]:
+                        raise ValueError("Số lượt chơi của các hạng phải tăng dần.")
+                    if ranks[index]["min_spend"] < ranks[index - 1]["min_spend"]:
+                        raise ValueError("Mức chi tiêu của các hạng phải tăng dần.")
+
+                config["member_ranks"] = ranks
+
+                # Nếu đổi tên hạng, đồng bộ tên đang lưu ở thành viên để tránh lệch dữ liệu.
+                for index, new_rank in enumerate(ranks):
+                    old_name = clean_text(
+                        old_ranks[index].get("name") if index < len(old_ranks) else ""
+                    )
+                    new_name = clean_text(new_rank.get("name"))
+
+                    if old_name and new_name and old_name != new_name:
+                        try:
+                            supabase.table(TABLE_NAME).update({
+                                "hang_thanh_vien": new_name,
+                                "updated_at": datetime.now().astimezone().isoformat(),
+                            }).eq("hang_thanh_vien", old_name).execute()
+                        except Exception as rank_sync_exc:
+                            print("[RANK NAME SYNC WARNING]", repr(rank_sync_exc))
 
             elif section == "payment":
                 bank_code = clean_text(

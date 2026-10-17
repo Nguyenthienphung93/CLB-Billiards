@@ -7,7 +7,7 @@
 .setup-head h1{margin:0;font-size:30px;font-weight:1000;color:#102a43}
 .setup-head p{margin:6px 0 0;color:#64748b;font-weight:700}
 .setup-shell{background:#fff;border:1px solid #dce7f1;border-radius:22px;overflow:hidden;box-shadow:0 12px 28px rgba(15,37,64,.07)}
-.setup-tabs{display:grid;grid-template-columns:repeat(4,1fr);border-bottom:1px solid #dbe7f3;background:#f8fbff}
+.setup-tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));border-bottom:1px solid #dbe7f3;background:#f8fbff}
 .setup-tab{min-height:68px;border:0;background:transparent;padding:12px 16px;cursor:pointer;font-weight:950;color:#475569;position:relative}
 .setup-tab i{margin-right:8px;color:#2563eb}
 .setup-tab.active{color:#123a61;background:#fff}
@@ -19,8 +19,8 @@
 .setup-grid{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:14px}
 .field{display:flex;flex-direction:column;gap:7px}.field.full{grid-column:1/-1}
 .field label{color:#334155;font-size:13px;font-weight:900}
-.field input,.field select{width:100%;min-height:46px;border:1px solid #cbd5e1;border-radius:12px;padding:0 12px;background:#fff;color:#0f172a;font-weight:750;outline:none}
-.field input:focus,.field select:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
+.field input,.field select,.field textarea{width:100%;min-height:46px;border:1px solid #cbd5e1;border-radius:12px;padding:0 12px;background:#fff;color:#0f172a;font-weight:750;outline:none}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(37,99,235,.10)}
 .helper{margin-top:5px;color:#64748b;font-size:12px;font-weight:700;line-height:1.45}
 .rate-table,.service-list{display:flex;flex-direction:column;gap:12px}
 .rate-row{display:grid;grid-template-columns:1.2fr .8fr .8fr 1fr;gap:10px;align-items:end}
@@ -185,6 +185,93 @@ body{
 .create-permission-wrap{margin-top:14px;max-width:430px}
 .create-permission-wrap .permission-menu{left:0;right:auto}
 
+
+.rank-settings-list{display:flex;flex-direction:column;gap:14px}
+.rank-settings-row{
+    border:1px solid #dbe7f3;
+    border-radius:16px;
+    background:linear-gradient(180deg,#fff,#f8fbff);
+    padding:15px;
+}
+.rank-settings-head{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:13px;
+    color:#123a61;
+    font-weight:1000;
+}
+.rank-settings-index{
+    width:34px;height:34px;border-radius:11px;
+    display:grid;place-items:center;
+    background:#eaf4ff;border:1px solid #bfdbfe;color:#1d4ed8;
+}
+.rank-settings-grid{
+    display:grid;
+    grid-template-columns:1.4fr 100px 130px 180px 120px 140px;
+    gap:10px;
+    align-items:end;
+}
+.rank-text-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-top:10px;
+}
+.rank-text-grid textarea{
+    min-height:76px!important;
+    padding:10px 12px!important;
+    resize:vertical;
+    line-height:1.45;
+}
+.rank-logic-note{
+    margin-top:12px;
+    padding:10px 12px;
+    border-radius:11px;
+    background:#eff6ff;
+    border:1px solid #bfdbfe;
+    color:#1e40af;
+    font-size:12px;
+    font-weight:800;
+    line-height:1.45;
+}
+@media(max-width:1250px){
+    .rank-settings-grid{grid-template-columns:1fr 90px 120px 160px 110px 130px}
+}
+@media(max-width:900px){
+    .rank-settings-grid{grid-template-columns:1fr 1fr 1fr}
+    .rank-text-grid{grid-template-columns:1fr}
+}
+@media(max-width:650px){
+    .rank-settings-grid{grid-template-columns:1fr 1fr}
+}
+
+
+.backup-summary{display:grid;grid-template-columns:repeat(4,minmax(150px,1fr));gap:12px;margin-bottom:16px}
+.backup-stat{border:1px solid #dbe7f3;border-radius:14px;padding:14px;background:#f8fbff}
+.backup-stat .k{font-size:11px;font-weight:900;color:#64748b;text-transform:uppercase}
+.backup-stat .v{margin-top:6px;font-size:16px;font-weight:1000;color:#123a61}
+.backup-actions{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.backup-action-btn{height:44px;border:0;border-radius:12px;padding:0 15px;font-weight:950;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.backup-action-btn.primary{background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff}
+.backup-action-btn.secondary{background:#e2e8f0;color:#334155}
+.backup-table-wrap{overflow:auto;border:1px solid #dbe7f3;border-radius:15px;background:#fff}
+.backup-table{width:100%;min-width:820px;border-collapse:collapse}
+.backup-table th{padding:12px;background:#eaf4ff;color:#123a61;text-align:left;font-size:12px;font-weight:1000}
+.backup-table td{padding:12px;border-top:1px solid #edf2f7;font-size:12px;font-weight:750;color:#334155;vertical-align:middle}
+.backup-kind{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:1000;border:1px solid #dbe7f3;background:#f8fafc}
+.backup-kind.auto{background:#ecfdf5;border-color:#bbf7d0;color:#166534}
+.backup-kind.manual{background:#eff6ff;border-color:#bfdbfe;color:#1d4ed8}
+.backup-kind.safety{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+.backup-row-actions{display:flex;justify-content:flex-end;gap:7px}
+.backup-mini-btn{height:34px;border:0;border-radius:9px;padding:0 10px;font-size:11px;font-weight:950;cursor:pointer}
+.backup-mini-btn.download{background:#eaf2ff;color:#1d4ed8}
+.backup-mini-btn.restore{background:#fee2e2;color:#b91c1c}
+.backup-status{padding:13px;border-radius:12px;background:#f8fbff;border:1px solid #dbe7f3;color:#53677d;font-size:12px;font-weight:800;line-height:1.55}
+.backup-status.error{background:#fef2f2;border-color:#fecaca;color:#b91c1c}
+@media(max-width:900px){.backup-summary{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.backup-summary{grid-template-columns:1fr}}
+
 @media(max-width:1180px){
     .admin-table-head,.admin-row{
         grid-template-columns:minmax(180px,1.1fr) minmax(170px,1fr) 135px minmax(165px,.9fr) 190px;
@@ -215,6 +302,8 @@ body{
       <button type="button" class="setup-tab active" data-tab="club"><i class="fa-solid fa-building"></i>Thông tin CLB</button>
       <button type="button" class="setup-tab" data-tab="pricing"><i class="fa-solid fa-tags"></i>Biểu phí</button>
       <button type="button" class="setup-tab" data-tab="payment"><i class="fa-solid fa-qrcode"></i>Thanh toán</button>
+      <button type="button" class="setup-tab" data-tab="member_ranks"><i class="fa-solid fa-ranking-star"></i>Hạng thành viên</button>
+      <button type="button" class="setup-tab" data-tab="backup"><i class="fa-solid fa-cloud-arrow-up"></i>Backup & Restore</button>
       {% if can_manage_admin %}
       <button type="button" class="setup-tab" data-tab="admin"><i class="fa-solid fa-user-shield"></i>Phân quyền Admin</button>
       {% endif %}
@@ -294,6 +383,153 @@ body{
         </div>
         <div class="save-row"><button class="save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu</button></div>
       </form>
+    </div>
+
+    <div id="member_ranks" class="setup-panel">
+      <form method="post">
+        <input type="hidden" name="section" value="member_ranks">
+
+        <div class="section-title">
+          <i class="fa-solid fa-ranking-star"></i>
+          Hạng thành viên
+        </div>
+
+        <div class="admin-note" style="margin-bottom:16px">
+          Các điều kiện <strong>Lượt chơi</strong> và <strong>Tổng chi tiêu</strong> dùng quan hệ <strong>HOẶC</strong>:
+          chỉ cần đạt một trong hai điều kiện. Hạng đầu tiên có thể để thời gian hạ hạng bằng 0.
+        </div>
+
+        <div class="rank-settings-list">
+          {% for rank in setup_config.member_ranks %}
+          <div class="rank-settings-row">
+            <div class="rank-settings-head">
+              <div class="rank-settings-index">{{ loop.index }}</div>
+              <div>{{ rank.icon }} {{ rank.name }}</div>
+            </div>
+
+            <input type="hidden" name="rank_code" value="{{ rank.code }}">
+
+            <div class="rank-settings-grid">
+              <div class="field">
+                <label>Tên hạng</label>
+                <input type="text" name="rank_name" value="{{ rank.name }}" required>
+              </div>
+
+              <div class="field">
+                <label>Icon</label>
+                <input type="text" name="rank_icon" value="{{ rank.icon }}" maxlength="8">
+              </div>
+
+              <div class="field">
+                <label>Lượt chơi đạt</label>
+                <input type="number" name="rank_min_plays" min="0" value="{{ rank.min_plays }}" required>
+              </div>
+
+              <div class="field">
+                <label>Tổng chi tiêu đạt</label>
+                <input type="text" name="rank_min_spend" class="money-input" inputmode="numeric"
+                       value="{{ '{:,}'.format(rank.min_spend) }}" required>
+              </div>
+
+              <div class="field">
+                <label>Giảm giá (%)</label>
+                <input type="number" name="rank_discount" min="0" max="100"
+                       value="{{ rank.discount_percent }}" required>
+              </div>
+
+              <div class="field">
+                <label>Hạ hạng sau (tháng)</label>
+                <input type="number" name="rank_inactive_months" min="0" max="120"
+                       value="{{ rank.inactive_months }}" required>
+              </div>
+            </div>
+
+            <div class="rank-text-grid">
+              <div class="field">
+                <label>Quà / quyền lợi</label>
+                <textarea name="rank_gift_text">{{ rank.gift_text }}</textarea>
+              </div>
+
+              <div class="field">
+                <label>Voucher sinh nhật / quyền lợi khác</label>
+                <textarea name="rank_birthday_text">{{ rank.birthday_text }}</textarea>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="rank-logic-note">
+          Khi đổi tên hạng, hệ thống sẽ cố gắng đồng bộ tên hạng đang lưu trong bảng thành viên.
+          Các mã kỹ thuật của 6 hạng vẫn giữ cố định để tránh xung đột dữ liệu.
+        </div>
+
+        <div class="save-row">
+          <button class="save-btn" type="submit">
+            <i class="fa-solid fa-floppy-disk"></i> Lưu hạng thành viên
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <div id="backup" class="setup-panel">
+      <div class="section-title">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        Backup & Restore
+      </div>
+
+      <div class="backup-summary">
+        <div class="backup-stat">
+          <div class="k">Lịch tự động</div>
+          <div class="v">00:00 · 12:00 · 18:00</div>
+        </div>
+        <div class="backup-stat">
+          <div class="k">Giữ tự động</div>
+          <div class="v">9 bản / 3 ngày</div>
+        </div>
+        <div class="backup-stat">
+          <div class="k">Storage</div>
+          <div class="v" id="backupBucketName">system-backups</div>
+        </div>
+        <div class="backup-stat">
+          <div class="k">Trạng thái</div>
+          <div class="v" id="backupStatusText">Chưa kiểm tra</div>
+        </div>
+      </div>
+
+      <div class="admin-note" style="margin-bottom:14px">
+        Backup lưu trên Supabase Storage của hệ thống đang cấu hình trong <strong>.env</strong>.
+        Mã nguồn không được đưa vào backup; GitHub chịu trách nhiệm lưu code.
+        Trước mỗi lần Restore, hệ thống tự tạo thêm một <strong>Safety Backup</strong>.
+      </div>
+
+      <div class="backup-actions">
+        <button type="button" class="backup-action-btn primary" id="backupNowBtn" onclick="createBackupNow()">
+          <i class="fa-solid fa-cloud-arrow-up"></i> Backup ngay
+        </button>
+        <button type="button" class="backup-action-btn secondary" onclick="loadBackupList(true)">
+          <i class="fa-solid fa-rotate"></i> Làm mới
+        </button>
+      </div>
+
+      <div id="backupMessage" class="backup-status">Bấm vào tab này để tải danh sách backup.</div>
+
+      <div class="backup-table-wrap" style="margin-top:14px">
+        <table class="backup-table">
+          <thead>
+            <tr>
+              <th>Loại</th>
+              <th>Thời gian</th>
+              <th>File</th>
+              <th>Dung lượng</th>
+              <th style="text-align:right">Thao tác</th>
+            </tr>
+          </thead>
+          <tbody id="backupTableBody">
+            <tr><td colspan="5" style="text-align:center;color:#64748b">Chưa tải dữ liệu backup.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
     {% if can_manage_admin %}
@@ -614,7 +850,7 @@ body{
   }
   tabs.forEach(x=>x.addEventListener('click',()=>{openTab(x.dataset.tab);history.replaceState(null,'','#'+x.dataset.tab);}));
   const first=(location.hash||'#club').slice(1);
-  openTab(['club','pricing','payment','admin'].includes(first)?first:'club');
+  openTab(['club','pricing','payment','member_ranks','backup','admin'].includes(first)?first:'club');
 })();
 
 document.addEventListener('input',e=>{
@@ -820,6 +1056,155 @@ document.addEventListener('DOMContentLoaded',function(){
   });
 });
 
+
+
+let backupListLoaded=false;
+
+function formatBackupBytes(value){
+  const bytes=Number(value||0);
+  if(!bytes) return '—';
+  if(bytes<1024) return `${bytes} B`;
+  if(bytes<1024*1024) return `${(bytes/1024).toFixed(1)} KB`;
+  return `${(bytes/1024/1024).toFixed(2)} MB`;
+}
+
+function backupKindLabel(kind){
+  if(kind==='automatic') return ['Tự động','auto'];
+  if(kind==='safety') return ['An toàn','safety'];
+  return ['Thủ công','manual'];
+}
+
+function escapeBackupHtml(value){
+  return String(value||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+}
+
+function setBackupMessage(message,isError=false){
+  const box=document.getElementById('backupMessage');
+  if(!box) return;
+  box.textContent=message||'';
+  box.classList.toggle('error',!!isError);
+}
+
+async function loadBackupList(force=false){
+  if(backupListLoaded && !force) return;
+  const body=document.getElementById('backupTableBody');
+  if(!body) return;
+
+  body.innerHTML='<tr><td colspan="5" style="text-align:center;color:#64748b">Đang tải...</td></tr>';
+  setBackupMessage('Đang kết nối Supabase Storage...');
+
+  try{
+    const response=await fetch('/api/setup/backups',{cache:'no-store'});
+    const data=await response.json();
+    if(!response.ok || !data.ok) throw new Error(data.message||'Không tải được backup.');
+
+    backupListLoaded=true;
+    document.getElementById('backupBucketName').textContent=data.bucket||'system-backups';
+    document.getElementById('backupStatusText').textContent='Đang hoạt động';
+
+    const items=Array.isArray(data.items)?data.items:[];
+    setBackupMessage(`Đã kết nối. Có ${items.length} bản backup đang lưu trên Storage.`);
+
+    if(!items.length){
+      body.innerHTML='<tr><td colspan="5" style="text-align:center;color:#64748b">Chưa có file backup.</td></tr>';
+      return;
+    }
+
+    body.innerHTML=items.map(item=>{
+      const kind=backupKindLabel(item.kind);
+      const path=escapeBackupHtml(item.path);
+      const name=escapeBackupHtml(item.name);
+      const time=escapeBackupHtml(item.created_at_hien_thi||item.created_at||'—');
+      return `
+        <tr>
+          <td><span class="backup-kind ${kind[1]}">${kind[0]}</span></td>
+          <td>${time}</td>
+          <td>${name}</td>
+          <td>${formatBackupBytes(item.size)}</td>
+          <td>
+            <div class="backup-row-actions">
+              <button type="button" class="backup-mini-btn download" onclick="downloadBackup('${path}')">
+                <i class="fa-solid fa-download"></i> Tải
+              </button>
+              {% if current_admin and current_admin.is_owner %}
+              <button type="button" class="backup-mini-btn restore" onclick="restoreBackup('${path}')">
+                <i class="fa-solid fa-clock-rotate-left"></i> Khôi phục
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>`;
+    }).join('');
+  }catch(error){
+    console.error(error);
+    document.getElementById('backupStatusText').textContent='Lỗi';
+    setBackupMessage(error.message||'Không tải được danh sách backup.',true);
+    body.innerHTML='<tr><td colspan="5" style="text-align:center;color:#b91c1c">Không tải được dữ liệu backup.</td></tr>';
+  }
+}
+
+async function createBackupNow(){
+  const btn=document.getElementById('backupNowBtn');
+  if(btn) btn.disabled=true;
+  setBackupMessage('Đang tạo backup. Vui lòng chờ...');
+  try{
+    const response=await fetch('/api/setup/backups/create',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:'{}'
+    });
+    const data=await response.json();
+    if(!response.ok || !data.ok) throw new Error(data.message||'Không tạo được backup.');
+    setBackupMessage(`Đã tạo ${data.name}.`);
+    backupListLoaded=false;
+    await loadBackupList(true);
+  }catch(error){
+    console.error(error);
+    setBackupMessage(error.message||'Không tạo được backup.',true);
+  }finally{
+    if(btn) btn.disabled=false;
+  }
+}
+
+function downloadBackup(path){
+  window.location.href='/api/setup/backups/download?path='+encodeURIComponent(path);
+}
+
+async function restoreBackup(path){
+  const ok=confirm(
+    'KHÔI PHỤC TOÀN BỘ DỮ LIỆU từ bản backup này?\n\n'+
+    'Hệ thống sẽ tạo Safety Backup trước khi khôi phục. '+
+    'Sau khi hoàn tất Ken sẽ phải đăng nhập Admin lại.'
+  );
+  if(!ok) return;
+
+  setBackupMessage('Đang tạo Safety Backup và khôi phục dữ liệu. Không đóng trang...');
+
+  try{
+    const response=await fetch('/api/setup/backups/restore',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({path})
+    });
+    const data=await response.json();
+    if(!response.ok || !data.ok) throw new Error(data.message||'Khôi phục thất bại.');
+    alert('Khôi phục thành công. Hệ thống sẽ chuyển về trang đăng nhập Admin.');
+    window.location.href='/admin-login';
+  }catch(error){
+    console.error(error);
+    setBackupMessage(error.message||'Khôi phục thất bại.',true);
+  }
+}
+
+document.addEventListener('DOMContentLoaded',function(){
+  const backupTab=document.querySelector('.setup-tab[data-tab="backup"]');
+  if(backupTab){
+    backupTab.addEventListener('click',()=>loadBackupList(false));
+  }
+  if((location.hash||'')==='#backup') loadBackupList(false);
+});
 
 document.addEventListener('DOMContentLoaded',refreshServiceButtons);
 </script>

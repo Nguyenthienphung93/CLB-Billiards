@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đăng nhập Admin - Billiards Manager</title>
+    <title>Đăng nhập Admin - {{ app_setup.club.title }} {{ app_setup.club.name }}</title>
 
     <style>
         *{
@@ -105,16 +105,16 @@
             z-index:1;
         }
 
-        .logo-wrap{
-            width:84px;
-            height:84px;
-            border-radius:22px;
-            padding:10px;
-            display:grid;
-            place-items:center;
-            background:rgba(255,255,255,.95);
-            box-shadow:0 16px 40px rgba(0,0,0,.18);
-            margin-bottom:30px;
+        .logo-wrap {
+            width: 100px;
+            height: 100px;
+            border-radius: 22px;
+            padding: 10px;
+            display: grid;
+            place-items: center;
+            background: rgba(255, 255, 255, .95);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, .18);
+            margin-bottom: 30px;
         }
 
         .logo-wrap img{
@@ -199,20 +199,25 @@
         }
 
         .form-eyebrow{
-            margin:0 0 6px;
-            color:#2563eb;
-            font-size:13px;
-            font-weight:900;
-            text-transform:uppercase;
-            letter-spacing:1.2px;
+            margin: 0 0 6px;
+            color: #2563eb;
+            font-size: 13px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            line-height: 3;
+            display: grid;
+            justify-content: center;
         }
 
         .form-title{
-            margin:0;
-            font-size:34px;
-            line-height:1.16;
-            font-weight:900;
-            color:#102a43;
+            margin: 0;
+            font-size: 34px;
+            line-height: 1.5;
+            font-weight: 900;
+            color: #102a43;
+            display: grid;
+            justify-content: center;
         }
 
         .form-subtitle{
@@ -230,6 +235,7 @@
         .field label{
             display:block;
             margin-bottom:8px;
+            margin-top: 20px;
             font-size:13px;
             font-weight:850;
             color:#334155;
@@ -444,45 +450,37 @@
                     {% endif %}
                 </div>
 
-                <p class="brand-small">Câu Lạc Bộ Billiards</p>
-                <h1 class="brand-main">Thanh Trung</h1>
+                <p class="brand-small">{{ app_setup.club.title }}</p>
+                <h1 class="brand-main">{{ app_setup.club.name }}</h1>
 
                 <p class="intro-copy">
-                    Hệ thống quản lý vận hành CLB giúp theo dõi thành viên,
-                    bàn đang hoạt động, dịch vụ phát sinh và hóa đơn trong
-                    cùng một giao diện tập trung, rõ ràng và thuận tiện.
+                    Hệ thống quản lý CLB được xây dựng tập trung với 3 chức năng chính:
                 </p>
 
                 <ul class="feature-list">
-                    <li>
-                        <span class="feature-dot">🎱</span>
-                        Theo dõi trạng thái và thời gian hoạt động của từng bàn
-                    </li>
                     <li>
                         <span class="feature-dot">👥</span>
                         Quản lý thành viên và lịch sử sử dụng dịch vụ
                     </li>
                     <li>
+                        <span class="feature-dot">🎱</span>
+                        Theo dõi trạng thái và thời gian hoạt động của từng bàn
+                    </li>
+                    <li>
                         <span class="feature-dot">🧾</span>
-                        Lưu trữ hóa đơn, dịch vụ và doanh thu theo từng lượt chơi
+                        Quản lý hóa đơn, dịch vụ và chương trình khuyến mãi
                     </li>
                 </ul>
             </div>
 
-            <div class="intro-footer">
-                Billiards Manager · Thanh Trung Club Management System
-            </div>
         </section>
 
         <section class="form-panel">
             <div class="form-inner">
 
                 <p class="form-eyebrow">Administrator</p>
-                <h2 class="form-title">Đăng nhập quản trị</h2>
-
-                <p class="form-subtitle">
-                    Nhập tài khoản quản trị để truy cập hệ thống quản lý CLB.
-                </p>
+                <h2 class="form-title">Đăng nhập</h2>
+                <h2 class="form-title">Quản trị viên</h2>
 
                 <form method="post" action="{{ url_for('admin_login') }}" autocomplete="off">
 
@@ -551,10 +549,6 @@
                         Đăng nhập
                     </button>
                 </form>
-
-                <div class="security-note">
-                    Khu vực quản trị nội bộ. Vui lòng đăng xuất sau khi sử dụng trên thiết bị dùng chung.
-                </div>
 
             </div>
         </section>

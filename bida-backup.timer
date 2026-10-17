@@ -1,0 +1,13 @@
+[Unit]
+Description=Run Billiards backup at 00:00, 12:00 and 18:00 Vietnam time
+
+[Timer]
+OnCalendar=*-*-* 00:00:00 Asia/Ho_Chi_Minh
+OnCalendar=*-*-* 12:00:00 Asia/Ho_Chi_Minh
+OnCalendar=*-*-* 18:00:00 Asia/Ho_Chi_Minh
+Persistent=true
+AccuracySec=1min
+Unit=bida-backup.service
+
+[Install]
+WantedBy=timers.target

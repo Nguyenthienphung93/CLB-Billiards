@@ -1,0 +1,11 @@
+[Unit]
+Description=Billiards Manager Automatic Backup
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/var/www/bida
+EnvironmentFile=/var/www/bida/.env
+ExecStart=/var/www/bida/venv/bin/python /var/www/bida/backup_worker.py

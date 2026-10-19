@@ -3832,7 +3832,7 @@ async function loadMemberBenefits(memberCode) {
 
         if (!response.ok || !data.ok) {
             throw new Error(
-                data.message || 'Không tải được Voucher/Quà giảm tiền.'
+                data.message || 'Không tải được Voucher/Quà giảm giá.'
             );
         }
 
@@ -3843,7 +3843,7 @@ async function loadMemberBenefits(memberCode) {
             select.disabled = true;
             select.innerHTML = `
                 <option value="">
-                    Hiện tại bạn chưa có Voucher/Quà giảm tiền
+                    Hiện tại bạn chưa có Voucher/Quà giảm giá
                 </option>
             `;
 
@@ -3852,7 +3852,7 @@ async function loadMemberBenefits(memberCode) {
             if (note) {
                 note.className = 'member-benefit-note warn';
                 note.textContent =
-                    'Thành viên hiện không có Voucher hoặc Quà tặng bằng tiền có thể sử dụng.';
+                    'Thành viên hiện không có Voucher hoặc Quà tặng giảm giá có thể sử dụng.';
             }
 
             setManualDiscountEnabled(true, true);
@@ -3874,8 +3874,8 @@ async function loadMemberBenefits(memberCode) {
                 : 'member-benefit-note warn';
 
             note.textContent = eligibleCount
-                ? `Có ${eligibleCount}/${memberBenefitOptions.length} Voucher/Quà giảm tiền đang đủ điều kiện sử dụng.`
-                : 'Có Voucher/Quà giảm tiền nhưng hóa đơn hiện tại chưa đạt điều kiện sử dụng.';
+                ? `Có ${eligibleCount}/${memberBenefitOptions.length} Voucher/Quà giảm giá đang đủ điều kiện sử dụng.`
+                : 'Có Voucher/Quà giảm giá nhưng hóa đơn hiện tại chưa đạt điều kiện sử dụng.';
         }
 
         setManualDiscountEnabled(true, true);
@@ -3886,14 +3886,14 @@ async function loadMemberBenefits(memberCode) {
         select.disabled = true;
         select.innerHTML = `
             <option value="">
-                Không tải được Voucher/Quà giảm tiền
+                Không tải được Voucher/Quà giảm giá
             </option>
         `;
 
         if (note) {
             note.className = 'member-benefit-note warn';
             note.textContent =
-                error.message || 'Không tải được Voucher/Quà giảm tiền.';
+                error.message || 'Không tải được Voucher/Quà giảm giá.';
         }
 
         setManualDiscountEnabled(true, true);
@@ -4321,10 +4321,9 @@ function updateInvoiceSummary() {
     // 2. Sau đó mới áp dụng giảm thủ công trên số tiền còn lại
     // ==========================================
     const benefitDiscount = selectedMemberBenefit
-        ? Math.min(
-            Number(selectedMemberBenefit.gia_tri || 0),
-            subtotal
-        )
+        ? (selectedMemberBenefit.kieu_giam === 'PERCENT'
+            ? Math.min(subtotal, Math.round(subtotal * Number(selectedMemberBenefit.gia_tri || 0) / 100))
+            : Math.min(Number(selectedMemberBenefit.gia_tri || 0), subtotal))
         : 0;
 
     const afterBenefit = Math.max(

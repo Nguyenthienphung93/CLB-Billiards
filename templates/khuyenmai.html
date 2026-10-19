@@ -311,7 +311,7 @@
         <div class="subsection-head">
             <div>
                 <div class="subsection-title">Các mốc đổi quà</div>
-                <div class="subsection-note">Có thể sửa số giờ, sửa phần quà, thêm mốc mới hoặc xóa mốc.</div>
+                <div class="subsection-note">Có thể nhập quà vật phẩm, giá trị tiền (50,000đ) hoặc giảm theo hóa đơn (10%).</div>
             </div>
         </div>
 
@@ -341,7 +341,7 @@
                         type="text"
                         name="moc_gift"
                         value="{{ m.ten_qua_tang or '' }}"
-                        placeholder="Nhập phần quà..."
+                        placeholder="VD: Gấu bông, 50,000đ hoặc Giảm 10%"
                         required
                     >
                 </div>
@@ -442,7 +442,7 @@
         <div class="subsection-head">
             <div>
                 <div class="subsection-title">Các mốc đổi quà</div>
-                <div class="subsection-note">Có thể sửa số lần, sửa phần quà, thêm mốc mới hoặc xóa mốc.</div>
+                <div class="subsection-note">Có thể nhập quà vật phẩm, giá trị tiền (50,000đ) hoặc giảm theo hóa đơn (10%).</div>
             </div>
         </div>
 
@@ -472,7 +472,7 @@
                         type="text"
                         name="moc_gift"
                         value="{{ m.ten_qua_tang or '' }}"
-                        placeholder="Nhập phần quà..."
+                        placeholder="VD: Gấu bông, 50,000đ hoặc Giảm 10%"
                         required
                     >
                 </div>
@@ -604,7 +604,7 @@
                         type="text"
                         name="moc_gift"
                         value="{{ m.ten_qua_tang or '' }}"
-                        placeholder="Nhập phần quà..."
+                        placeholder="VD: Gấu bông, 50,000đ hoặc Giảm 10%"
                         required
                     >
                 </div>
@@ -673,10 +673,10 @@
     </div>
 
     <div class="field">
-        <label>Giá trị giảm</label>
+        <label>Giá trị giảm (Vnđ hoặc % đơn hàng)</label>
         <div class="money-input-wrap">
-            <input id="voucherValue" type="text" name="gia_tri" inputmode="numeric" placeholder="10,000" oninput="formatMoneyInput(this);updateVoucherPreview()">
-            <span class="money-suffix">đ</span>
+            <input id="voucherValue" type="text" name="gia_tri" inputmode="text" placeholder="50,000 hoặc 10%" oninput="formatVoucherDiscountInput(this);updateVoucherPreview()">
+            <span class="money-suffix">đ / %</span>
         </div>
     </div>
 
@@ -832,10 +832,10 @@
                         <input id="editVoucherName" type="text" name="ten_voucher" required>
                     </div>
                     <div class="field">
-                        <label>Giá trị giảm</label>
+                        <label>Giá trị giảm (Vnđ hoặc % đơn hàng)</label>
                         <div class="money-input-wrap">
-                            <input id="editVoucherValue" type="text" name="gia_tri" inputmode="numeric" oninput="formatMoneyInput(this)">
-                            <span class="money-suffix">đ</span>
+                            <input id="editVoucherValue" type="text" name="gia_tri" inputmode="text" placeholder="50,000 hoặc 10%" oninput="formatVoucherDiscountInput(this)">
+                            <span class="money-suffix">đ / %</span>
                         </div>
                     </div>
                     <div class="field">
@@ -1050,6 +1050,14 @@ function collectConditionPreview(containerId){
         .filter(Boolean);
 }
 
+function formatVoucherDiscountInput(input){
+    const raw=String(input.value||'');
+    if(raw.includes('%')){
+        input.value=raw.replace(/[^\d.,%]/g,'').replace(/%(?!$)/g,'');
+    }else{
+        formatMoneyInput(input);
+    }
+}
 function updateVoucherPreview(){
     const n=document.getElementById('voucherName');
     const v=document.getElementById('voucherValue');
@@ -1059,7 +1067,7 @@ function updateVoucherPreview(){
         n&&n.value.trim()?n.value.trim():'Tên Voucher';
 
     document.getElementById('voucherPreviewValue').textContent=
-        v&&v.value.trim()?v.value.trim()+' đ':'Ưu đãi dành riêng cho thành viên';
+        v&&v.value.trim()?(v.value.includes('%')?v.value.trim():v.value.trim()+' đ'):'Ưu đãi dành riêng cho thành viên';
 
     document.getElementById('voucherPreviewDesc').textContent=
         d&&d.value.trim()?d.value.trim():'Nội dung Voucher sẽ hiển thị tại đây.';
@@ -1078,7 +1086,7 @@ function openEditVoucher(v){
     document.getElementById('editVoucherForm').action='/khuyen-mai/voucher/'+v.id+'/cap-nhat';
     document.getElementById('editVoucherRecipient').textContent=(v.ho_va_ten||'—')+' · '+(v.ma_thanh_vien||'')+' · '+(v.so_dien_thoai||'');
     document.getElementById('editVoucherName').value=v.ten_voucher||'';
-    const raw=String(v.gia_tri||'').replace(/\D/g,'');document.getElementById('editVoucherValue').value=raw?Number(raw).toLocaleString('en-US'):'';
+    const raw=String(v.gia_tri||'');document.getElementById('editVoucherValue').value=raw.includes('%')?raw:(raw.replace(/\D/g,'')?Number(raw.replace(/\D/g,'')).toLocaleString('en-US'):'');
     document.getElementById('editVoucherStart').value=v.ngay_bat_dau_hien_thi||'';
     document.getElementById('editVoucherEnd').value=v.ngay_het_han_hien_thi||'';
     document.getElementById('editVoucherStatus').value=v.trang_thai||'Chưa sử dụng';
@@ -1159,7 +1167,7 @@ function addHourMilestone(){
             </div>
             <div class="milestone-edit-field gift-field">
                 <label>Phần quà</label>
-                <input type="text" name="moc_gift" placeholder="Nhập phần quà..." required>
+                <input type="text" name="moc_gift" placeholder="VD: Gấu bông, 50,000đ hoặc Giảm 10%" required>
             </div>
             <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
         </div>
@@ -1181,7 +1189,7 @@ function addPlayMilestone(){
             </div>
             <div class="milestone-edit-field gift-field">
                 <label>Phần quà</label>
-                <input type="text" name="moc_gift" placeholder="Nhập phần quà..." required>
+                <input type="text" name="moc_gift" placeholder="VD: Gấu bông, 50,000đ hoặc Giảm 10%" required>
             </div>
             <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
         </div>
@@ -1203,7 +1211,7 @@ function addMoneyMilestone(){
             </div>
             <div class="milestone-edit-field gift-field">
                 <label>Phần quà</label>
-                <input type="text" name="moc_gift" placeholder="Nhập phần quà..." required>
+                <input type="text" name="moc_gift" placeholder="VD: Gấu bông, 50,000đ hoặc Giảm 10%" required>
             </div>
             <button type="button" class="milestone-remove-btn" title="Xóa mốc" onclick="removeMilestoneRow(this)">×</button>
         </div>

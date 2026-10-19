@@ -299,7 +299,22 @@
                 transform:translateY(0);
             }
         }
+
+        /* Xác thực Setup tại menu hiện tại, không điều hướng hoặc đăng xuất khi đóng. */
+.setup-auth-overlay{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.58);display:none;align-items:center;justify-content:center;padding:18px;backdrop-filter:blur(3px)}
+.setup-auth-overlay.open{display:flex}
+.setup-auth-dialog{width:min(430px,100%);background:#fff;border:1px solid #cbdff4;border-radius:20px;padding:26px;box-shadow:0 25px 80px #0f172a55;color:#153557}
+.setup-auth-dialog h2{font-size:20px;margin:0 0 10px}.setup-auth-dialog p{font-size:13px;line-height:1.5;color:#475569;margin:0 0 16px}
+.setup-auth-dialog label{display:block;margin-bottom:7px;font-size:13px;font-weight:800}
+.setup-auth-dialog input{width:100%;border:1px solid #b5cbe5;border-radius:10px;padding:12px;font-size:15px}
+.setup-auth-attempts{color:#b45309;font-size:13px;font-weight:800;margin-top:11px}
+.setup-auth-error{color:#b91c1c;font-size:13px;font-weight:700;min-height:20px;margin-top:8px}
+.setup-auth-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:15px}
+.setup-auth-actions button{border:none;border-radius:10px;padding:11px 15px;cursor:pointer;font-weight:800}
+.setup-auth-cancel{background:#e2e8f0;color:#334155}.setup-auth-confirm{background:#2563eb;color:#fff}
+.setup-auth-confirm:disabled{opacity:.55;cursor:wait}
     </style>
+
     {% block page_style %}{% endblock %}
 </head>
 <body>
@@ -436,6 +451,7 @@
             <!-- SETUP -->
             <a
                 href="{{ url_for('setup') }}"
+                id="setupMenuLink"
                 class="nav-link {{ 'active' if request.endpoint == 'setup' else '' }}"
             >
                 <span class="nav-icon">
@@ -617,6 +633,81 @@ document.addEventListener(
     }
 );
 </script>
+
+{% if admin_can('setup') %}
+<div class="setup-auth-overlay" id="setupAuthOverlay" role="dialog" aria-modal="true" aria-labelledby="setupAuthTitle" aria-hidden="true">
+  <div class="setup-auth-dialog">
+    <h2 id="setupAuthTitle">🔐 Xác thực quyền truy cập Setup</h2>
+    <p>Nhập mật khẩu Admin để truy cập Setup. Nếu bấm <b>Quay lại</b>, bạn vẫn ở menu hiện tại.</p>
+    <form id="setupAuthForm">
+      <label for="setupAuthPassword">Mật khẩu Admin</label>
+      <input id="setupAuthPassword" type="password" autocomplete="current-password" placeholder="Nhập mật khẩu Admin" required>
+      <div class="setup-auth-attempts" id="setupAuthAttempts">Còn {{ setup_remaining }} lần nhập mật khẩu.</div>
+      <div class="setup-auth-error" id="setupAuthError" aria-live="polite"></div>
+      <div class="setup-auth-actions">
+        <button type="button" class="setup-auth-cancel" id="setupAuthCancel">Quay lại</button>
+        <button type="submit" class="setup-auth-confirm" id="setupAuthConfirm">Xác nhận</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% if admin_can('setup') %}
+<script>
+(function(){
+  const link=document.getElementById('setupMenuLink');
+  const overlay=document.getElementById('setupAuthOverlay');
+  const form=document.getElementById('setupAuthForm');
+  if(!link || !overlay || !form) return;
+  const pass=document.getElementById('setupAuthPassword');
+  const attempts=document.getElementById('setupAuthAttempts');
+  const error=document.getElementById('setupAuthError');
+  const confirmBtn=document.getElementById('setupAuthConfirm');
+  const csrf={{ setup_csrf|tojson }};
+  let remaining={{ setup_remaining|int }};
+  let lastFocus=null;
+  function updateAttempts(){ attempts.textContent='Còn '+remaining+' lần nhập mật khẩu.'; }
+  function openModal(){
+    lastFocus=document.activeElement;
+    pass.value='';error.textContent='';updateAttempts();
+    overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');
+    document.body.style.overflow='hidden';pass.focus();
+  }
+  function closeModal(){
+    overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');
+    document.body.style.overflow='';pass.value='';error.textContent='';
+    (lastFocus||link).focus();
+  }
+  link.addEventListener('click',e=>{
+    {% if not setup_unlocked %}
+    e.preventDefault();openModal();
+    {% endif %}
+  });
+  document.getElementById('setupAuthCancel').addEventListener('click',closeModal);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape' && overlay.classList.contains('open'))closeModal();});
+  form.addEventListener('submit',async e=>{
+    e.preventDefault();confirmBtn.disabled=true;error.textContent='';
+    try{
+      const response=await fetch({{ url_for('setup_verify')|tojson }},{
+        method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({password:pass.value,csrf})
+      });
+      let data;
+      try{data=await response.json();}catch(_){throw new Error('Phản hồi xác thực không hợp lệ. Hãy tải lại trang.');}
+      pass.value='';
+      if(response.ok && data.ok){window.location.assign(data.redirect||link.href);return;}
+      if(data.logout){alert(data.message||'Phiên đăng nhập đã kết thúc.');window.location.replace(data.redirect||{{ url_for('admin_login')|tojson }});return;}
+      if(typeof data.remaining==='number')remaining=data.remaining;
+      updateAttempts();error.textContent=data.message||'Không thể xác thực.';pass.focus();
+    }catch(err){error.textContent=err.message||'Lỗi kết nối. Vui lòng thử lại.';}
+    finally{confirmBtn.disabled=false;}
+  });
+})();
+</script>
+{% endif %}
+
 {% block page_script %}{% endblock %}
 </body>
 </html>

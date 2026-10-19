@@ -979,6 +979,42 @@
     .gv-state-panel{position:static;width:100%;margin-bottom:2px;order:-1;}
 }
 
+.money-warning-box{
+    margin-top: 12px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #fff1f1;
+    border: 1px solid #f5b5b5;
+    color: #9f1d1d;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.55);
+}
+
+.money-warning-box .warning-title{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 800;
+    margin-bottom: 8px;
+    color: #c62828;
+}
+
+.money-warning-box ul{
+    margin: 0;
+    padding-left: 18px;
+}
+
+.money-warning-box li{
+    margin: 6px 0;
+    line-height: 1.5;
+    font-size: 13px;
+    font-weight: 600;
+    color: #a12626;
+}
+
+.money-warning-box li strong{
+    color: #8b1111;
+}
 </style>
 {% endblock %}
 
@@ -1790,10 +1826,21 @@
                                 </div>
 
                                 <div class="gv-name">{{ reward.ten_qua_tang }}</div>
+                                {% if reward.uu_dai_hien_thi %}<div class="gv-value">Giảm {{ reward.uu_dai_hien_thi }}</div>{% endif %}
 
                                 <div class="gv-info">
                                     Quà tặng dành riêng cho thành viên của {{ app_setup.club.title }} {{ app_setup.club.name }}.
                                 </div>
+
+                                {% if reward.is_money_related %}
+                                <div class="money-warning-box">
+                                    <div class="warning-title"><span>📌</span><span>Lưu ý</span></div>
+                                    <ul>
+                                        <li><strong>Không quy đổi tiền mặt:</strong> Khách hàng không thể yêu cầu CLB trả lại tiền mặt theo giá trị của quà/voucher.</li>
+                                        <li><strong>Không hoàn tiền thừa:</strong> Nếu hóa đơn thấp hơn giá trị của quà/voucher, số tiền dư thừa sẽ không được hoàn lại hay tích lũy sang lần sau.</li>
+                                    </ul>
+                                </div>
+                                {% endif %}
 
                                 <div class="gv-code">Mã quà: {{ reward.ma_hien_thi }}</div>
                             </div>
@@ -1859,6 +1906,19 @@
                                     {% for line in voucher.dieu_kien_dong %}
                                         <div class="gv-condition-line">• {{ line }}</div>
                                     {% endfor %}
+                                </div>
+                                {% endif %}
+
+                                {% if voucher.is_money_related %}
+                                <div class="money-warning-box">
+                                    <div class="warning-title">
+                                        <span>📌</span>
+                                        <span>Lưu ý</span>
+                                    </div>
+                                    <ul>
+                                        <li><strong>Không quy đổi tiền mặt:</strong> Khách hàng không thể yêu cầu CLB trả lại tiền mặt theo giá trị của voucher.</li>
+                                        <li><strong>Không hoàn tiền thừa:</strong> Nếu hóa đơn thấp hơn giá trị của voucher, số tiền dư thừa sẽ không được hoàn lại hay tích lũy sang lần sau.</li>
+                                    </ul>
                                 </div>
                                 {% endif %}
 

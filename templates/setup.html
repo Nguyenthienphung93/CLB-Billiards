@@ -303,6 +303,7 @@ body{
       <button type="button" class="setup-tab" data-tab="pricing"><i class="fa-solid fa-tags"></i>Biểu phí</button>
       <button type="button" class="setup-tab" data-tab="payment"><i class="fa-solid fa-qrcode"></i>Thanh toán</button>
       <button type="button" class="setup-tab" data-tab="member_ranks"><i class="fa-solid fa-ranking-star"></i>Hạng thành viên</button>
+      <button type="button" class="setup-tab" data-tab="discounts"><i class="fa-solid fa-percent"></i>Ưu đãi hóa đơn</button>
       <button type="button" class="setup-tab" data-tab="backup"><i class="fa-solid fa-cloud-arrow-up"></i>Backup & Restore</button>
       {% if can_manage_admin %}
       <button type="button" class="setup-tab" data-tab="admin"><i class="fa-solid fa-user-shield"></i>Phân quyền Admin</button>
@@ -313,6 +314,11 @@ body{
       <form method="post">
         <input type="hidden" name="section" value="club">
         <div class="section-title"><i class="fa-solid fa-building"></i>Thông tin CLB</div>
+        <div class="json-note" style="margin-bottom:14px">
+          <i class="fa-solid fa-shield-halved"></i> <strong>Setup riêng của CLB</strong> —
+          File đang dùng: <code>{{ setup_storage.filename }}</code> · Phiên bản cấu hình: {{ setup_storage.version }}.
+          Khi thay đổi tên CLB, hệ thống giữ nguyên tên file đã tạo; cấu hình mẫu trên GitHub không bị sửa.
+        </div>
         <div class="setup-card">
           <div class="setup-grid">
             <div class="field"><label>Tiêu đề</label><input type="text" name="club_title" value="{{ setup_config.club.title }}" required></div>
@@ -394,9 +400,14 @@ body{
           Hạng thành viên
         </div>
 
-        <div class="admin-note" style="margin-bottom:16px">
-          Các điều kiện <strong>Lượt chơi</strong> và <strong>Tổng chi tiêu</strong> dùng quan hệ <strong>HOẶC</strong>:
-          chỉ cần đạt một trong hai điều kiện. Hạng đầu tiên có thể để thời gian hạ hạng bằng 0.
+
+        <div class="setup-card" style="margin-bottom:16px">
+          <div class="field" style="max-width:460px">
+            <label><i class="fa-regular fa-calendar-days"></i> Thời hạn tích lũy nâng hạng chung (tháng)</label>
+            <input type="number" name="rank_accumulation_months" min="0" max="240"
+                   value="{{ setup_config.rank_accumulation_months|default(24) }}" placeholder="24">
+            <div class="helper">Áp dụng cho <strong>tất cả hạng thành viên</strong>. Chỉ tính hóa đơn đã thanh toán trong 24 tháng gần nhất để nâng hạng. Admin trống hoặc nhập 0 = không giới hạn thời gian.</div>
+          </div>
         </div>
 
         <div class="rank-settings-list">
@@ -469,6 +480,28 @@ body{
             <i class="fa-solid fa-floppy-disk"></i> Lưu hạng thành viên
           </button>
         </div>
+      </form>
+    </div>
+
+    <div id="discounts" class="setup-panel">
+      <form method="post">
+        <input type="hidden" name="section" value="discounts">
+        <div class="section-title"><i class="fa-solid fa-percent"></i>Ưu đãi giảm giá theo hóa đơn</div>
+        <div class="setup-card">
+          <div class="setup-grid">
+            <div class="field"><label>Cho phép Voucher/Quà giảm theo %</label>
+              <select name="percent_enabled">
+                <option value="1" {% if setup_config.discounts.percent_enabled %}selected{% endif %}>Bật</option>
+                <option value="0" {% if not setup_config.discounts.percent_enabled %}selected{% endif %}>Tắt</option>
+              </select>
+            </div>
+            <div class="field"><label>Giới hạn mức giảm của Voucher/Quà (%)</label>
+              <input name="max_percent" type="number" min="1" max="100" value="{{ setup_config.discounts.max_percent }}" required>
+            </div>
+          </div>
+          <div class="helper">Giá trị 10% / 10 % sẽ giảm 10% trên tổng tiền bàn + dịch vụ trước giảm. Nếu có giảm thủ công, tính tiếp trên phần tiền còn lại. Mỗi hóa đơn sử dụng tối đa một Voucher hoặc Quà giảm giá. Voucher theo tiền vẫn giữ nguyên.</div>
+        </div>
+        <div class="save-row"><button class="save-btn" type="submit">Lưu cấu hình ưu đãi</button></div>
       </form>
     </div>
 
@@ -850,7 +883,7 @@ body{
   }
   tabs.forEach(x=>x.addEventListener('click',()=>{openTab(x.dataset.tab);history.replaceState(null,'','#'+x.dataset.tab);}));
   const first=(location.hash||'#club').slice(1);
-  openTab(['club','pricing','payment','member_ranks','backup','admin'].includes(first)?first:'club');
+  openTab(['club','pricing','payment','member_ranks','discounts','backup','admin'].includes(first)?first:'club');
 })();
 
 document.addEventListener('input',e=>{

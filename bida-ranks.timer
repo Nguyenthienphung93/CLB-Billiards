@@ -1,0 +1,10 @@
+[Unit]
+Description=Evaluate inactive member ranks daily at 00:15 Vietnam time
+
+[Timer]
+OnCalendar=*-*-* 00:15:00 Asia/Ho_Chi_Minh
+Persistent=true
+Unit=bida-ranks.service
+
+[Install]
+WantedBy=timers.target

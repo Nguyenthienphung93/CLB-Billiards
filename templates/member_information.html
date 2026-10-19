@@ -9,7 +9,7 @@
         min-height:calc(100vh - 220px);
         display:flex;
         flex-direction:column;
-        align-items:stretch;
+        align-items:center;
         justify-content:flex-start;
         gap:18px;
         padding:28px 10px 34px;
@@ -18,9 +18,37 @@
     .member-card-stage{
         width:min(760px,94vw);
         position:relative;
+        margin-left:auto;
+        margin-right:auto;
+        align-self:center;
     }
 
     .member-card-stage,
+
+    .rank-next-progress{margin-top:17px;border:1px solid #dbe7f3;background:#f8fbff;padding:14px;border-radius:14px}
+    .rank-next-head{font-size:13px;color:#123a61;font-weight:800;margin-bottom:12px}
+    .rank-track-line{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:10px 0 6px;color:#334155;font-size:12px;font-weight:800}
+    .rank-track{height:10px;background:#e2e8f0;border-radius:99px;overflow:hidden}
+    .rank-track-fill{height:100%;border-radius:99px}
+    .rank-track-fill.plays{background:#2563eb}
+    .rank-track-fill.spend{background:#16a34a}
+    .rank-track-note{margin-top:12px;color:#64748b;font-size:11px;font-weight:700;line-height:1.45}
+
+
+    .rank-next-heading-row{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+    .rank-next-heading-row .rank-next-head{margin:0}
+    .rank-expiry-trigger{width:20px;height:20px;border:1px solid #bfdbfe;color:#2563eb;background:#eff6ff;border-radius:50%;font-size:12px;font-weight:600;cursor:pointer;flex:0 0 auto}
+    .rank-expiry-trigger.warning{color:#b91c1c;background:#fee2e2;border-color:#fca5a5;animation:rankNoticePulse 2.4s ease-in-out infinite}
+    @keyframes rankNoticePulse{50%{box-shadow:0 0 0 5px rgba(239,68,68,.10)}}
+    .rank-expiry-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.58);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px}
+    .rank-expiry-backdrop.open{display:flex}
+    .rank-expiry-modal{background:#fff;width:min(560px,100%);max-height:min(80vh,720px);overflow-y:auto;border-radius:20px;padding:24px;box-shadow:0 24px 75px rgba(0,0,0,.25);color:#334155}
+    .rank-expiry-modal h3{font-size:19px;color:#123a61;margin:0 0 10px}
+    .rank-expiry-modal p{line-height:1.6;font-size:13px}
+    .rank-expiry-modal .notice-expiring{border:1px solid #fecaca;background:#fef2f2;border-radius:12px;padding:12px;margin-top:12px}
+    .rank-expiry-modal .notice-expiring li{margin:5px 0;font-size:12px}
+    .rank-expiry-close{padding:10px 20px;background:#2563eb;color:#fff;border:0;border-radius:11px;font-weight:800;cursor:pointer;float:right;margin-top:8px}
+
     .rank-guide{
         align-self:center;
     }
@@ -810,6 +838,16 @@
     @media (max-width: 430px){
         .rank-benefit-grid{ grid-template-columns:1fr; }
     }
+
+    /* Căn giữa thẻ thành viên và khung tiến trình */
+    .member-card-stage,
+    .rank-guide{
+        margin-left:auto;
+        margin-right:auto;
+        align-self:center;
+    }
+
+    
 </style>
 {% endblock %}
 
@@ -928,6 +966,64 @@
             </div>
             {% endfor %}
         </div>
+        {% if current_rank_index + 1 < member_ranks|length %}
+        {% set next_rank = member_ranks[current_rank_index + 1] %}
+        {% set actual_plays = member.rank_progress_plays|default(0)|int %}
+        {% set actual_spend = member.rank_progress_spend|default(0)|int %}
+        {% set need_plays = next_rank.min_plays|int %}
+        {% set need_spend = next_rank.min_spend|int %}
+        {% set play_pct = ([100, (actual_plays * 100 / need_plays)]|min) if need_plays > 0 else 0 %}
+        {% set spend_pct = ([100, (actual_spend * 100 / need_spend)]|min) if need_spend > 0 else 0 %}
+        <div class="rank-next-progress">
+          <div class="rank-next-heading-row">
+            <div class="rank-next-head">Mục tiêu tiếp theo: <strong>{{ next_rank.icon }} {{ next_rank.name }}</strong></div>
+            <button class="rank-expiry-trigger {% if member.rank_window.expiring %}warning{% endif %}" type="button"
+                    aria-label="Xem thời hạn tích lũy" title="Thời hạn tích lũy và cảnh báo hết hạn"
+                    onclick="openRankExpiryModal()">!</button>
+          </div>
+          <div class="rank-track-line"><span>🎱 Lượt chơi</span><b>{{ actual_plays }} / {{ need_plays }} lượt</b></div>
+          <div class="rank-track"><div class="rank-track-fill plays" style="width:{{ play_pct }}%"></div></div>
+          <div class="rank-track-line"><span>💰 Tổng chi tiêu</span><b>{{ '{:,}'.format(actual_spend) }} / {{ '{:,}'.format(need_spend) }} Vnđ</b></div>
+          <div class="rank-track"><div class="rank-track-fill spend" style="width:{{ spend_pct }}%"></div></div>
+          <div class="rank-track-note">{% if member.rank_window.months %}Chỉ tính trong <strong>{{ member.rank_window.months }} tháng gần nhất</strong>. {% else %}Không giới hạn thời hạn tích lũy. {% endif %}Chỉ cần đạt <strong>một trong hai</strong> mốc. {% if play_pct >= spend_pct %}Lượt chơi đang tiến gần mốc hơn.{% else %}Tổng chi tiêu đang tiến gần mốc hơn.{% endif %}</div>
+        </div>
+         <div class="rank-expiry-backdrop" id="rankExpiryBackdrop" onclick="if(event.target===this)closeRankExpiryModal()" role="dialog" aria-modal="true" aria-labelledby="rankExpiryTitle">
+           <div class="rank-expiry-modal">
+             <h3 id="rankExpiryTitle">ⓘ Thời hạn tích lũy nâng hạng</h3>
+             {% if member.rank_window.months %}
+             <p>Hệ thống chỉ tính các lượt chơi có hóa đơn <strong>Đã thanh toán</strong> trong <strong>{{ member.rank_window.months }} tháng gần nhất</strong> để nâng lên hạng <strong>{{ next_rank.name }}</strong>. Mỗi lượt cùng số tiền đã thanh toán của lượt đó sẽ hết hiệu lực tích lũy sau {{ member.rank_window.months }} tháng kể từ ngày chơi. Hóa đơn vẫn được lưu trong lịch sử và hạng đã đạt được bảo lưu.</p>
+             {% else %}
+             <p>CLB hiện không giới hạn thời hạn tích lũy nâng hạng. Lượt chơi và chi tiêu hợp lệ sẽ tiếp tục được cộng dồn.</p>
+             {% endif %}
+             <p>🎱 Quý khách cần thêm <strong>{{ [0, need_plays - actual_plays]|max }} lượt</strong> hoặc 💰 chi tiêu thêm <strong>{{ '{:,}'.format([0, need_spend - actual_spend]|max) }} Vnđ</strong> để lên hạng <strong>{{ next_rank.name }}</strong> theo điều kiện hiện tại.</p>
+             {% if member.rank_window.expiring %}
+             <div class="notice-expiring">
+               <strong>⚠️ Lượt chơi sắp hết hạn trong 1 tháng tới</strong>
+               <ul>
+               {% for exp in member.rank_window.expiring %}
+                 <li>Ngày chơi <strong>{{ exp.played_at }}</strong>, chi tiêu <strong>{{ exp.amount_display }} Vnđ</strong>, hết hiệu lực tích lũy vào <strong>{{ exp.expires_at }}</strong>.</li>
+               {% endfor %}
+               </ul>
+               {% set expiring_count = member.rank_window.expiring|length %}
+               {% set expiring_amount = member.rank_window.expiring|sum(attribute='amount') %}
+               {% set plays_after = [0, actual_plays - expiring_count]|max %}
+               {% set spend_after = [0, actual_spend - expiring_amount]|max %}
+               <p><strong>Nếu các lượt trên hết hạn mà chưa có lượt chơi mới:</strong> dự kiến còn {{ plays_after }} lượt và {{ '{:,}'.format(spend_after) }} Vnđ tính nâng hạng. Khi đó quý khách cần thêm <strong>{{ [0, need_plays - plays_after]|max }} lượt</strong> hoặc <strong>{{ '{:,}'.format([0, need_spend - spend_after]|max) }} Vnđ</strong> để đạt hạng {{ next_rank.name }} (theo chỉ tiêu hiện tại).</p>
+               <p>Quý khách vui lòng tiếp tục sử dụng dịch vụ tại CLB để đủ số lượt hoặc chi tiêu nâng hạng. Sau khi lượt trên hết hạn, hệ thống tự tính lại từ những lượt còn hiệu lực tiếp theo.</p>
+             </div>
+             {% else %}
+             <p>Hiện không có lượt tích lũy nào sắp hết hiệu lực trong 1 tháng tới.</p>
+             {% endif %}
+             <button class="rank-expiry-close" type="button" onclick="closeRankExpiryModal()">Đóng</button>
+             <div style="clear:both"></div>
+           </div>
+         </div>
+        {% else %}
+        <div class="rank-next-progress"><strong>💎 Thành viên đã đạt hạng cao nhất.</strong></div>
+        {% endif %}
+        {% if member.rank_progress_source %}
+        <div class="rank-track-note" style="margin-top:7px">Hạng hiện tại đạt nhờ: {% if member.rank_progress_source == 'LUOT_CHO' %}🎱 Lượt chơi{% elif member.rank_progress_source == 'CHI_TIEU' %}💰 Tổng chi tiêu{% else %}Điều kiện hạng đã đạt{% endif %}.</div>
+        {% endif %}
     </section>
 
     <section
@@ -1036,6 +1132,16 @@
 <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
+function openRankExpiryModal(){
+    const el=document.getElementById('rankExpiryBackdrop');
+    if(el){el.classList.add('open');document.body.style.overflow='hidden';}
+}
+function closeRankExpiryModal(){
+    const el=document.getElementById('rankExpiryBackdrop');
+    if(el){el.classList.remove('open');document.body.style.overflow='';}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeRankExpiryModal();});
+
 function renderMemberRankProgress(){
     const guide = document.getElementById('memberRankGuide');
     const progress = document.getElementById('memberRankProgress');

@@ -10,6 +10,7 @@ import time
 import io
 import tarfile
 import hashlib
+import threading
 from urllib.parse import quote_plus
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -22,6 +23,7 @@ from flask import (
     jsonify,
     redirect,
     render_template,
+    render_template_string,
     request,
     url_for,
     session,
@@ -61,7 +63,13 @@ PROMOTION_REDEEM_TABLE = "Khuyenmai_doiqua"
 PROMOTION_VOUCHER_TABLE = "Khuyenmai_voucher"
 ADMIN_TABLE = "admin_info"
 
-SETUP_FILE = BASE_DIR / "club_setup.json"
+# GitHub giữ club_setup.json làm SƯỜN. Dữ liệu từng CLB đặt NGOÀI thư mục git.
+SETUP_TEMPLATE_FILE = BASE_DIR / "club_setup.json"
+SETUP_DATA_DIR = Path(os.getenv("CLUB_SETUP_DATA_DIR") or (BASE_DIR.parent / (BASE_DIR.name + "_instance_data"))).resolve()
+SETUP_POINTER_FILE = SETUP_DATA_DIR / "active_setup.json"
+SETUP_CONFIG_VERSION = 1
+_SETUP_LOCK = threading.RLock()
+
 
 # ==========================================================
 # BACKUP SYSTEM
@@ -86,11 +94,13 @@ BACKUP_TABLES = (
     PROMOTION_MILESTONE_TABLE,
     PROMOTION_REDEEM_TABLE,
     PROMOTION_VOUCHER_TABLE,
+    "Thanhvien_hang_lichsu",
     ADMIN_TABLE,
 )
 
 # Xóa theo thứ tự con -> cha; khôi phục theo thứ tự cha -> con.
 BACKUP_DELETE_ORDER = (
+    "Thanhvien_hang_lichsu",
     PROMOTION_REDEEM_TABLE,
     PROMOTION_VOUCHER_TABLE,
     PROMOTION_MILESTONE_TABLE,
@@ -104,6 +114,7 @@ BACKUP_DELETE_ORDER = (
 BACKUP_RESTORE_ORDER = (
     ADMIN_TABLE,
     TABLE_NAME,
+    "Thanhvien_hang_lichsu",
     PROMOTION_TABLE,
     PROMOTION_MILESTONE_TABLE,
     INVOICE_TABLE,
@@ -113,7 +124,7 @@ BACKUP_RESTORE_ORDER = (
 )
 
 # Cache cấu hình JSON theo mtime để tránh đọc file lặp lại ở mọi request.
-_SETUP_CACHE = {"mtime_ns": None, "data": None}
+_SETUP_CACHE = {"path": None, "mtime_ns": None, "data": None}
 
 DEFAULT_MEMBER_RANKS = [
     {
@@ -225,6 +236,7 @@ DEFAULT_SETUP = {
         {"code": "banh_mi", "name": "Bánh mì", "price": 20000},
         {"code": "khoai_tay", "name": "Khoai tây chiên", "price": 30000},
     ],
+    "discounts": {"percent_enabled": True, "max_percent": 100},
     "payment": {
         "account_name": "",
         "bank_code": "",
@@ -233,6 +245,7 @@ DEFAULT_SETUP = {
         "note_template": "Khách lẻ hoặc mã Thành Viên",
     },
     "member_ranks": json.loads(json.dumps(DEFAULT_MEMBER_RANKS, ensure_ascii=False)),
+    "rank_accumulation_months": 24,
 }
 
 BANK_OPTIONS = [
@@ -373,6 +386,14 @@ def normalize_setup_config(raw=None):
 
         result["services"] = clean_services
 
+    discounts = raw.get("discounts")
+    if isinstance(discounts, dict):
+        result["discounts"]["percent_enabled"] = bool(discounts.get("percent_enabled", True))
+        try:
+            result["discounts"]["max_percent"] = max(1, min(100, int(discounts.get("max_percent", 100))))
+        except (TypeError, ValueError):
+            pass
+
     payment = raw.get("payment")
     if isinstance(payment, dict):
         for key in result["payment"]:
@@ -380,6 +401,12 @@ def normalize_setup_config(raw=None):
                 result["payment"][key] = clean_text(
                     payment.get(key)
                 )
+
+    # Thời hạn chung cho mọi hạng; 0 = không giới hạn.
+    try:
+        result["rank_accumulation_months"] = max(0, min(240, int(raw.get("rank_accumulation_months", 24) or 0)))
+    except (ValueError, TypeError):
+        result["rank_accumulation_months"] = 24
 
     raw_ranks = raw.get("member_ranks")
     clean_ranks = []
@@ -424,76 +451,162 @@ def normalize_setup_config(raw=None):
 
     result["member_ranks"] = clean_ranks
 
+    # Giữ lại các trường chưa được phiên bản này biết đến, phục vụ rollback và nâng cấp.
+    def preserve_unknown(source, destination):
+        if isinstance(source, dict) and isinstance(destination, dict):
+            for key, value in source.items():
+                if key not in destination:
+                    destination[key] = _deep_copy_json(value)
+                elif isinstance(value, dict) and isinstance(destination[key], dict):
+                    preserve_unknown(value, destination[key])
+        return destination
+
+    preserve_unknown(raw, result)
+    # Cấu hình chỉ nâng version khi migration của ứng dụng hỗ trợ version đó.
+    result["config_version"] = max(SETUP_CONFIG_VERSION, int(raw.get("config_version") or 0)) if str(raw.get("config_version") or "0").isdigit() else SETUP_CONFIG_VERSION
     return result
 
 
+def _setup_read_json(path):
+    result = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(result, dict):
+        raise ValueError(f"JSON không phải đối tượng: {path.name}")
+    return result
+
+
+def _setup_write_json_atomic(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + "." + uuid.uuid4().hex + ".tmp")
+    try:
+        with tmp.open("w", encoding="utf-8") as stream:
+            json.dump(value, stream, ensure_ascii=False, indent=2)
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(tmp, path)
+    finally:
+        if tmp.exists():
+            tmp.unlink()
+
+
+def _setup_slug(name):
+    name = remove_vietnamese_accents(str(name or ""))
+    slug = re.sub(r"[^A-Za-z0-9]+", "", name)
+    return slug[:65] or "Billiards"
+
+
+def _setup_active_path(create=True):
+    # active_setup.json chỉ chứa basename; không cho phép traversal đến file tùy ý.
+    if SETUP_POINTER_FILE.exists():
+        pointer = _setup_read_json(SETUP_POINTER_FILE)
+        filename = pointer.get("active_setup_file")
+        if not isinstance(filename, str) or not re.fullmatch(r"[A-Za-z0-9_-]+_club_setup\.json", filename):
+            raise RuntimeError("active_setup.json không hợp lệ. Không dùng Setup mặc định để thay thế.")
+        active = SETUP_DATA_DIR / filename
+        if not active.is_file():
+            raise RuntimeError(f"Thiếu cấu hình riêng {filename}. Cần khôi phục backup.")
+        return active
+
+    if not create:
+        return None
+
+    # Nếu file chỉ dẫn mất nhưng còn cấu hình riêng: không tạo lại từ GitHub.
+    if SETUP_DATA_DIR.exists() and any(SETUP_DATA_DIR.glob("*_club_setup.json")):
+        raise RuntimeError("Thiếu active_setup.json trong khi có Setup riêng. Cần khôi phục file chỉ dẫn.")
+
+    # Chỉ chạy một lần: copy cấu hình đang tồn tại (kể cả Setup đã thay đổi).
+    # Không mặc định hóa khi file mẫu đang lỗi.
+    if SETUP_TEMPLATE_FILE.exists():
+        initial = _setup_read_json(SETUP_TEMPLATE_FILE)
+    else:
+        initial = _deep_copy_json(DEFAULT_SETUP)
+
+    normalized = normalize_setup_config(initial)
+    SETUP_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    slug = _setup_slug(normalized.get("club", {}).get("name"))
+    filename = f"{slug}_club_setup.json"
+    i = 1
+    while (SETUP_DATA_DIR / filename).exists():
+        filename = f"{slug}_{i}_club_setup.json"
+        i += 1
+    path = SETUP_DATA_DIR / filename
+    _setup_write_json_atomic(path, normalized)
+    _setup_write_json_atomic(SETUP_POINTER_FILE, {"active_setup_file": filename, "first_save_done": False})
+    return path
+
+
+def _setup_upgrade_config(path, raw):
+    """Bổ sung cấu hình mới, không thay thế giá trị mà CLB đã chọn."""
+    version = raw.get("config_version", 0)
+    try:
+        version = int(version or 0)
+    except (ValueError, TypeError):
+        raise RuntimeError("config_version không hợp lệ; cần kiểm tra Setup.")
+    if version > SETUP_CONFIG_VERSION:
+        raise RuntimeError("Cấu hình được tạo bởi phiên bản ứng dụng mới hơn. Không được hạ phiên bản tự động.")
+    upgraded = normalize_setup_config(raw)
+    if upgraded != raw:
+        # Bảo lưu bản gốc trước khi migration. Không ghi đè backup cũ.
+        backup = path.with_name(path.stem + ".pre_migration_" + datetime.now(VIETNAM_TZ).strftime("%Y%m%d_%H%M%S_%f") + ".json")
+        _setup_write_json_atomic(backup, raw)
+        _setup_write_json_atomic(path, upgraded)
+    return upgraded
+
+
 def load_setup_config():
-    """
-    Đọc club_setup.json có cache theo thời gian sửa file.
-    Trả về deepcopy để route có thể chỉnh config an toàn trước khi save.
-    """
-    try:
-        mtime_ns = SETUP_FILE.stat().st_mtime_ns if SETUP_FILE.exists() else None
-    except OSError:
-        mtime_ns = None
-
-    cached = _SETUP_CACHE.get("data")
-    if cached is not None and _SETUP_CACHE.get("mtime_ns") == mtime_ns:
-        return copy.deepcopy(cached)
-
-    if not SETUP_FILE.exists():
-        config = normalize_setup_config()
-        save_setup_config(config)
+    with _SETUP_LOCK:
+        path = _setup_active_path()
+        stat = path.stat()
+        if (_SETUP_CACHE.get("path") == str(path) and
+                _SETUP_CACHE.get("mtime_ns") == stat.st_mtime_ns and
+                _SETUP_CACHE.get("data") is not None):
+            return copy.deepcopy(_SETUP_CACHE["data"])
+        # Nếu JSON lỗi hoặc biến mất: báo lỗi; tuyệt đối không fallback về GitHub.
+        raw = _setup_read_json(path)
+        config = _setup_upgrade_config(path, raw)
+        _SETUP_CACHE.update({"path": str(path), "mtime_ns": path.stat().st_mtime_ns,
+                             "data": copy.deepcopy(config)})
         return copy.deepcopy(config)
-
-    try:
-        raw = json.loads(SETUP_FILE.read_text(encoding="utf-8"))
-        config = normalize_setup_config(raw)
-
-        try:
-            current_mtime = SETUP_FILE.stat().st_mtime_ns
-        except OSError:
-            current_mtime = mtime_ns
-
-        _SETUP_CACHE["mtime_ns"] = current_mtime
-        _SETUP_CACHE["data"] = copy.deepcopy(config)
-        return copy.deepcopy(config)
-
-    except Exception as exc:
-        print("[SETUP LOAD ERROR]", type(exc).__name__)
-        config = normalize_setup_config()
-        _SETUP_CACHE["mtime_ns"] = mtime_ns
-        _SETUP_CACHE["data"] = copy.deepcopy(config)
-        return config
 
 
 def save_setup_config(config):
-    normalized = normalize_setup_config(config)
+    with _SETUP_LOCK:
+        path = _setup_active_path()
+        # Nếu config này do route Setup cập nhật, giữ các khóa tương lai chưa hỗ trợ.
+        old = _setup_read_json(path)
+        if int(old.get("config_version") or 0) > SETUP_CONFIG_VERSION:
+            raise RuntimeError("Không thể lưu Setup phiên bản mới hơn ứng dụng.")
+        normalized = normalize_setup_config(config)
+        # Phải backup trước mọi lần ghi: bảo vệ cả lỗi thao tác từ Admin.
+        backup = path.with_name(path.stem + ".previous.json")
+        _setup_write_json_atomic(backup, old)
+        pointer = _setup_read_json(SETUP_POINTER_FILE)
+        if not pointer.get("first_save_done", True):
+            # Lần Lưu đầu tiên: đổi tên file theo tên CLB được chọn.
+            slug = _setup_slug(normalized.get("club", {}).get("name"))
+            new_path = SETUP_DATA_DIR / f"{slug}_club_setup.json"
+            suffix = 1
+            while new_path != path and new_path.exists():
+                new_path = SETUP_DATA_DIR / f"{slug}_{suffix}_club_setup.json"
+                suffix += 1
+            if new_path != path:
+                _setup_write_json_atomic(new_path, normalized)
+                _setup_write_json_atomic(SETUP_POINTER_FILE, {"active_setup_file": new_path.name, "first_save_done": True})
+                path.unlink()
+                path = new_path
+            else:
+                _setup_write_json_atomic(path, normalized)
+                _setup_write_json_atomic(SETUP_POINTER_FILE, {"active_setup_file": path.name, "first_save_done": True})
+        else:
+            _setup_write_json_atomic(path, normalized)
+        _SETUP_CACHE.update({"path": str(path), "mtime_ns": path.stat().st_mtime_ns,
+                             "data": copy.deepcopy(normalized)})
+        return copy.deepcopy(normalized)
 
-    temp_file = SETUP_FILE.with_suffix(
-        ".json.tmp"
-    )
 
-    temp_file.write_text(
-        json.dumps(
-            normalized,
-            ensure_ascii=False,
-            indent=2
-        ),
-        encoding="utf-8"
-    )
-
-    temp_file.replace(
-        SETUP_FILE
-    )
-
-    try:
-        _SETUP_CACHE["mtime_ns"] = SETUP_FILE.stat().st_mtime_ns
-    except OSError:
-        _SETUP_CACHE["mtime_ns"] = None
-    _SETUP_CACHE["data"] = copy.deepcopy(normalized)
-
-    return normalized
+def setup_storage_info():
+    path = _setup_active_path()
+    return {"filename": path.name, "directory": str(SETUP_DATA_DIR),
+            "version": load_setup_config().get("config_version", SETUP_CONFIG_VERSION)}
 
 
 MEMBER_RANK_ALIASES = [
@@ -1094,10 +1207,7 @@ def inject_layout_data():
     Luôn cấp dữ liệu dùng chung cho toàn bộ template.
     Nếu file JSON lỗi/thiếu, vẫn dùng cấu hình mặc định để base.html không bị crash.
     """
-    try:
-        setup_config = load_setup_config()
-    except Exception:
-        setup_config = normalize_setup_config()
+    setup_config = load_setup_config()
 
     current_admin = None
     admin_permissions = {
@@ -1124,6 +1234,9 @@ def inject_layout_data():
         "current_admin": current_admin,
         "admin_permissions": admin_permissions,
         "admin_can": current_admin_can,
+        "setup_unlocked": bool(session.get("setup_unlocked")),
+        "setup_remaining": setup_remaining_attempts(),
+        "setup_csrf": setup_csrf_token() if session.get("admin_logged_in") else "",
     }
 
 
@@ -1465,90 +1578,123 @@ def check_voucher_conditions(
         unmet
     )
 
+def parse_percent_discount(value):
+    """Đọc 10%, 10 %, 12.5%. Chỉ chuỗi có ký hiệu % mới hợp lệ."""
+    match = re.search(r"(?<!\d)(\d{1,3}(?:[.,]\d{1,2})?)\s*%", clean_text(value))
+    if not match:
+        return 0.0
+    percent = float(match.group(1).replace(",", "."))
+    return percent if 0 < percent <= 100 else 0.0
+
+
+def discount_benefit_value(value, *, allow_bare_amount=True):
+    """Phân loại ưu đãi: PERCENT hoặc AMOUNT; trả về (loại, giá trị)."""
+    percent = parse_percent_discount(value)
+    if percent:
+        return "PERCENT", percent
+    if '%' in clean_text(value):
+        return "NONE", 0
+    amount = (extract_money_reward_value(value) if allow_bare_amount else parse_money_value(value))
+    return ("AMOUNT", amount) if amount > 0 else ("NONE", 0)
+
+
+def discount_benefit_display(kind, value):
+    if kind == "PERCENT":
+        return f"{value:g}% đơn hàng"
+    if kind == "AMOUNT":
+        return format_vnd_display(value)
+    return ""
+
+
+def discount_benefit_amount(kind, value, subtotal):
+    """Cùng công thức cho API hóa đơn và tiền preview; % trên tổng trước giảm."""
+    subtotal = max(0, int(subtotal or 0))
+    if kind == "PERCENT":
+        return min(subtotal, int(subtotal * float(value) / 100 + 0.5))
+    if kind == "AMOUNT":
+        return min(subtotal, max(0, int(value or 0)))
+    return 0
+
+
 def extract_money_reward_value(value):
     """
-    Chỉ nhận Quà tặng có bản chất là tiền/phiếu giảm tiền.
-    Ví dụ hợp lệ:
-      - Voucher dịch vụ 50.000đ
-      - Phiếu giảm 100,000 Vnđ
-      - Quà tặng 50k
-    Không nhận:
+    Nhận diện tên Quà tặng có bản chất là tiền / phiếu giảm tiền.
+
+    Nhận:
+      - 10000
+      - 100.000
+      - 100,000
+      - 100000 Vnđ / vnđ / VND
+      - 100.000đ / 100,000Đ
+      - 50k / 100 k
+      - 50 nghìn / 50 ngàn
+
+    Tránh nhận nhầm:
       - Gấu bông nhỏ
-      - 1 chai nước miễn phí
-      - Phần quà đặc biệt 100 lượt
+      - 1 chai nước
+      - 100 lượt
     """
     text = clean_text(value)
-
     if not text:
         return 0
 
     lower = (
         text.lower()
         .replace("vnđ", " vnd ")
+        .replace("vnd", " vnd ")
         .replace("đồng", " dong ")
     )
 
-    # Phải có dấu hiệu rõ ràng là giá trị tiền.
-    has_money_marker = bool(
-        re.search(
-            r"(vnd|dong|đ|\b\d+\s*k\b|ngh[iì]n)",
-            lower,
-            flags=re.IGNORECASE
-        )
-    )
-
-    if not has_money_marker:
-        return 0
-
-    # Hỗ trợ dạng 50k / 100 k.
     k_match = re.search(
-        r"(\d+(?:[.,]\d+)?)\s*k\b",
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*k\b",
         lower,
         flags=re.IGNORECASE
     )
-
     if k_match:
         try:
-            number = float(
-                k_match.group(1)
-                .replace(",", ".")
-            )
-            return max(
-                0,
-                int(round(number * 1000))
-            )
+            number = float(k_match.group(1).replace(",", "."))
+            return max(0, int(round(number * 1000)))
         except (TypeError, ValueError):
             pass
 
-    # Ưu tiên cụm số sát đơn vị tiền.
     money_match = re.search(
-        r"(\d[\d.,\s]*)\s*(?:vnd|dong|đ)(?:\b|$)",
+        r"(?<!\d)(\d[\d.,\s]*)\s*(?:vnd|dong|đ)(?:\b|$)",
         lower,
         flags=re.IGNORECASE
     )
+    if money_match:
+        digits = re.sub(r"\D", "", money_match.group(1))
+        if digits:
+            return max(0, int(digits))
 
-    raw_number = (
-        money_match.group(1)
-        if money_match
-        else ""
+    thousand_match = re.search(
+        r"(?<!\d)(\d+(?:[.,]\d+)?)\s*(?:ngh[iì]n|ng[aà]n)\b",
+        lower,
+        flags=re.IGNORECASE
     )
+    if thousand_match:
+        try:
+            number = float(thousand_match.group(1).replace(",", "."))
+            return max(0, int(round(number * 1000)))
+        except (TypeError, ValueError):
+            pass
 
-    if not raw_number:
-        return 0
-
-    digits = re.sub(
-        r"\D",
-        "",
-        raw_number
+    number_matches = re.findall(
+        r"(?<!\d)(\d{1,3}(?:[.,]\d{3})+|\d{4,})(?!\d)",
+        lower
     )
+    for raw_number in number_matches:
+        digits = re.sub(r"\D", "", raw_number)
+        if not digits:
+            continue
+        try:
+            amount = int(digits)
+        except ValueError:
+            continue
+        if amount >= 1000:
+            return amount
 
-    if not digits:
-        return 0
-
-    return max(
-        0,
-        int(digits)
-    )
+    return 0
 
 
 def enrich_member_rewards_and_vouchers(
@@ -1675,6 +1821,13 @@ def enrich_member_rewards_and_vouchers(
             or ""
         )
 
+        item["is_money_related"] = (
+            discount_benefit_value(item.get("ten_qua_tang"))[0] != "NONE"
+        )
+        item["uu_dai_hien_thi"] = discount_benefit_display(
+            *discount_benefit_value(item.get("ten_qua_tang"))
+        )
+
 
         reward_items.append(
             item
@@ -1777,10 +1930,10 @@ def enrich_member_rewards_and_vouchers(
 
         item[
             "gia_tri_hien_thi"
-        ] = format_vnd_display(
-            item.get(
-                "gia_tri"
-            )
+        ] = discount_benefit_display(*discount_benefit_value(item.get("gia_tri"), allow_bare_amount=False))
+
+        item["is_money_related"] = (
+            discount_benefit_value(item.get("gia_tri"), allow_bare_amount=False)[0] != "NONE"
         )
 
         enrich_voucher_condition_fields(
@@ -2020,6 +2173,9 @@ ENDPOINT_PERMISSION_MAP = {
 
     # Setup
     "setup": "setup",
+    "setup_verify": "setup",
+    "setup_unlock_page": "setup",
+    "setup_verify": "setup",
     "api_backup_list": "setup",
     "api_backup_create": "setup",
     "api_backup_download": "setup",
@@ -2267,6 +2423,99 @@ def ensure_owner_admin_from_env():
             "[ADMIN MIGRATION ERROR]",
             repr(exc)
         )
+
+
+# ==========================================================
+# SETUP: xác thực lại mật khẩu Admin (tối đa 3 lần sai / phiên)
+# ==========================================================
+SETUP_MAX_PASSWORD_FAILURES = 3
+SETUP_GUARDED_ENDPOINTS = {
+    "setup", "api_backup_list", "api_backup_create",
+    "api_backup_download", "api_backup_restore",
+    "them_admin", "cap_nhat_admin", "xoa_admin",
+}
+
+def setup_csrf_token():
+    token = session.get("setup_csrf")
+    if not token:
+        token = uuid.uuid4().hex + uuid.uuid4().hex
+        session["setup_csrf"] = token
+    return token
+
+
+def setup_remaining_attempts():
+    return max(0, SETUP_MAX_PASSWORD_FAILURES - int(session.get("setup_failures", 0)))
+
+
+def _setup_password_result(password, csrf):
+    # Xác thực ngay trên server; không phụ thuộc popup hay localStorage.
+    expected = session.get("setup_csrf", "")
+    if not expected or not hmac.compare_digest(str(csrf or ""), expected):
+        return {"ok": False, "message": "Phiên xác thực không hợp lệ. Vui lòng tải lại trang.",
+                "remaining": setup_remaining_attempts()}, 403
+    admin_id = session.get("admin_id")
+    if not session.get("admin_logged_in") or not admin_id:
+        return {"ok": False, "logout": True, "message": "Phiên đăng nhập đã hết hạn."}, 401
+    try:
+        rows = (supabase.table(ADMIN_TABLE).select("password_hash,active")
+                .eq("id", admin_id).limit(1).execute().data or [])
+    except Exception as exc:
+        print("[SETUP VERIFY ERROR]", type(exc).__name__)
+        return {"ok": False, "message": "Không thể kiểm tra mật khẩu. Vui lòng thử lại.",
+                "remaining": setup_remaining_attempts()}, 503
+    admin = rows[0] if rows else None
+    valid = (admin and bool(admin.get("active")) and bool(admin.get("password_hash"))
+             and bool(password) and check_password_hash(admin["password_hash"], password))
+    if valid:
+        session["setup_unlocked"] = True
+        session["setup_failures"] = 0
+        return {"ok": True, "message": "Xác thực thành công.", "redirect": url_for("setup")}, 200
+    attempts = int(session.get("setup_failures", 0)) + 1
+    session["setup_failures"] = attempts
+    remaining = max(0, SETUP_MAX_PASSWORD_FAILURES - attempts)
+    if remaining == 0:
+        session.clear()
+        return {"ok": False, "logout": True, "remaining": 0,
+                "message": "Bạn đã nhập sai mật khẩu 3 lần. Hệ thống đã tự đăng xuất để bảo vệ tài khoản.",
+                "redirect": url_for("admin_login")}, 401
+    return {"ok": False, "logout": False, "remaining": remaining,
+            "message": f"Mật khẩu không chính xác. Bạn còn {remaining} lần thử."}, 401
+
+
+@app.post("/admin/setup-verify")
+def setup_verify():
+    data = request.get_json(silent=True) if request.is_json else request.form
+    data = data or {}
+    result, status = _setup_password_result(
+        str(data.get("password") or ""),
+        str(data.get("csrf") or request.headers.get("X-Setup-CSRF") or ""),
+    )
+    return jsonify(result), status
+
+
+@app.route("/admin/setup-unlock", methods=["GET", "POST"])
+def setup_unlock_page():
+    if session.get("setup_unlocked"):
+        return redirect(url_for("setup"))
+    error = ""
+    if request.method == "POST":
+        result, status = _setup_password_result(request.form.get("password", ""), request.form.get("csrf", ""))
+        if result.get("ok"):
+            return redirect(url_for("setup"))
+        if result.get("logout"):
+            flash(result["message"], "danger")
+            return redirect(url_for("admin_login"))
+        error = result.get("message", "Không thể xác thực.")
+    return render_template_string('''<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Xác thực Setup</title>
+<style>body{margin:0;min-height:100vh;display:grid;place-items:center;font-family:Arial,sans-serif;background:#eef5fc;color:#153557}.panel{width:min(430px,92vw);background:#fff;border:1px solid #cbdff4;border-radius:20px;padding:30px;box-shadow:0 20px 60px #173b6722}h2{margin:0 0 12px}p{line-height:1.5}input{box-sizing:border-box;width:100%;padding:13px;margin:12px 0;border:1px solid #b5cbe5;border-radius:10px}button{background:#2563eb;border:0;border-radius:10px;padding:12px 20px;color:white;font-weight:700;cursor:pointer}.error{color:#b91c1c;font-weight:700}.hint{color:#b45309;font-weight:700}</style></head><body><div class="panel"><h2>🔐 Xác thực quyền truy cập Setup</h2><p>Nhập lại mật khẩu của tài khoản Admin đang đăng nhập.</p>
+{% if error %}<p class="error">{{ error }}</p>{% endif %}<p class="hint">Còn {{ remaining }} lần nhập mật khẩu.</p><form method="post"><input type="hidden" name="csrf" value="{{ csrf }}"><input type="password" name="password" required autocomplete="current-password" placeholder="Mật khẩu Admin" autofocus><button type="submit">Xác nhận</button></form><p><a href="{{ back }}">Quay lại</a></p></div></body></html>''', error=error, remaining=setup_remaining_attempts(), csrf=setup_csrf_token(), back=url_for(first_allowed_admin_endpoint()))
+
+
+@app.after_request
+def setup_no_cache(response):
+    if request.endpoint in SETUP_GUARDED_ENDPOINTS or request.endpoint == "setup_unlock_page":
+        response.headers["Cache-Control"] = "no-store, private"
+    return response
 
 
 @app.route(
@@ -2591,6 +2840,19 @@ def require_admin_login():
             )
         )
 
+    # Bảo vệ toàn bộ API, POST và trang Setup ngay cả khi gõ URL trực tiếp.
+    if request.endpoint in SETUP_GUARDED_ENDPOINTS:
+        if not session.get("setup_unlocked"):
+            if request.method == "GET" and request.endpoint == "setup":
+                return redirect(url_for("setup_unlock_page"))
+            if request.path.startswith("/api/"):
+                return jsonify({"ok": False, "message": "Cần nhập lại mật khẩu Admin để truy cập Setup.",
+                                "reauth_required": True}), 403
+            return redirect(url_for("setup_unlock_page")) if request.method == "GET" else ("Yêu cầu xác thực Setup trước khi thực hiện thao tác.", 403)
+    elif request.endpoint not in {"setup_verify", "setup_unlock_page"}:
+        # Rời khu vực Setup -> lần vào kế tiếp phải nhập lại mật khẩu.
+        session.pop("setup_unlocked", None)
+
     return None
 
 
@@ -2797,15 +3059,12 @@ def member_information():
 
         setup_config = load_setup_config()
         member_ranks = setup_config.get("member_ranks") or DEFAULT_MEMBER_RANKS
-        member_rank_index = get_member_rank_index(
-            member.get("hang_thanh_vien"),
-            member_ranks
-        )
-        member["hang_thanh_vien_index"] = member_rank_index
-        member["hang_thanh_vien_hien_thi"] = (
-            member_ranks[member_rank_index].get("name")
-            or DEFAULT_MEMBER_RANKS[member_rank_index]["name"]
-        )
+        member_rank_index = sync_rank_display(member, member_ranks)
+        stats = rank_summary_for_member(member_code, include_expiry=True)
+        member["rank_window"] = stats
+        member["rank_progress_plays"] = stats["plays"]
+        member["rank_progress_spend"] = stats["spend"]
+        member["rank_progress_source"] = member.get("hang_nang_nguon") or ""
 
 
     except Exception as exc:
@@ -3717,11 +3976,7 @@ def member_khuyenmai():
             voucher[
                 "gia_tri_hien_thi"
             ] = (
-                normalize_voucher_money(
-                    voucher.get(
-                        "gia_tri"
-                    )
-                )
+                discount_benefit_display(*discount_benefit_value(voucher.get("gia_tri"), allow_bare_amount=False))
                 or clean_text(
                     voucher.get(
                         "gia_tri"
@@ -4667,7 +4922,14 @@ def xoa_thanh_vien(member_id):
 
 
 def normalize_voucher_money(value):
-    digits = re.sub(r"\D", "", clean_text(value))
+    """Lưu tiền dạng '50,000 đ', hoặc phần trăm dạng '10%' trong gia_tri TEXT."""
+    text = clean_text(value)
+    if '%' in text:
+        percent = parse_percent_discount(text)
+        if not percent:
+            raise ValueError("Phần trăm voucher phải lớn hơn 0 và không quá 100%.")
+        return f"{percent:g}%"
+    digits = re.sub(r"\D", "", text)
     if not digits:
         return None
     return f"{int(digits):,} đ"
@@ -5064,8 +5326,8 @@ def khuyen_mai_admin():
 
             voucher[
                 "gia_tri_hien_thi"
-            ] = format_vnd_display(
-                voucher.get("gia_tri")
+            ] = discount_benefit_display(
+                *discount_benefit_value(voucher.get("gia_tri"), allow_bare_amount=False)
             )
 
             enrich_voucher_condition_fields(
@@ -6475,10 +6737,8 @@ def kich_hoat_qua():
                 "ten": clean_text(
                     voucher.get("ten_voucher")
                 ),
-                "gia_tri_hien_thi": (
-                    format_vnd_display(
-                        voucher.get("gia_tri")
-                    )
+                "gia_tri_hien_thi": discount_benefit_display(
+                    *discount_benefit_value(voucher.get("gia_tri"), allow_bare_amount=False)
                 ),
                 "dieu_kien": conditions,
                 "dieu_kien_dong": condition_lines,
@@ -6804,9 +7064,7 @@ def api_tra_cuu_qua_voucher(code):
                 "ten": clean_text(
                     row.get("ten_voucher")
                 ) or "Voucher",
-                "gia_tri_hien_thi": format_vnd_display(
-                    row.get("gia_tri")
-                ),
+                "gia_tri_hien_thi": discount_benefit_display(*discount_benefit_value(row.get("gia_tri"), allow_bare_amount=False)),
                 "noi_dung": clean_text(
                     row.get("noi_dung")
                 ),
@@ -7187,11 +7445,10 @@ def api_uu_dai_tien_thanh_vien(
                 if today_vn > end_date_vn:
                     continue
 
-            amount = parse_money_value(
-                row.get("gia_tri")
+            benefit_kind, amount = discount_benefit_value(
+                row.get("gia_tri"), allow_bare_amount=False
             )
-
-            if amount <= 0:
+            if benefit_kind == "NONE":
                 continue
 
             items.append({
@@ -7209,12 +7466,9 @@ def api_uu_dai_tien_thanh_vien(
                         )
                     )
                     or "Voucher",
-                "gia_tri":
-                    amount,
-                "gia_tri_hien_thi":
-                    format_vnd_display(
-                        amount
-                    ),
+                "gia_tri": amount,
+                "kieu_giam": benefit_kind,
+                "gia_tri_hien_thi": discount_benefit_display(benefit_kind, amount),
                 "dieu_kien":
                     normalize_voucher_conditions(
                         row.get("dieu_kien")
@@ -7291,15 +7545,9 @@ def api_uu_dai_tien_thanh_vien(
                 )
             )
 
-            amount = (
-                extract_money_reward_value(
-                    gift_name
-                )
-            )
-
-            # Gấu bông, nước, quà vật phẩm...
-            # sẽ ra 0 và không được đưa vào combobox.
-            if amount <= 0:
+            benefit_kind, amount = discount_benefit_value(gift_name)
+            # Gấu bông, nước, quà vật phẩm không được giảm vào hóa đơn.
+            if benefit_kind == "NONE":
                 continue
 
             items.append({
@@ -7313,12 +7561,9 @@ def api_uu_dai_tien_thanh_vien(
                 "ten":
                     gift_name
                     or "Quà tặng",
-                "gia_tri":
-                    amount,
-                "gia_tri_hien_thi":
-                    format_vnd_display(
-                        amount
-                    ),
+                "gia_tri": amount,
+                "kieu_giam": benefit_kind,
+                "gia_tri_hien_thi": discount_benefit_display(benefit_kind, amount),
             })
 
 
@@ -7923,6 +8168,12 @@ def setup():
                     "table_count": table_count,
                 }
 
+            elif section == "discounts":
+                config["discounts"] = {
+                    "percent_enabled": request.form.get("percent_enabled") == "1",
+                    "max_percent": max(1, min(100, int(request.form.get("max_percent") or 100)))
+                }
+
             elif section == "pricing":
                 labels = (
                     request.form.getlist(
@@ -8139,6 +8390,10 @@ def setup():
                 )
 
             elif section == "member_ranks":
+                try:
+                    config["rank_accumulation_months"] = max(0, min(240, int(request.form.get("rank_accumulation_months") or 0)))
+                except (TypeError, ValueError):
+                    raise ValueError("Thời hạn tích lũy phải là số tháng hợp lệ.")
                 old_ranks = list(config.get("member_ranks") or DEFAULT_MEMBER_RANKS)
 
                 codes = request.form.getlist("rank_code")
@@ -8275,6 +8530,14 @@ def setup():
                 config
             )
 
+            if section == "member_ranks":
+                # Giảm mốc: thành viên đã đủ điều kiện được xét lại ngay;
+                # tăng mốc: không hạ hạng đã đạt.
+                try:
+                    refresh_all_member_ranks()
+                except Exception as rank_exc:
+                    print("[RANK SETUP REFRESH WARNING]", repr(rank_exc))
+
             flash(
                 "Đã lưu cài đặt.",
                 "success"
@@ -8367,6 +8630,7 @@ def setup():
     return render_template(
         "setup.html",
         setup_config=config,
+        setup_storage=setup_storage_info(),
         bank_options=BANK_OPTIONS,
         payment_qr_url=build_payment_qr_url(
             config
@@ -9692,6 +9956,260 @@ def parse_iso_datetime(value):
         return None
 
 
+# ============================================================
+# THÀNH VIÊN V2: Một nguồn hạng trong Supabase, không xếp hạng
+# bằng trigger lượt chơi cũ. Khóa mã hạng ổn định dù đổi tên.
+# ============================================================
+RANK_CODES = tuple(rank["code"] for rank in DEFAULT_MEMBER_RANKS)
+
+
+def rank_code_from_member(member, ranks=None):
+    ranks = ranks or load_setup_config().get("member_ranks") or DEFAULT_MEMBER_RANKS
+    code = clean_text(member.get("hang_code") if isinstance(member, dict) else "").upper()
+    if code in RANK_CODES:
+        return code
+    value = member.get("hang_thanh_vien") if isinstance(member, dict) else member
+    return RANK_CODES[get_member_rank_index(value, ranks)]
+
+
+def rank_summary_for_member(code, *, now=None, include_expiry=False):
+    """Chỉ tính hóa đơn đã thanh toán trong N tháng gần nhất khi xét NÂNG hạng.
+
+    Hóa đơn cũ vẫn nguyên vẹn; thống kê tổng lịch sử ở nơi khác không bị sửa.
+    Mốc N tháng trượt tính theo ngày kết thúc phiên chơi, giờ Việt Nam.
+    """
+    code = clean_text(code).upper()
+    now = now or datetime.now(VIETNAM_TZ)
+    if now.tzinfo is None:
+        now = now.replace(tzinfo=VIETNAM_TZ)
+    now = now.astimezone(VIETNAM_TZ)
+    months = int(load_setup_config().get("rank_accumulation_months") or 0)
+    cutoff = _add_calendar_months(now, -months) if months > 0 else None
+    invoices = []
+    offset = 0
+    while code:
+        query = (supabase.table(INVOICE_TABLE)
+                 .select("id,thanh_tien,thoi_gian_ket_thuc")
+                 .eq("ma_thanh_vien", code).eq("trang_thai", "Đã thanh toán")
+                 .order("id").range(offset, offset + 999))
+        batch = query.execute().data or []
+        invoices.extend(batch)
+        if len(batch) < 1000:
+            break
+        offset += 1000
+    eligible = []
+    all_dates = []
+    for row in invoices:
+        played_at = parse_iso_datetime(row.get("thoi_gian_ket_thuc"))
+        if not played_at:
+            continue
+        if played_at.tzinfo is None:
+            played_at = played_at.replace(tzinfo=VIETNAM_TZ)
+        played_at = played_at.astimezone(VIETNAM_TZ)
+        if played_at > now:
+            continue
+        all_dates.append(played_at)
+        # Tại thời điểm chạm đúng hạn N tháng, lượt hết hiệu lực.
+        if cutoff is not None and played_at <= cutoff:
+            continue
+        eligible.append({"played_at": played_at,
+                         "amount": max(0, int(row.get("thanh_tien") or 0)),
+                         "id": row.get("id")})
+    result = {"plays": len(eligible),
+              "spend": sum(i["amount"] for i in eligible),
+              "last_play": max(all_dates, default=None),
+              "months": months,
+              "window_start": cutoff,
+              "window_end": now}
+    if include_expiry:
+        expiring = []
+        if months:
+            notice_end = _add_calendar_months(now, 1)
+            for item in eligible:
+                expires_at = _add_calendar_months(item["played_at"], months)
+                if now <= expires_at <= notice_end:
+                    expiring.append({
+                        "played_at": item["played_at"].strftime("%d/%m/%Y"),
+                        "expires_at": expires_at.strftime("%d/%m/%Y"),
+                        "amount": item["amount"],
+                        "amount_display": f"{item['amount']:,}",
+                        "expires_at_iso": expires_at.isoformat(),
+                    })
+            expiring.sort(key=lambda x: x["expires_at_iso"])
+        result["expiring"] = expiring
+        result["earliest_play"] = min((x["played_at"] for x in eligible), default=None)
+        result["next_start_after_expiry"] = (min((x["played_at"] for x in eligible
+            if not expiring or x["played_at"] > parse_iso_datetime(expiring[0]["expires_at_iso"])), default=None))
+        result["remaining_plays"] = len(eligible)
+        result["remaining_spend"] = result["spend"]
+    return result
+
+
+def rank_log_change(member, previous, new_code, reason, stats, changed_at):
+    try:
+        supabase.table("Thanhvien_hang_lichsu").insert({
+            "thanh_vien_id": member["id"], "ma_thanh_vien": member.get("ma_thanh_vien"),
+            "hang_cu": previous, "hang_moi": new_code, "ly_do": reason,
+            "so_luot_luc_doi": stats["plays"], "tong_chi_luc_doi": stats["spend"],
+            "thay_doi_at": changed_at.isoformat()
+        }).execute()
+    except Exception as exc:
+        print("[RANK HISTORY WARNING]", repr(exc))
+
+
+def evaluate_member_rank(member_code, *, stats=None, require_activity=False):
+    """Chỉ NÂNG nếu đạt lượt HOẶC tiền. Không hạ do thay chỉ tiêu.
+    Sau khi từng bị hạ vì nghỉ chơi, một hóa đơn mới chỉ phục hồi tối đa 1 bậc.
+    """
+    member_code = clean_text(member_code).upper()
+    if not member_code:
+        return None
+    rows = (supabase.table(TABLE_NAME).select("*")
+            .eq("ma_thanh_vien", member_code).limit(1).execute().data or [])
+    if not rows:
+        return None
+    member = rows[0]
+    ranks = load_setup_config().get("member_ranks") or DEFAULT_MEMBER_RANKS
+    old_code = rank_code_from_member(member, ranks)
+    old_idx = RANK_CODES.index(old_code)
+    stats = stats or rank_summary_for_member(member_code)
+    now = datetime.now(VIETNAM_TZ)
+    downgraded_at = parse_iso_datetime(member.get("hang_giam_gan_nhat_at"))
+    last_play = stats.get("last_play")
+    if require_activity and not last_play:
+        return old_code
+    # Sau hạ hạng: không được nhảy lên lại từ tổng thống kê lịch sử nếu chưa chơi lại.
+    if downgraded_at and (not last_play or last_play <= downgraded_at):
+        return old_code
+    target_idx = old_idx
+    reason = ""
+    for idx in range(len(ranks) - 1, old_idx, -1):
+        min_plays = int(ranks[idx].get("min_plays") or 0)
+        min_spend = int(ranks[idx].get("min_spend") or 0)
+        plays_ok = min_plays > 0 and stats["plays"] >= min_plays
+        spend_ok = min_spend > 0 and stats["spend"] >= min_spend
+        if plays_ok or spend_ok:
+            target_idx = idx
+            reason = "LUOT_CHO" if plays_ok else "CHI_TIEU"
+            break
+    if target_idx <= old_idx:
+        return old_code
+    if downgraded_at:
+        target_idx = min(target_idx, old_idx + 1)
+    new_code = RANK_CODES[target_idx]
+    payload = {"hang_code": new_code, "hang_thanh_vien": ranks[target_idx]["name"],
+               "hang_thay_doi_at": now.isoformat(), "hang_nang_nguon": reason,
+               "updated_at": now.isoformat()}
+    if downgraded_at:
+        # Mỗi hóa đơn mới chỉ khôi phục được một cấp hạng đã mất.
+        payload["hang_giam_gan_nhat_at"] = (last_play or now).isoformat()
+    result = (supabase.table(TABLE_NAME).update(payload)
+              .eq("id", member["id"]).eq("hang_code", old_code).execute())
+    if result.data:
+        rank_log_change(member, old_code, new_code, reason, stats, now)
+    return new_code
+
+
+def _add_calendar_months(value, months):
+    import calendar
+    month_index = value.year * 12 + value.month - 1 + months
+    year, month0 = divmod(month_index, 12)
+    month = month0 + 1
+    day = min(value.day, calendar.monthrange(year, month)[1])
+    return value.replace(year=year, month=month, day=day)
+
+
+def downgrade_inactive_member(member, now=None):
+    """Một lần kiểm tra có thể hạ nhiều cấp nếu bỏ chơi nhiều tháng,
+    mỗi cấp dùng thời hạn riêng; dừng ở LOYAL.
+    """
+    now = now or datetime.now(VIETNAM_TZ)
+    ranks = load_setup_config().get("member_ranks") or DEFAULT_MEMBER_RANKS
+    old_code = rank_code_from_member(member, ranks)
+    initial_idx = RANK_CODES.index(old_code)
+    if initial_idx <= 1:
+        return old_code
+    last_play = parse_iso_datetime(member.get("thoi_gian_choi_gan_nhat"))
+    rank_changed = parse_iso_datetime(member.get("hang_thay_doi_at"))
+    registered = parse_iso_datetime(member.get("created_at"))
+    anchor = max((dt for dt in (last_play, rank_changed, registered) if dt), default=now)
+    index = initial_idx
+    while index > 1:
+        months = int(ranks[index].get("inactive_months") or 0)
+        if months <= 0:
+            break
+        deadline = _add_calendar_months(anchor, months)
+        if now < deadline:
+            break
+        anchor = deadline
+        index -= 1
+    if index == initial_idx:
+        return old_code
+    new_code = RANK_CODES[index]
+    stats = {"plays": int(member.get("so_lan_da_choi") or 0), "spend": 0}
+    changes = {"hang_code": new_code, "hang_thanh_vien": ranks[index]["name"],
+               "hang_thay_doi_at": anchor.isoformat(),
+               "hang_giam_gan_nhat_at": now.isoformat(), "hang_nang_nguon": None,
+               "updated_at": now.isoformat()}
+    result = (supabase.table(TABLE_NAME).update(changes)
+              .eq("id", member["id"]).eq("hang_code", old_code).execute())
+    if result.data:
+        rank_log_change(member, old_code, new_code, "KHONG_HOAT_DONG", stats, now)
+    return new_code
+
+
+def refresh_all_member_ranks():
+    """Đồng bộ nâng hạng theo Setup cho tất cả thành viên; không tự hạ hạng."""
+    offset = 0
+    changed = 0
+    while True:
+        batch = (supabase.table(TABLE_NAME).select("id,ma_thanh_vien,hang_code,hang_thanh_vien")
+                 .order("id").range(offset, offset + 199).execute().data or [])
+        if not batch:
+            break
+        for row in batch:
+            try:
+                before = rank_code_from_member(row)
+                if evaluate_member_rank(row["ma_thanh_vien"]) != before:
+                    changed += 1
+            except Exception as exc:
+                print("[RANK REEVALUATE ERROR]", row.get("id"), repr(exc))
+        offset += len(batch)
+        if len(batch) < 200:
+            break
+    return changed
+
+
+def process_inactive_member_ranks():
+    """Gọi từ worker hằng ngày trên VPS; không cần mở website."""
+    offset = 0
+    changed = 0
+    while True:
+        batch = (supabase.table(TABLE_NAME).select("*")
+                 .order("id").range(offset, offset + 199).execute().data or [])
+        if not batch:
+            break
+        for row in batch:
+            try:
+                before = rank_code_from_member(row)
+                if downgrade_inactive_member(row) != before:
+                    changed += 1
+            except Exception as exc:
+                print("[RANK DAILY ERROR]", row.get("id"), repr(exc))
+        offset += len(batch)
+        if len(batch) < 200:
+            break
+    return changed
+
+
+def sync_rank_display(member, ranks=None):
+    ranks = ranks or load_setup_config().get("member_ranks") or DEFAULT_MEMBER_RANKS
+    code = rank_code_from_member(member, ranks)
+    idx = RANK_CODES.index(code)
+    member["hang_thanh_vien_index"] = idx
+    member["hang_thanh_vien_hien_thi"] = ranks[idx]["name"]
+    return idx
+
 def generate_invoice_code():
     now = datetime.now().astimezone()
     suffix = uuid.uuid4().hex[:4].upper()
@@ -9796,6 +10314,9 @@ def update_member_play_stats(member_code):
             )
             .execute()
         )
+
+        # Đảm bảo đã lưu thống kê trước khi xét nâng hạng theo Setup.
+        evaluate_member_rank(member_code)
 
     except Exception as exc:
         print(
@@ -10077,6 +10598,7 @@ def api_tao_hoa_don():
         ).upper()
 
         benefit_amount = 0
+        benefit_kind = "NONE"
         benefit_name = ""
         benefit_table = None
         benefit_code_field = None
@@ -10274,12 +10796,8 @@ def api_tao_hoa_don():
                     }), 400
 
 
-                benefit_amount = (
-                    parse_money_value(
-                        benefit.get(
-                            "gia_tri"
-                        )
-                    )
+                benefit_kind, benefit_amount = discount_benefit_value(
+                    benefit.get("gia_tri"), allow_bare_amount=False
                 )
 
                 benefit_name = clean_text(
@@ -10373,11 +10891,7 @@ def api_tao_hoa_don():
                     )
                 )
 
-                benefit_amount = (
-                    extract_money_reward_value(
-                        benefit_name
-                    )
-                )
+                benefit_kind, benefit_amount = discount_benefit_value(benefit_name)
 
                 # Không cho gấu bông / nước / vật phẩm
                 if benefit_amount <= 0:
@@ -10418,9 +10932,15 @@ def api_tao_hoa_don():
         # 1. Trừ Voucher/Quà trước
         # 2. Giảm thủ công trên số tiền còn lại
         # ==========================================
-        benefit_discount = min(
-            max(0, int(benefit_amount or 0)),
-            tong_tien
+        if benefit_kind == "PERCENT":
+            rules = setup_config.get("discounts", {})
+            if not rules.get("percent_enabled", True):
+                return jsonify({"ok": False, "message": "CLB chưa bật ưu đãi theo phần trăm trong Setup."}), 400
+            if benefit_amount > int(rules.get("max_percent", 100)):
+                return jsonify({"ok": False, "message": "Voucher vượt mức giảm phần trăm cho phép trong Setup."}), 400
+
+        benefit_discount = discount_benefit_amount(
+            benefit_kind, benefit_amount, tong_tien
         )
 
         remaining_after_benefit = max(
@@ -10591,9 +11111,8 @@ def api_tao_hoa_don():
                 "ma_uu_dai"
             ] = benefit_code
 
-            payload[
-                "gia_tri_uu_dai"
-            ] = benefit_amount
+            # Lưu số tiền THỰC TẾ đã giảm, giữ tương thích cột số của Hoadon.
+            payload["gia_tri_uu_dai"] = benefit_discount
 
 
         result = (
@@ -10725,7 +11244,7 @@ def api_tao_hoa_don():
                 "uu_dai_hien_thi"
             ] = (
                 f"{benefit_code}"
-                f" - {format_vnd_display(benefit_amount)}"
+                f" - {discount_benefit_display(benefit_kind, benefit_amount)}"
             )
 
 

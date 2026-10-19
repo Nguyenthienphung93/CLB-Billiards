@@ -36,6 +36,12 @@ load_dotenv(BASE_DIR / ".env")
 
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_SECRET_KEY", "change-this-secret-key")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+    SESSION_COOKIE_SECURE=(os.getenv("SESSION_COOKIE_SECURE", "1").strip() != "0"),
+    PERMANENT_SESSION_LIFETIME=timedelta(hours=8),
+)
 
 SUPABASE_URL = (os.getenv("SUPABASE_URL") or "").strip()
 SUPABASE_KEY = (
@@ -1192,6 +1198,52 @@ ADMIN_PASSWORD = (
 ).strip()
 
 
+# Tài khoản bảo trì hệ thống tồn tại RIÊNG TRÊN VPS, không tạo hàng trong admin_info.
+SYSTEM_ADMIN_USERNAME = (os.getenv("SYSTEM_ADMIN_USERNAME") or "").strip()
+SYSTEM_ADMIN_PASSWORD_HASH = (os.getenv("SYSTEM_ADMIN_PASSWORD_HASH") or "").strip()
+
+
+def system_admin_enabled():
+    return bool(SYSTEM_ADMIN_USERNAME and SYSTEM_ADMIN_PASSWORD_HASH)
+
+
+def _system_admin_identity():
+    """Không có id Supabase; chỉ phiên system_admin được tạo bởi đăng nhập .env."""
+    return {
+        "id": None,
+        "username": SYSTEM_ADMIN_USERNAME,
+        "email": None,
+        "ho_va_ten": "Quản trị hệ thống",
+        "active": True,
+        "is_owner": True,
+        "is_system_admin": True,
+        "quyen_han": dict(FULL_ADMIN_PERMISSIONS),
+        "quyen_han_chuan": dict(FULL_ADMIN_PERMISSIONS),
+    }
+
+
+def _system_admin_signature():
+    """Thay đổi tài khoản/hash trong .env sẽ vô hiệu hóa phiên quản trị cũ."""
+    message = (SYSTEM_ADMIN_USERNAME + "\0" + SYSTEM_ADMIN_PASSWORD_HASH).encode("utf-8")
+    return hmac.new(app.secret_key.encode("utf-8"), message, hashlib.sha256).hexdigest()
+
+
+def valid_system_admin_session():
+    return (system_admin_enabled()
+            and session.get("admin_logged_in") is True
+            and session.get("admin_kind") == "system"
+            and hmac.compare_digest(str(session.get("system_admin_signature") or ""), _system_admin_signature()))
+
+
+def verify_system_admin_password(password):
+    if not system_admin_enabled() or not password:
+        return False
+    try:
+        return check_password_hash(SYSTEM_ADMIN_PASSWORD_HASH, password)
+    except (ValueError, TypeError):
+        return False
+
+
 def find_logo_url():
     picture_dir = BASE_DIR / "static" / "pictures"
     for ext in ("png", "webp", "jpg", "jpeg", "svg"):
@@ -1237,7 +1289,15 @@ def inject_layout_data():
         "setup_unlocked": bool(session.get("setup_unlocked")),
         "setup_remaining": setup_remaining_attempts(),
         "setup_csrf": setup_csrf_token() if session.get("admin_logged_in") else "",
+        "invoice_confirm_csrf": invoice_confirm_csrf_token() if session.get("admin_logged_in") else "",
     }
+
+
+def invoice_confirm_csrf_token():
+    """Token riêng cho thao tác xác nhận thanh toán (không yêu cầu mở khóa Setup)."""
+    if not session.get("invoice_confirm_csrf"):
+        session["invoice_confirm_csrf"] = uuid.uuid4().hex + uuid.uuid4().hex
+    return session["invoice_confirm_csrf"]
 
 
 def clean_text(value):
@@ -2157,6 +2217,7 @@ ENDPOINT_PERMISSION_MAP = {
     # Hóa đơn
     "hoa_don": "hoa_don",
     "xoa_hoa_don": "hoa_don",
+    "xac_nhan_thanh_toan_hoa_don": "hoa_don",
 
     # Khuyến mãi
     "khuyen_mai_admin": "khuyen_mai",
@@ -2233,6 +2294,11 @@ def invalidate_admin_cache(admin_id=None):
 
 
 def get_current_admin():
+    if session.get("admin_kind") == "system":
+        if valid_system_admin_session():
+            return _system_admin_identity()
+        return None
+
     cached_request = getattr(g, "_current_admin", None)
     if cached_request is not None:
         return cached_request or None
@@ -2347,82 +2413,8 @@ def first_allowed_admin_endpoint():
     return "admin_logout"
 
 
-def ensure_owner_admin_from_env():
-    """
-    Chỉ dùng 1 lần để chuyển tài khoản ADMIN_USERNAME /
-    ADMIN_PASSWORD hiện có trong .env sang bảng admin_info.
-
-    Sau khi đã thấy tài khoản Chủ trong Supabase,
-    có thể xóa ADMIN_USERNAME và ADMIN_PASSWORD khỏi .env.
-    """
-    if not ADMIN_USERNAME or not ADMIN_PASSWORD:
-        return
-
-    try:
-        existing = (
-            supabase
-            .table(ADMIN_TABLE)
-            .select("id")
-            .limit(1)
-            .execute()
-            .data
-            or []
-        )
-
-        if existing:
-            return
-
-        now_iso = (
-            datetime.now(VIETNAM_TZ)
-            .isoformat()
-        )
-
-        supabase.table(
-            ADMIN_TABLE
-        ).insert({
-            "username":
-                ADMIN_USERNAME,
-
-            "email":
-                None,
-
-            "ho_va_ten":
-                "Chủ hệ thống",
-
-            "password_hash":
-                generate_password_hash(
-                    ADMIN_PASSWORD
-                ),
-
-            "active":
-                True,
-
-            "is_owner":
-                True,
-
-            "quyen_han":
-                dict(
-                    FULL_ADMIN_PERMISSIONS
-                ),
-
-            "created_at":
-                now_iso,
-
-            "updated_at":
-                now_iso,
-        }).execute()
-
-        print(
-            "[ADMIN MIGRATION] "
-            "Đã chuyển tài khoản .env "
-            "sang admin_info."
-        )
-
-    except Exception as exc:
-        print(
-            "[ADMIN MIGRATION ERROR]",
-            repr(exc)
-        )
+# Legacy ADMIN_USERNAME/ADMIN_PASSWORD migration deliberately disabled.
+# CLB admins are created explicitly in Setup, never implicitly from .env.
 
 
 # ==========================================================
@@ -2453,19 +2445,24 @@ def _setup_password_result(password, csrf):
     if not expected or not hmac.compare_digest(str(csrf or ""), expected):
         return {"ok": False, "message": "Phiên xác thực không hợp lệ. Vui lòng tải lại trang.",
                 "remaining": setup_remaining_attempts()}, 403
-    admin_id = session.get("admin_id")
-    if not session.get("admin_logged_in") or not admin_id:
-        return {"ok": False, "logout": True, "message": "Phiên đăng nhập đã hết hạn."}, 401
-    try:
-        rows = (supabase.table(ADMIN_TABLE).select("password_hash,active")
-                .eq("id", admin_id).limit(1).execute().data or [])
-    except Exception as exc:
-        print("[SETUP VERIFY ERROR]", type(exc).__name__)
-        return {"ok": False, "message": "Không thể kiểm tra mật khẩu. Vui lòng thử lại.",
-                "remaining": setup_remaining_attempts()}, 503
-    admin = rows[0] if rows else None
-    valid = (admin and bool(admin.get("active")) and bool(admin.get("password_hash"))
-             and bool(password) and check_password_hash(admin["password_hash"], password))
+    if session.get("admin_kind") == "system":
+        if not valid_system_admin_session():
+            return {"ok": False, "logout": True, "message": "Phiên hệ thống hết hạn."}, 401
+        valid = verify_system_admin_password(password)
+    else:
+        admin_id = session.get("admin_id")
+        if not session.get("admin_logged_in") or not admin_id:
+            return {"ok": False, "logout": True, "message": "Phiên đăng nhập đã hết hạn."}, 401
+        try:
+            rows = (supabase.table(ADMIN_TABLE).select("password_hash,active")
+                    .eq("id", admin_id).limit(1).execute().data or [])
+        except Exception as exc:
+            print("[SETUP VERIFY ERROR]", type(exc).__name__)
+            return {"ok": False, "message": "Không thể kiểm tra mật khẩu. Vui lòng thử lại.",
+                    "remaining": setup_remaining_attempts()}, 503
+        admin = rows[0] if rows else None
+        valid = bool(admin and admin.get("active") and admin.get("password_hash")
+                     and password and check_password_hash(admin["password_hash"], password))
     if valid:
         session["setup_unlocked"] = True
         session["setup_failures"] = 0
@@ -2524,8 +2521,6 @@ def setup_no_cache(response):
 )
 def admin_login():
 
-    ensure_owner_admin_from_env()
-
     if session.get("admin_logged_in"):
         admin = get_current_admin()
 
@@ -2557,6 +2552,22 @@ def admin_login():
             return render_template(
                 "admin_login.html"
             )
+
+        # Tài khoản hệ thống luôn được nhận diện trước Supabase.
+        # Username trùng nhưng sai password KHÔNG được thử tài khoản CLB.
+        if system_admin_enabled() and hmac.compare_digest(login.casefold(), SYSTEM_ADMIN_USERNAME.casefold()):
+            if verify_system_admin_password(password):
+                session.clear()
+                session.permanent = True
+                session["admin_logged_in"] = True
+                session["admin_kind"] = "system"
+                session["admin_username"] = SYSTEM_ADMIN_USERNAME
+                session["admin_name"] = "Quản trị hệ thống"
+                session["system_admin_signature"] = _system_admin_signature()
+                flash("Đăng nhập quản trị hệ thống thành công.", "success")
+                return redirect(url_for(first_allowed_admin_endpoint()))
+            flash("User/Email hoặc mật khẩu không chính xác.", "danger")
+            return render_template("admin_login.html")
 
         try:
             rows = (
@@ -2640,6 +2651,8 @@ def admin_login():
                 session[
                     "admin_logged_in"
                 ] = True
+
+                session["admin_kind"] = "club"
 
                 session[
                     "admin_id"
@@ -3187,11 +3200,7 @@ def member_thongtin():
                 "ma_thanh_vien",
                 member_code
             )
-            .eq(
-                "trang_thai",
-                "Đã thanh toán"
-            )
-            .order(
+                        .order(
                 "created_at",
                 desc=True
             )
@@ -8162,6 +8171,11 @@ def setup():
                         + " đang hoạt động."
                     )
 
+                # Đồng bộ với Supabase TRƯỚC khi lưu số bàn mới vào JSON.
+                # Nếu DB vẫn bị khóa giới hạn 12 bàn, việc Lưu sẽ báo lỗi
+                # và cấu hình CLB cũ được giữ nguyên.
+                ensure_billiards_tables(table_count)
+
                 config["club"] = {
                     "title": title,
                     "name": name,
@@ -9136,6 +9150,51 @@ def xoa_admin(admin_id):
     )
 
 
+def ensure_billiards_tables(table_count):
+    """Đồng bộ các bàn 1..N trong Supabase; không xóa bàn/hóa đơn cũ.
+
+    Có thể gọi lại an toàn. UNIQUE(ban_so) bảo vệ khi nhiều worker cùng tạo.
+    Nếu DB lỗi phải báo lỗi thay vì dựng trạng thái bàn giả.
+    """
+    table_count = int(table_count)
+    if not 1 <= table_count <= 100:
+        raise ValueError("Số bàn phải từ 1 đến 100.")
+
+    query = (supabase.table(ACTIVITY_TABLE)
+             .select("ban_so")
+             .order("ban_so")
+             .execute())
+    existing = {int(row["ban_so"]) for row in (query.data or [])}
+    missing = sorted(set(range(1, table_count + 1)) - existing)
+
+    for number in missing:
+        try:
+            supabase.table(ACTIVITY_TABLE).insert({
+                "ban_so": number,
+                "dang_hoat_dong": False,
+                "thoi_gian_bat_dau": None,
+                "dich_vu_them": "[]",
+            }).execute()
+        except Exception:
+            # Worker khác có thể vừa tạo bàn. Chỉ bỏ qua nếu bàn đã tồn tại.
+            recheck = (supabase.table(ACTIVITY_TABLE)
+                       .select("ban_so").eq("ban_so", number)
+                       .limit(1).execute().data or [])
+            if not recheck:
+                raise
+
+    # Xác minh trạng thái DB thay vì coi lệnh ghi thành công một cách mặc định.
+    final_rows = (supabase.table(ACTIVITY_TABLE)
+                  .select("ban_so")
+                  .order("ban_so")
+                  .execute().data or [])
+    final_numbers = {int(row["ban_so"]) for row in final_rows}
+    still_missing = sorted(set(range(1, table_count + 1)) - final_numbers)
+    if still_missing:
+        raise RuntimeError("Supabase chưa tạo được bàn: " + ", ".join(map(str, still_missing)))
+    return len(missing)
+
+
 @app.get("/hoat-dong")
 def hoat_dong():
 
@@ -9196,125 +9255,36 @@ def hoat_dong():
     # =============================
     # 2. TRẠNG THÁI BÀN
     # =============================
+    table_sync_error = ""
+    ban_rows = []
     try:
+        # Hỗ trợ cả CLB mới cài và dữ liệu cũ chưa được đồng bộ.
+        ensure_billiards_tables(table_count)
         ban_rows_all = (
-            supabase
-            .table(
-                ACTIVITY_TABLE
-            )
-            .select(
-                "id,"
-                "ban_so,"
-                "dang_hoat_dong,"
-                "thoi_gian_bat_dau,"
-                "dich_vu_them"
-            )
+            supabase.table(ACTIVITY_TABLE)
+            .select("id,ban_so,dang_hoat_dong,thoi_gian_bat_dau,dich_vu_them")
             .order("ban_so")
-            .execute()
-            .data
-            or []
+            .execute().data or []
         )
-
-        existing_numbers = {
-            int(
-                row.get(
-                    "ban_so"
-                )
-            )
-            for row in ban_rows_all
-            if row.get(
-                "ban_so"
-            )
-        }
-
-        # Tăng số lượng bàn trong Setup thì tự tạo bàn thiếu.
-        for ban_so in range(
-            1,
-            table_count + 1
-        ):
-
-            if (
-                ban_so
-                not in existing_numbers
-            ):
-
-                new_row = {
-                    "ban_so":
-                        ban_so,
-
-                    "dang_hoat_dong":
-                        False,
-
-                    "thoi_gian_bat_dau":
-                        None,
-
-                    "dich_vu_them":
-                        "[]",
-                }
-
-                result = (
-                    supabase
-                    .table(
-                        ACTIVITY_TABLE
-                    )
-                    .insert(
-                        new_row
-                    )
-                    .execute()
-                )
-
-                if result.data:
-                    ban_rows_all.append(
-                        result.data[0]
-                    )
-
-        # Nếu giảm số bàn thì không xóa dữ liệu cũ.
-        # Chỉ ẩn các bàn vượt quá số lượng đang cài đặt.
-        ban_rows = [
-            row
-            for row in ban_rows_all
-            if 1 <= int(
-                row.get(
-                    "ban_so"
-                )
-                or 0
-            ) <= table_count
-        ]
-
-        ban_rows.sort(
-            key=lambda x:
-                int(
-                    x.get(
-                        "ban_so"
-                    )
-                    or 0
-                )
-        )
-
+        # Giảm số bàn chỉ ẩn các bàn vượt mức; giữ dữ liệu nguyên vẹn.
+        ban_rows = [row for row in ban_rows_all
+                    if 1 <= int(row.get("ban_so") or 0) <= table_count]
+        ban_rows.sort(key=lambda row: int(row.get("ban_so") or 0))
     except Exception as exc:
-        print(
-            "[LOAD TABLE STATE ERROR]",
-            repr(exc)
+        print("[LOAD TABLE STATE ERROR]", repr(exc))
+        table_sync_error = (
+            "Không đồng bộ được danh sách bàn với Supabase. "
+            "Kiểm tra SQL giới hạn số bàn và kết nối database. "
+            + str(exc)
         )
-
-        ban_rows = [
-            {
-                "ban_so": i,
-                "dang_hoat_dong": False,
-                "thoi_gian_bat_dau": None,
-                "dich_vu_them": "[]",
-            }
-            for i in range(
-                1,
-                table_count + 1
-            )
-        ]
+        # Không tạo trạng thái bàn giả; chỉ báo lỗi để tránh mất phiên chơi.
 
 
     return render_template(
         "Hoatdong.html",
         members=members,
         ban_states=ban_rows,
+        table_sync_error=table_sync_error,
         setup_config=setup_config,
     )
 
@@ -9524,6 +9494,46 @@ def hoa_don():
         rows=rows,
         q=q
     )
+
+
+@app.post("/hoa-don/<int:invoice_id>/xac-nhan-thanh-toan")
+def xac_nhan_thanh_toan_hoa_don(invoice_id):
+    """Admin xác nhận đã nhận tiền; thao tác một chiều và an toàn khi gửi lặp."""
+    token = request.form.get("csrf", "")
+    expected = session.get("invoice_confirm_csrf", "")
+    if not expected or not hmac.compare_digest(str(token), str(expected)):
+        flash("Phiên xác nhận không hợp lệ. Vui lòng tải lại trang.", "danger")
+        return redirect(url_for("hoa_don"))
+
+    back_q = clean_text(request.form.get("return_q"))
+    try:
+        current = (supabase.table(INVOICE_TABLE)
+                   .select("id,ma_thanh_vien,trang_thai")
+                   .eq("id", invoice_id).limit(1).execute().data or [])
+        if not current:
+            flash("Không tìm thấy hóa đơn.", "danger")
+        elif current[0].get("trang_thai") == "Đã thanh toán":
+            flash("Hóa đơn này đã được xác nhận thanh toán trước đó.", "success")
+        elif current[0].get("trang_thai") != "Chờ thanh toán":
+            flash("Không thể xác nhận hóa đơn đang ở trạng thái này.", "danger")
+        else:
+            changed = (supabase.table(INVOICE_TABLE)
+                       .update({"trang_thai": "Đã thanh toán",
+                                "updated_at": datetime.now(VIETNAM_TZ).isoformat()})
+                       .eq("id", invoice_id)
+                       .eq("trang_thai", "Chờ thanh toán")
+                       .execute().data or [])
+            if changed:
+                code = clean_text(changed[0].get("ma_thanh_vien") or current[0].get("ma_thanh_vien"))
+                if code:
+                    update_member_play_stats(code)
+                flash("Đã xác nhận thanh toán hóa đơn thành công.", "success")
+            else:
+                flash("Hóa đơn đã được người khác xử lý. Vui lòng tải lại.", "danger")
+    except Exception as exc:
+        print("[INVOICE PAYMENT CONFIRM ERROR]", repr(exc))
+        flash("Không thể xác nhận thanh toán. Vui lòng thử lại.", "danger")
+    return redirect(url_for("hoa_don", q=back_q) if back_q else url_for("hoa_don"))
 
 
 @app.post(
@@ -11086,7 +11096,7 @@ def api_tao_hoa_don():
                 None,
 
             "trang_thai":
-                "Đã thanh toán",
+                "Chờ thanh toán",
 
             "ghi_chu":
                 None,

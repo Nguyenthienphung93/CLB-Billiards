@@ -855,6 +855,15 @@
         color:#334155;
     }
 
+
+/* VietQR trên hóa đơn Admin – lấy tài khoản từ Setup. */
+.receipt-payment-qr{display:none;margin:16px auto 0;padding:13px 10px;border:1px dashed #bfdbfe;border-radius:12px;text-align:center;background:#f8fbff;max-width:330px}
+.receipt-payment-qr.visible{display:block}
+.receipt-payment-qr-title{font-size:12px;font-weight:900;color:#123a61;margin-bottom:8px}
+.receipt-payment-qr img{display:block;width:190px;height:190px;max-width:100%;object-fit:contain;margin:0 auto;background:#fff}
+.receipt-payment-qr-account{margin:7px 0 0;font-size:11px;line-height:1.5;color:#334155;overflow-wrap:anywhere}
+.receipt-payment-qr-note{font-size:10px;line-height:1.45;margin-top:5px;color:#475569;overflow-wrap:anywhere}
+
     .receipt-thanks{
         margin-top:20px;
 
@@ -1378,6 +1387,8 @@
     .qr-manual-row button{width:100%;}
 }
 
+.receipt-paid-stamp{display:none;width:max-content;max-width:100%;margin:18px auto 3px;padding:12px 22px;border:4px double #15803d;border-radius:10px;color:#15803d;text-align:center;font-size:21px;font-weight:1000;letter-spacing:1px;transform:rotate(-5deg)}
+.receipt-paid-stamp.visible{display:block}
 </style>
 {% endblock %}
 
@@ -1386,6 +1397,7 @@
     <div class="page-head">
         <div>
             <h1>Hoạt Động</h1>
+            <p>Quản lý hoạt động {{ setup_config.club.table_count }} bàn bida, theo dõi thời gian chơi và tạo hóa đơn sau khi kết thúc bàn.</p>
         </div>
     </div>
 
@@ -1397,9 +1409,16 @@
         </div>
     </section>
 
+    {% if table_sync_error %}
+    <section class="panel" style="padding:16px 18px;background:#fff1f2;border-color:#fecdd3;color:#9f1239;font-weight:800" role="alert">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        {{ table_sync_error }}
+    </section>
+    {% else %}
     <section class="panel tables-panel">
         <div id="tablesGrid" class="tables-grid"></div>
     </section>
+    {% endif %}
 </div>
 
 <div
@@ -1797,6 +1816,15 @@
             </div>
 
             <div class="receipt-customer" id="receiptCustomerInfo"></div>
+            
+            <!-- QR chỉ dành cho hóa đơn Admin; không chèn ở Member Portal. -->
+            <div id="receiptPaymentQr" class="receipt-payment-qr" aria-label="QR thanh toán chuyển khoản">
+                <div class="receipt-payment-qr-title">QUÉT QR ĐỂ CHUYỂN KHOẢN</div>
+                <img id="receiptPaymentQrImage" alt="QR thanh toán VietQR" loading="eager">
+                <div id="receiptPaymentQrAccount" class="receipt-payment-qr-account"></div>
+                <div id="receiptPaymentQrNote" class="receipt-payment-qr-note"></div>
+            </div>
+            <div id="receiptPaidStamp" class="receipt-paid-stamp">✓ ĐÃ THANH TOÁN</div>
             <div class="receipt-thanks">Cảm ơn Quý khách và hẹn gặp lại!</div>
 
             <div class="receipt-actions">
@@ -1900,7 +1928,8 @@
 {% block page_script %}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-const TABLE_COUNT = Number(
+const TABLE_SYNC_ERROR = {{ table_sync_error|default('', true)|tojson }};
+const TABLE_COUNT = TABLE_SYNC_ERROR ? 0 : Number(
     {{ setup_config.club.table_count|default(12)|tojson }}
 );
 
@@ -2740,6 +2769,7 @@ function updateStatusCounts() {
 
 function renderTables() {
     const grid = document.getElementById('tablesGrid');
+    if (!grid) return;
     grid.innerHTML = tablesState.map(table => {
         const stateClass = table.active ? 'is-active' : '';
         const clothClass = table.active ? 'active' : 'idle';
@@ -3832,7 +3862,7 @@ async function loadMemberBenefits(memberCode) {
 
         if (!response.ok || !data.ok) {
             throw new Error(
-                data.message || 'Không tải được Voucher/Quà giảm giá.'
+                data.message || 'Không tải được Voucher/Quà giảm tiền.'
             );
         }
 
@@ -3843,7 +3873,7 @@ async function loadMemberBenefits(memberCode) {
             select.disabled = true;
             select.innerHTML = `
                 <option value="">
-                    Hiện tại bạn chưa có Voucher/Quà giảm giá
+                    Hiện tại bạn chưa có Voucher/Quà giảm tiền
                 </option>
             `;
 
@@ -3852,7 +3882,7 @@ async function loadMemberBenefits(memberCode) {
             if (note) {
                 note.className = 'member-benefit-note warn';
                 note.textContent =
-                    'Thành viên hiện không có Voucher hoặc Quà tặng giảm giá có thể sử dụng.';
+                    'Thành viên hiện không có Voucher hoặc Quà tặng bằng tiền có thể sử dụng.';
             }
 
             setManualDiscountEnabled(true, true);
@@ -3874,8 +3904,8 @@ async function loadMemberBenefits(memberCode) {
                 : 'member-benefit-note warn';
 
             note.textContent = eligibleCount
-                ? `Có ${eligibleCount}/${memberBenefitOptions.length} Voucher/Quà giảm giá đang đủ điều kiện sử dụng.`
-                : 'Có Voucher/Quà giảm giá nhưng hóa đơn hiện tại chưa đạt điều kiện sử dụng.';
+                ? `Có ${eligibleCount}/${memberBenefitOptions.length} Voucher/Quà giảm tiền đang đủ điều kiện sử dụng.`
+                : 'Có Voucher/Quà giảm tiền nhưng hóa đơn hiện tại chưa đạt điều kiện sử dụng.';
         }
 
         setManualDiscountEnabled(true, true);
@@ -3886,14 +3916,14 @@ async function loadMemberBenefits(memberCode) {
         select.disabled = true;
         select.innerHTML = `
             <option value="">
-                Không tải được Voucher/Quà giảm giá
+                Không tải được Voucher/Quà giảm tiền
             </option>
         `;
 
         if (note) {
             note.className = 'member-benefit-note warn';
             note.textContent =
-                error.message || 'Không tải được Voucher/Quà giảm giá.';
+                error.message || 'Không tải được Voucher/Quà giảm tiền.';
         }
 
         setManualDiscountEnabled(true, true);
@@ -4321,9 +4351,10 @@ function updateInvoiceSummary() {
     // 2. Sau đó mới áp dụng giảm thủ công trên số tiền còn lại
     // ==========================================
     const benefitDiscount = selectedMemberBenefit
-        ? (selectedMemberBenefit.kieu_giam === 'PERCENT'
-            ? Math.min(subtotal, Math.round(subtotal * Number(selectedMemberBenefit.gia_tri || 0) / 100))
-            : Math.min(Number(selectedMemberBenefit.gia_tri || 0), subtotal))
+        ? Math.min(
+            Number(selectedMemberBenefit.gia_tri || 0),
+            subtotal
+        )
         : 0;
 
     const afterBenefit = Math.max(
@@ -4612,6 +4643,49 @@ function handleDiscountTypeChange() {
     updateInvoiceSummary();
 }
 
+
+// Thông tin ngân hàng đọc trực tiếp từ Setup hiện tại (server render, không hard-code).
+const ADMIN_RECEIPT_BANK = {{ (app_setup.payment.bank_code if app_setup is defined else '')|tojson }};
+const ADMIN_RECEIPT_ACCOUNT = {{ (app_setup.payment.account_number if app_setup is defined else '')|tojson }};
+const ADMIN_RECEIPT_ACCOUNT_NAME = {{ (app_setup.payment.account_name if app_setup is defined else '')|tojson }};
+function updateAdminReceiptQr(invoice) {
+    const wrapper = document.getElementById('receiptPaymentQr');
+    const image = document.getElementById('receiptPaymentQrImage');
+    if (!wrapper || !image) return;
+    const isPaid = invoice && invoice.trang_thai === 'Đã thanh toán';
+    const stamp = document.getElementById('receiptPaidStamp');
+    if (stamp) stamp.classList.toggle('visible', !!isPaid);
+    if (isPaid) {
+        wrapper.classList.remove('visible');
+        image.removeAttribute('src');
+        return;
+    }
+    const bank = String(ADMIN_RECEIPT_BANK || '').trim();
+    const account = String(ADMIN_RECEIPT_ACCOUNT || '').trim();
+    const amount = Math.max(0, Math.round(Number(invoice && invoice.thanh_tien || 0)));
+    const code = String(invoice && invoice.ma_hoa_don || '').trim();
+    // Không cho QR thiếu dữ liệu ngân hàng, mã hóa đơn hoặc số tiền.
+    if (!bank || !account || !code || !Number.isFinite(amount) || amount <= 0) {
+        wrapper.classList.remove('visible');
+        image.removeAttribute('src');
+        return;
+    }
+    const member = String(invoice && invoice.ma_thanh_vien || '').trim();
+    const note = (member || 'Khach le') + ' - ' + code;
+    // Chuyển nội dung sang dạng không dấu để tương thích với ngân hàng VietQR.
+    const transferNote = note.normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+    const url = 'https://img.vietqr.io/image/' + encodeURIComponent(bank) + '-' + encodeURIComponent(account)
+        + '-compact2.png?amount=' + encodeURIComponent(amount)
+        + '&addInfo=' + encodeURIComponent(transferNote)
+        + '&accountName=' + encodeURIComponent(String(ADMIN_RECEIPT_ACCOUNT_NAME || '').trim());
+    image.src = url;
+    image.onerror = function(){ wrapper.classList.remove('visible'); };
+    image.onload = function(){ wrapper.classList.add('visible'); };
+    document.getElementById('receiptPaymentQrAccount').textContent = [bank, account, ADMIN_RECEIPT_ACCOUNT_NAME].filter(Boolean).join(' · ');
+    document.getElementById('receiptPaymentQrNote').textContent = 'Số tiền: ' + new Intl.NumberFormat('vi-VN').format(amount) + ' đ | Nội dung: ' + transferNote;
+    wrapper.classList.add('visible');
+}
+
 function renderReceipt(invoice) {
     document.getElementById('receiptInvoiceCode').textContent = invoice.ma_hoa_don || '—';
     document.getElementById('receiptCreatedAt').textContent = 'Ngày lập: ' + (invoice.ngay_lap_hien_thi || '—');
@@ -4709,6 +4783,7 @@ function renderReceipt(invoice) {
     }
 
     document.getElementById('receiptGrandTotal').textContent = formatMoney(invoice.thanh_tien || 0);
+    updateAdminReceiptQr(invoice);
 
     const customerBits = [];
     if (invoice.ho_va_ten) customerBits.push(`<b>Khách hàng:</b> ${escapeHtml(invoice.ho_va_ten)}`);
@@ -5012,6 +5087,17 @@ function printReceipt() {
                     color: #334155;
                 }
 
+
+                
+/* QR Admin trên bản in A5 */
+.receipt-paid-stamp{display:none;width:max-content;max-width:100%;margin:18px auto 3px;padding:12px 22px;border:4px double #15803d;border-radius:10px;color:#15803d;text-align:center;font-size:21px;font-weight:1000;letter-spacing:1px;transform:rotate(-5deg)}
+.receipt-paid-stamp.visible{display:block}
+.receipt-payment-qr{display:none;margin:16px auto 0;padding:13px 10px;border:1px dashed #bfdbfe;border-radius:12px;text-align:center;background:#f8fbff;max-width:330px}
+.receipt-payment-qr.visible{display:block}
+.receipt-payment-qr-title{font-size:12px;font-weight:900;color:#123a61;margin-bottom:8px}
+.receipt-payment-qr img{display:block;width:190px;height:190px;max-width:100%;object-fit:contain;margin:0 auto;background:#fff}
+.receipt-payment-qr-account{margin:7px 0 0;font-size:11px;line-height:1.5;color:#334155;overflow-wrap:anywhere}
+.receipt-payment-qr-note{font-size:10px;line-height:1.45;margin-top:5px;color:#475569;overflow-wrap:anywhere}
 
                 .receipt-thanks {
                     margin-top: 14px;

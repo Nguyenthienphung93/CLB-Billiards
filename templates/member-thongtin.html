@@ -9,11 +9,7 @@
 .page-heading p{margin:6px 0 0;color:#64748b;font-size:14px;font-weight:600}
 .info-panel,.invoice-panel{background:#fff;border:1px solid #dbe7f2;border-radius:20px;box-shadow:0 12px 28px rgba(15,44,76,.06)}
 .info-panel{padding:18px}
-.section-head-row{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:15px;flex-wrap:wrap}
 .section-title{display:flex;align-items:center;gap:9px;margin-bottom:15px;font-size:18px;font-weight:900;color:#123a61}
-.section-head-row .section-title{margin-bottom:0}
-.rank-head{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:14px;background:#f7fbff;border:1px solid #dbe7f2}
-.rank-head-label{color:#6b7f94;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.45px}
 .section-icon{width:34px;height:34px;display:grid;place-items:center;border-radius:11px;background:#eaf3ff;color:#2563eb;flex:0 0 34px}
 .info-grid{display:grid;grid-template-columns:repeat(3,minmax(180px,1fr));gap:12px}
 .info-item{min-height:74px;padding:12px 14px;border:1px solid #dce8f3;border-radius:14px;background:linear-gradient(180deg,#fbfdff,#f5f9fd)}
@@ -99,10 +95,6 @@ tbody tr:hover{background:#f8fbff}
         padding:11px;
     }
 
-
-    .section-head-row{align-items:stretch;gap:8px;margin-bottom:10px}
-
-    .rank-head{width:100%;justify-content:space-between;padding:8px 10px;border-radius:11px}
 
     .section-title{
         margin-bottom:10px;
@@ -252,6 +244,8 @@ tbody tr:hover{background:#f8fbff}
         font-size:15px !important;
     }
 }
+.receipt-paid-stamp{display:none;width:max-content;max-width:100%;margin:18px auto 3px;padding:12px 22px;border:4px double #15803d;border-radius:10px;color:#15803d;text-align:center;font-size:21px;font-weight:1000;letter-spacing:1px;transform:rotate(-5deg)}
+.receipt-paid-stamp.visible{display:block}
 </style>
 {% endblock %}
 
@@ -263,42 +257,19 @@ tbody tr:hover{background:#f8fbff}
     </div>
 
     <section class="info-panel">
-        <div class="section-head-row">
-            <div class="section-title"><span class="section-icon">👤</span>Hồ sơ thành viên</div>
-            <div class="rank-head">
-                <span class="rank-head-label">Hạng thành viên</span>
-                <span class="rank-pill">{{ member.hang_thanh_vien or 'Chưa xếp hạng' }}</span>
-            </div>
-        </div>
-
+        <div class="section-title"><span class="section-icon">👤</span>Hồ sơ thành viên</div>
         <div class="info-grid">
             <div class="info-item"><span class="label">Mã thành viên</span><div class="value">{{ member.ma_thanh_vien or '—' }}</div></div>
             <div class="info-item"><span class="label">Họ và tên</span><div class="value">{{ member.ho_va_ten or '—' }}</div></div>
-            <div class="info-item"><span class="label">Ngày sinh</span><div class="value">{{ member.ngay_sinh_hien_thi or member.ngay_sinh or '—' }}</div></div>
-
+            <div class="info-item"><span class="label">Hạng thành viên</span><div class="value"><span class="rank-pill">{{ member.hang_thanh_vien or 'Chưa xếp hạng' }}</span></div></div>
             <div class="info-item"><span class="label">Giới tính</span><div class="value">{{ member.gioi_tinh or '—' }}</div></div>
+            <div class="info-item"><span class="label">Ngày sinh</span><div class="value">{{ member.ngay_sinh_hien_thi or member.ngay_sinh or '—' }}</div></div>
             <div class="info-item"><span class="label">Số điện thoại</span><div class="value">{{ member.so_dien_thoai or '—' }}</div></div>
             <div class="info-item"><span class="label">Địa chỉ</span><div class="value">{{ member.dia_chi or '—' }}</div></div>
-        </div>
-    </section>
-
-    <section class="info-panel">
-        <div class="section-title"><span class="section-icon">🎱</span>Hồ sơ hoạt động</div>
-
-        <div class="info-grid">
-            <div class="info-item"><span class="label">Thời gian đăng ký lần đầu</span><div class="value">{{ member.ngay_dang_ky_hien_thi or 'Chưa có' }}</div></div>
-
             <div class="info-item"><span class="label">Số lần đã chơi</span><div class="value">{{ member.so_lan_da_choi or 0 }} lần</div></div>
-
-            <div class="info-item"><span class="label">Số tiền đã chi</span><div class="value">{{ member.so_tien_da_chi_hien_thi or '0 đ' }}</div></div>
-
-
-            <div class="info-item"><span class="label">Thời gian chơi lâu nhất</span><div class="value">{{ member.thoi_gian_choi_lau_nhat_hien_thi or 'Chưa có' }}</div></div>
-
-            <div class="info-item"><span class="label">Thời gian chơi gần nhất</span><div class="value">{{ member.thoi_gian_choi_gan_nhat_hien_thi or 'Chưa có' }}</div></div>
-
-            
-            <div class="info-item"><span class="label">Thời gian chơi ngắn nhất</span><div class="value">{{ member.thoi_gian_choi_ngan_nhat_hien_thi or 'Chưa có' }}</div></div>
+            <div class="info-item"><span class="label">Chơi gần nhất</span><div class="value">{{ member.thoi_gian_choi_gan_nhat_hien_thi or 'Chưa có' }}</div></div>
+            <div class="info-item"><span class="label">Thời gian chơi lâu nhất</span><div class="value">{% if member.thoi_gian_choi_lau_nhat %}{{ member.thoi_gian_choi_lau_nhat }} phút{% else %}Chưa có{% endif %}</div></div>
+            <div class="info-item"><span class="label">Thời gian chơi ngắn nhất</span><div class="value">{% if member.thoi_gian_choi_ngan_nhat %}{{ member.thoi_gian_choi_ngan_nhat }} phút{% else %}Chưa có{% endif %}</div></div>
         </div>
     </section>
 
@@ -384,6 +355,12 @@ tbody tr:hover{background:#f8fbff}
                 <div><strong>Mã thành viên:</strong> {{ member.ma_thanh_vien or '—' }}</div>
                 <div><strong>SĐT:</strong> {{ member.so_dien_thoai or '—' }}</div>
             </div>
+            <div id="receiptPaymentQr" class="receipt-payment-qr" style="display:none;text-align:center;margin:15px auto;padding:12px;border:1px dashed #bfdbfe;border-radius:12px;max-width:330px;background:#f8fbff">
+              <strong>QUÉT QR ĐỂ CHUYỂN KHOẢN</strong>
+              <img id="receiptPaymentQrImage" alt="QR chuyển khoản" style="display:block;width:170px;height:170px;max-width:100%;object-fit:contain;margin:8px auto" crossorigin="anonymous">
+              <div id="receiptPaymentQrInfo" style="font-size:11px;overflow-wrap:anywhere"></div>
+            </div>
+            <div id="receiptPaidStamp" class="receipt-paid-stamp">✓ ĐÃ THANH TOÁN</div>
             <div class="receipt-thanks">Cảm ơn Quý khách và hẹn gặp lại!</div>
         </div>
         <div class="receipt-actions">
@@ -397,6 +374,28 @@ tbody tr:hover{background:#f8fbff}
 {% block extra_js %}
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
+const MEMBER_RECEIPT_BANK={{ (app_setup.payment.bank_code if app_setup is defined else '')|tojson }};
+const MEMBER_RECEIPT_ACCOUNT={{ (app_setup.payment.account_number if app_setup is defined else '')|tojson }};
+const MEMBER_RECEIPT_NAME={{ (app_setup.payment.account_name if app_setup is defined else '')|tojson }};
+function updateMemberReceiptPayment(invoice){
+  const paid=invoice && invoice.trang_thai==='Đã thanh toán';
+  const stamp=document.getElementById('receiptPaidStamp');
+  const box=document.getElementById('receiptPaymentQr');
+  const img=document.getElementById('receiptPaymentQrImage');
+  if(stamp)stamp.classList.toggle('visible',paid);
+  if(!box||!img)return;
+  box.style.display='none';img.removeAttribute('src');
+  if(paid||!MEMBER_RECEIPT_BANK||!MEMBER_RECEIPT_ACCOUNT||!invoice.ma_hoa_don)return;
+  const amount=Math.round(Number(invoice.thanh_tien||0));
+  if(!Number.isFinite(amount)||amount<=0)return;
+  const note=(String(invoice.ma_thanh_vien||'').trim()||'Khach le')+' - '+String(invoice.ma_hoa_don).trim();
+  const clean=note.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').replace(/Đ/g,'D');
+  const url='https://img.vietqr.io/image/'+encodeURIComponent(MEMBER_RECEIPT_BANK)+'-'+encodeURIComponent(MEMBER_RECEIPT_ACCOUNT)+'-compact2.png?amount='+encodeURIComponent(amount)+'&addInfo='+encodeURIComponent(clean)+'&accountName='+encodeURIComponent(MEMBER_RECEIPT_NAME);
+  img.onload=()=>{box.style.display='block'};
+  img.onerror=()=>{box.style.display='none'};
+  img.src=url;
+  document.getElementById('receiptPaymentQrInfo').textContent=MEMBER_RECEIPT_ACCOUNT+' · '+MEMBER_RECEIPT_NAME+' · '+amount.toLocaleString('vi-VN')+' đ · '+clean;
+}
 let currentReceiptInvoice=null;
 function formatMoney(v){return Math.round(Number(v||0)).toLocaleString('vi-VN')+' đ'}
 function escapeHtml(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
@@ -450,6 +449,7 @@ function openInvoiceReceipt(invoice){
     document.getElementById('receiptSubtotal').textContent=formatMoney(invoice.tong_tien);
     document.getElementById('receiptDiscount').textContent='-'+formatMoney(invoice.so_tien_giam);
     document.getElementById('receiptGrandTotal').textContent=formatMoney(invoice.thanh_tien);
+    updateMemberReceiptPayment(invoice);
     const services=parseServices(invoice.dich_vu_them), box=document.getElementById('receiptServiceRows');
     box.innerHTML=!services.length?'<div class="receipt-row"><span>Không sử dụng</span><span>—</span><span>—</span></div>':
         services.map(x=>`<div class="receipt-row"><span>${escapeHtml(x.name)}</span><span>${x.quantity}</span><span>—</span></div>`).join('');
@@ -464,7 +464,9 @@ function printReceipt(){
     const w=window.open('','_blank','width=700,height=900');
     if(!w){alert('Trình duyệt đang chặn cửa sổ in.');return}
     w.document.write(`<!DOCTYPE html><html lang="vi"><head><meta charset="UTF-8"><title>Hóa đơn dịch vụ</title>
-    <style>@page{size:A5 portrait;margin:8mm}*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",Arial,Tahoma,sans-serif;color:#111827}.receipt-sheet{width:100%;font-size:11px;line-height:1.35}.receipt-brand{text-align:center;padding-bottom:8px;margin-bottom:10px;border-bottom:1.5px solid #123a61}.receipt-club-small{font-size:14px;font-weight:700;color:#123a61}.receipt-club-name{font-size:21px;font-weight:800;color:#0b4f91}.receipt-title{margin-top:7px;font-size:16px;font-weight:800}.receipt-code,.receipt-date{margin-top:2px;font-size:9px;color:#475569}.receipt-section{margin-top:11px}.receipt-section-title{margin-bottom:5px;font-size:12px;font-weight:700}.receipt-row{display:grid;grid-template-columns:minmax(0,1fr) 70px 92px;column-gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed #cbd5e1;font-size:10px}.receipt-row>span:nth-child(2){text-align:center}.receipt-row>span:nth-child(3),.receipt-row>strong{text-align:right;white-space:nowrap}.receipt-header-row{font-size:8px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid #94a3b8}.receipt-total-box{margin-top:12px;padding-top:5px;border-top:1.5px solid #123a61}.receipt-total-box>div{display:flex;justify-content:space-between;gap:15px;padding:4px 0;font-size:11px}.receipt-discount-row,.receipt-discount-row span,.receipt-discount-row strong{color:#dc2626}.receipt-grand-total,.receipt-grand-total span,.receipt-grand-total strong{color:#15803d;font-size:15px;font-weight:800}.receipt-customer{margin-top:10px;padding-top:7px;border-top:1px dashed #cbd5e1;font-size:9px;line-height:1.5}.receipt-thanks{margin-top:14px;text-align:center;font-size:10px;font-weight:600;font-style:italic}</style>
+    <style>@page{size:A5 portrait;margin:8mm}*{box-sizing:border-box}body{margin:0;font-family:"Segoe UI",Arial,Tahoma,sans-serif;color:#111827}.receipt-sheet{width:100%;font-size:11px;line-height:1.35}.receipt-brand{text-align:center;padding-bottom:8px;margin-bottom:10px;border-bottom:1.5px solid #123a61}.receipt-club-small{font-size:14px;font-weight:700;color:#123a61}.receipt-club-name{font-size:21px;font-weight:800;color:#0b4f91}.receipt-title{margin-top:7px;font-size:16px;font-weight:800}.receipt-code,.receipt-date{margin-top:2px;font-size:9px;color:#475569}.receipt-section{margin-top:11px}.receipt-section-title{margin-bottom:5px;font-size:12px;font-weight:700}.receipt-row{display:grid;grid-template-columns:minmax(0,1fr) 70px 92px;column-gap:10px;align-items:center;padding:5px 0;border-bottom:1px dashed #cbd5e1;font-size:10px}.receipt-row>span:nth-child(2){text-align:center}.receipt-row>span:nth-child(3),.receipt-row>strong{text-align:right;white-space:nowrap}.receipt-header-row{font-size:8px;font-weight:700;text-transform:uppercase;color:#64748b;border-bottom:1px solid #94a3b8}.receipt-total-box{margin-top:12px;padding-top:5px;border-top:1.5px solid #123a61}.receipt-total-box>div{display:flex;justify-content:space-between;gap:15px;padding:4px 0;font-size:11px}.receipt-discount-row,.receipt-discount-row span,.receipt-discount-row strong{color:#dc2626}.receipt-grand-total,.receipt-grand-total span,.receipt-grand-total strong{color:#15803d;font-size:15px;font-weight:800}.receipt-customer{margin-top:10px;padding-top:7px;border-top:1px dashed #cbd5e1;font-size:9px;line-height:1.5}.receipt-paid-stamp{display:none;width:max-content;max-width:100%;margin:18px auto 3px;padding:12px 22px;border:4px double #15803d;border-radius:10px;color:#15803d;text-align:center;font-size:21px;font-weight:1000;letter-spacing:1px;transform:rotate(-5deg)}
+.receipt-paid-stamp.visible{display:block}
+.receipt-thanks{margin-top:14px;text-align:center;font-size:10px;font-weight:600;font-style:italic}</style>
     </head><body>${receipt.cloneNode(true).outerHTML}</body></html>`);
     w.document.close();w.onload=function(){w.focus();setTimeout(()=>w.print(),200)};
 }

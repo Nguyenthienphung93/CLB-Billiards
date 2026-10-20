@@ -10,6 +10,7 @@ import time
 import io
 import tarfile
 import hashlib
+import zipfile
 import threading
 from urllib.parse import quote_plus
 from datetime import datetime, timezone, timedelta
@@ -1290,6 +1291,7 @@ def inject_layout_data():
         "setup_remaining": setup_remaining_attempts(),
         "setup_csrf": setup_csrf_token() if session.get("admin_logged_in") else "",
         "invoice_confirm_csrf": invoice_confirm_csrf_token() if session.get("admin_logged_in") else "",
+        "owner_weekly_backup_csrf": owner_weekly_backup_csrf_token() if session.get("admin_logged_in") else "",
     }
 
 
@@ -8049,6 +8051,159 @@ def api_backup_download():
             "ok": False,
             "message": f"Không tải được backup: {exc}",
         }), 500
+
+
+# ============================================================
+# BACKUP CHU NHAT CHO ADMIN CHU CLB - MAY TINH
+# - Chỉ Admin CLB có is_owner=true, không phải Admin hệ thống.
+# - Thứ 7/Chủ nhật: CHỈ Chủ nhật theo giờ Việt Nam.
+# - Popup nhắc tải và xác thực lại password trước khi tải.
+# - ZIP AES-256: chủ CLB đặt một mật khẩu riêng cho file.
+# - admin_info.weekly_backup_downloaded_on lưu theo TỪNG chủ.
+# ============================================================
+def owner_weekly_backup_csrf_token():
+    token = session.get("owner_weekly_backup_csrf")
+    if not token:
+        token = uuid.uuid4().hex + uuid.uuid4().hex
+        session["owner_weekly_backup_csrf"] = token
+    return token
+
+
+def _owner_backup_eligible():
+    if not session.get("admin_logged_in") or session.get("admin_kind") == "system":
+        return None
+    admin = get_current_admin()
+    if not admin or not bool(admin.get("is_owner")) or not admin.get("id"):
+        return None
+    return admin
+
+
+def _owner_backup_desktop_request():
+    # Browser UA chỉ hỗ trợ UX, không phải biện pháp định danh an toàn tuyệt đối.
+    ua = (request.headers.get("User-Agent") or "").lower()
+    mobile_markers = ("android", "iphone", "ipad", "ipod", "mobile", "tablet", "windows phone")
+    return bool(ua) and not any(marker in ua for marker in mobile_markers)
+
+
+def _owner_backup_is_sunday():
+    return datetime.now(VIETNAM_TZ).weekday() == 6
+
+
+def _owner_backup_db_row(admin_id):
+    rows = (supabase.table(ADMIN_TABLE)
+            .select("id,active,is_owner,password_hash,weekly_backup_downloaded_on")
+            .eq("id", admin_id).limit(1).execute().data or [])
+    row = rows[0] if rows else None
+    if not row or not row.get("active") or not row.get("is_owner"):
+        return None
+    return row
+
+
+def _owner_backup_latest():
+    items = _backup_list_prefix(BACKUP_AUTO_PREFIX)
+    if not items:
+        raise RuntimeError("Chưa có bản backup tự động để tải.")
+    latest = items[0]
+    when = datetime.fromisoformat(latest["created_at"])
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=VIETNAM_TZ)
+    if datetime.now(VIETNAM_TZ) - when > timedelta(hours=36):
+        raise RuntimeError("Bản backup tự động quá cũ (trên 36 giờ). Vui lòng kiểm tra lịch backup.")
+    return latest
+
+
+@app.get("/api/owner-weekly-backup/status")
+def owner_weekly_backup_status():
+    admin = _owner_backup_eligible()
+    if not admin or not _owner_backup_is_sunday() or not _owner_backup_desktop_request():
+        return jsonify({"ok": True, "show": False}), 200
+    try:
+        row = _owner_backup_db_row(admin["id"])
+        if not row:
+            return jsonify({"ok": True, "show": False}), 200
+        today = datetime.now(VIETNAM_TZ).date().isoformat()
+        if str(row.get("weekly_backup_downloaded_on") or "") == today:
+            return jsonify({"ok": True, "show": False}), 200
+        latest = _owner_backup_latest()
+        return jsonify({"ok": True, "show": True,
+                        "backup_date": latest["created_at_hien_thi"],
+                        "csrf": owner_weekly_backup_csrf_token()}), 200
+    except Exception as exc:
+        print("[WEEKLY BACKUP STATUS]", type(exc).__name__, str(exc)[:180])
+        return jsonify({"ok": False, "show": False,
+                        "message": "Không kiểm tra được backup Chủ nhật; vui lòng kiểm tra SQL migration."}), 503
+
+
+@app.post("/api/owner-weekly-backup/download")
+def owner_weekly_backup_download():
+    admin = _owner_backup_eligible()
+    if not admin or not _owner_backup_is_sunday() or not _owner_backup_desktop_request():
+        return jsonify({"ok": False, "message": "Chức năng chỉ dành cho Admin Chủ CLB trên máy tính vào Chủ nhật."}), 403
+    payload = request.get_json(silent=True) or {}
+    csrf = str(payload.get("csrf") or "")
+    expected = str(session.get("owner_weekly_backup_csrf") or "")
+    if not expected or not hmac.compare_digest(csrf, expected):
+        return jsonify({"ok": False, "message": "Phiên tải không hợp lệ, hãy tải lại trang."}), 403
+    password = str(payload.get("admin_password") or "")
+    archive_password = str(payload.get("archive_password") or "")
+    if len(archive_password) < 12 or len(archive_password) > 128:
+        return jsonify({"ok": False, "message": "Mật khẩu mã hóa file cần từ 12 đến 128 ký tự."}), 400
+    try:
+        row = _owner_backup_db_row(admin["id"])
+        if not row:
+            return jsonify({"ok": False, "message": "Admin Chủ không còn hiệu lực."}), 403
+        valid = bool(password and row.get("password_hash")
+                     and check_password_hash(row["password_hash"], password))
+        if not valid:
+            failures = int(session.get("owner_weekly_backup_failures") or 0) + 1
+            session["owner_weekly_backup_failures"] = failures
+            if failures >= 3:
+                session.clear()
+                return jsonify({"ok": False, "message": "Nhập sai 3 lần, phiên đăng nhập đã kết thúc.",
+                                "logout": True}), 401
+            return jsonify({"ok": False, "message": f"Mật khẩu Admin không đúng. Còn {3-failures} lần thử."}), 401
+        session["owner_weekly_backup_failures"] = 0
+        latest = _owner_backup_latest()
+        source_bytes = bytes(_backup_storage_bucket().download(latest["path"]))
+        if not source_bytes:
+            raise RuntimeError("Không đọc được nội dung backup.")
+        # Kiểm tra định dạng tối thiểu trước khi tạo file ZIP.
+        with tarfile.open(fileobj=io.BytesIO(source_bytes), mode="r:gz") as tar:
+            manifest = _backup_read_json_from_tar(tar, "manifest.json")
+            if manifest.get("format") != "bida-logical-backup":
+                raise RuntimeError("Backup không đúng định dạng Billiards Manager.")
+            missing = [f"database/{name}.json" for name in BACKUP_TABLES
+                       if f"database/{name}.json" not in tar.getnames()]
+            if missing or "app_config/club_setup.json" not in tar.getnames():
+                raise RuntimeError("Backup thiếu bảng hoặc Setup, không cho tải.")
+        try:
+            import pyzipper
+        except ImportError as exc:
+            raise RuntimeError("Chưa cài pyzipper. Chạy: venv/bin/pip install pyzipper") from exc
+        zip_buffer = io.BytesIO()
+        with pyzipper.AESZipFile(zip_buffer, mode="w", compression=zipfile.ZIP_DEFLATED,
+                                 encryption=pyzipper.WZ_AES) as archive:
+            archive.setpassword(archive_password.encode("utf-8"))
+            archive.setencryption(pyzipper.WZ_AES, nbits=256)
+            archive.writestr(latest["name"], source_bytes)
+        # Lưu trạng thái cho TỪNG chủ. Chỉ đánh dấu đã gửi file, không bảo đảm browser đã lưu.
+        today = datetime.now(VIETNAM_TZ).date().isoformat()
+        (supabase.table(ADMIN_TABLE)
+         .update({"weekly_backup_downloaded_on": today})
+         .eq("id", admin["id"]).eq("is_owner", True).execute())
+        session.pop("owner_weekly_backup_csrf", None)
+        config = load_setup_config()
+        club = _setup_slug(config.get("club", {}).get("name") or "CLB")
+        filename = f"{club}_Backup_{today}.zip"
+        return (zip_buffer.getvalue(), 200,
+                {"Content-Type": "application/zip",
+                 "Content-Disposition": f'attachment; filename="{filename}"',
+                 "Cache-Control": "no-store, private",
+                 "X-Content-Type-Options": "nosniff"})
+    except Exception as exc:
+        print("[WEEKLY BACKUP DOWNLOAD]", type(exc).__name__, str(exc)[:180])
+        return jsonify({"ok": False,
+                        "message": "Không tạo được file backup bảo mật. Kiểm tra cấu hình và thử lại."}), 503
 
 
 @app.post("/api/setup/backups/restore")

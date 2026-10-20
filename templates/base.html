@@ -313,6 +313,19 @@
 .setup-auth-actions button{border:none;border-radius:10px;padding:11px 15px;cursor:pointer;font-weight:800}
 .setup-auth-cancel{background:#e2e8f0;color:#334155}.setup-auth-confirm{background:#2563eb;color:#fff}
 .setup-auth-confirm:disabled{opacity:.55;cursor:wait}
+    
+        /* Chủ nhật: popup chỉ dành cho Admin Chủ CLB trên desktop. */
+        .owner-backup-mask{position:fixed;inset:0;z-index:25000;background:rgba(10,28,52,.67);display:none;align-items:center;justify-content:center;padding:18px}
+        .owner-backup-mask.show{display:flex}
+        .owner-backup-panel{width:min(490px,95vw);max-height:90vh;overflow:auto;background:#fff;border-radius:20px;padding:25px;box-shadow:0 25px 70px rgba(0,0,0,.3);line-height:1.55}
+        .owner-backup-panel h2{margin:0 0 10px;font-size:22px;color:#123963}
+        .owner-backup-panel label{display:block;font-weight:750;margin:12px 0 5px}
+        .owner-backup-panel input{display:block;width:100%;padding:11px;border-radius:10px;border:1px solid #b9cade}
+        .owner-backup-actions{display:flex;gap:10px;margin-top:16px;justify-content:flex-end;flex-wrap:wrap}
+        .owner-backup-actions button{padding:11px 15px;border:0;border-radius:10px;font-weight:700;cursor:pointer;background:#e9eef4;color:#173858}
+        .owner-backup-actions button.primary{background:#1660d4;color:#fff}
+        .owner-backup-error{color:#b91c1c;font-weight:700;margin-top:9px;min-height:22px}
+
     </style>
 
     {% block page_style %}{% endblock %}
@@ -703,6 +716,82 @@ document.addEventListener(
       updateAttempts();error.textContent=data.message||'Không thể xác thực.';pass.focus();
     }catch(err){error.textContent=err.message||'Lỗi kết nối. Vui lòng thử lại.';}
     finally{confirmBtn.disabled=false;}
+  });
+})();
+</script>
+{% endif %}
+
+
+{% if current_admin and current_admin.is_owner and not current_admin.is_system_admin %}
+<div id="ownerWeeklyBackupDialog" class="owner-backup-mask" role="dialog" aria-modal="true" aria-labelledby="ownerWeeklyBackupTitle" aria-hidden="true">
+  <div class="owner-backup-panel">
+    <h2 id="ownerWeeklyBackupTitle">🔐 Sao lưu Chủ nhật dành cho Admin Chủ</h2>
+    <p>Hệ thống đã có bản backup gần nhất (<strong id="ownerWeeklyBackupDate">—</strong>). Ken/Chủ CLB có thể nhận một bản <strong>ZIP mã hóa AES-256</strong> về máy tính đang dùng.</p>
+    <p><small>Chỉ lưu trên máy tính cá nhân tin cậy. Nhớ mật khẩu mã hóa file; mất mật khẩu sẽ không mở được backup. Trình duyệt sẽ lưu vào Downloads hoặc hỏi vị trí lưu.</small></p>
+    <form id="ownerWeeklyBackupForm" autocomplete="off">
+      <label for="ownerBackupAdminPassword">Mật khẩu Admin Chủ hiện tại</label>
+      <input id="ownerBackupAdminPassword" type="password" autocomplete="current-password" required>
+      <label for="ownerBackupZipPassword">Mật khẩu riêng bảo vệ file (tối thiểu 12 ký tự)</label>
+      <input id="ownerBackupZipPassword" type="password" autocomplete="new-password" minlength="12" required>
+      <label for="ownerBackupZipConfirm">Nhập lại mật khẩu bảo vệ file</label>
+      <input id="ownerBackupZipConfirm" type="password" autocomplete="new-password" minlength="12" required>
+      <div id="ownerWeeklyBackupError" class="owner-backup-error" aria-live="polite"></div>
+      <div class="owner-backup-actions">
+        <button type="button" id="ownerBackupLater">Để sau</button>
+        <button class="primary" type="submit" id="ownerBackupSubmit">Tải bản sao mã hóa</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+(function () {
+  'use strict';
+  // Chỉ là lọc giao diện. Backend cũng kiểm tra quyền, ngày và User-Agent.
+  const mobile = /Android|iPhone|iPad|iPod|Mobile|Tablet/i.test(navigator.userAgent);
+  if (mobile || window.innerWidth < 780) return;
+  const root = document.getElementById('ownerWeeklyBackupDialog');
+  const form = document.getElementById('ownerWeeklyBackupForm');
+  const later = document.getElementById('ownerBackupLater');
+  const error = document.getElementById('ownerWeeklyBackupError');
+  const submit = document.getElementById('ownerBackupSubmit');
+  const statusUrl = {{ url_for('owner_weekly_backup_status')|tojson }};
+  const downloadUrl = {{ url_for('owner_weekly_backup_download')|tojson }};
+  let csrf = null;
+  const close = () => { root.classList.remove('show'); root.setAttribute('aria-hidden','true'); form.reset(); };
+  later.addEventListener('click', close);
+  fetch(statusUrl,{credentials:'same-origin',cache:'no-store'}).then(r=>r.json()).then(data=>{
+    if (!data.ok || !data.show) return;
+    csrf=data.csrf;
+    document.getElementById('ownerWeeklyBackupDate').textContent=data.backup_date || 'gần đây';
+    root.classList.add('show');root.setAttribute('aria-hidden','false');
+  }).catch(()=>{});
+  form.addEventListener('submit',async function(ev){
+    ev.preventDefault();error.textContent='';
+    const adminPassword=document.getElementById('ownerBackupAdminPassword').value;
+    const zipPassword=document.getElementById('ownerBackupZipPassword').value;
+    const zipConfirm=document.getElementById('ownerBackupZipConfirm').value;
+    if(zipPassword!==zipConfirm){error.textContent='Mật khẩu bảo vệ file không khớp.';return;}
+    if(zipPassword.length<12){error.textContent='Mật khẩu bảo vệ file phải ít nhất 12 ký tự.';return;}
+    submit.disabled=true;submit.textContent='Đang tạo bản sao...';
+    try{
+      const response=await fetch(downloadUrl,{method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({csrf,admin_password:adminPassword,archive_password:zipPassword})});
+      if(!response.ok){
+        const data=await response.json().catch(()=>({}));
+        if(data.logout){window.location.assign({{ url_for('admin_login')|tojson }});return;}
+        throw new Error(data.message||'Không tải được bản sao.');
+      }
+      const blob=await response.blob();
+      const cd=response.headers.get('Content-Disposition')||'';
+      const match=cd.match(/filename="?([^";]+)"?/);
+      const filename=match ? match[1] : 'Billiards_Backup.zip';
+      const url=URL.createObjectURL(blob);const a=document.createElement('a');
+      a.href=url;a.download=filename;document.body.appendChild(a);a.click();a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url),60000);
+      close();
+    }catch(ex){error.textContent=ex.message||'Không tải được.';}
+    finally{submit.disabled=false;submit.textContent='Tải bản sao mã hóa';}
   });
 })();
 </script>

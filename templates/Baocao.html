@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Báo cáo - Billiards Manager{% endblock %}
+{% block page_style %}
+<style>
+.report{display:grid;gap:18px;color:#17324f}.report h1{font-size:28px;margin:0}.report p{color:#64748b;margin:5px 0}.rep-panel{background:white;border:1px solid #dbe6f0;border-radius:18px;padding:18px;box-shadow:0 7px 22px #173b670b}.rep-filters{display:grid;grid-template-columns:minmax(260px,2fr) minmax(115px,1fr) minmax(125px,1fr) auto auto;align-items:end;gap:10px}.rep-field{display:grid;gap:6px}.rep-field label{font-size:12px;font-weight:850;color:#475569}.rep-field select,.rep-field input{width:100%;box-sizing:border-box;border:1px solid #cbd5e1;background:#fff;border-radius:11px;padding:11px;color:#0f2945;font:inherit}.rep-btn{padding:11px 15px;border:0;border-radius:11px;background:#2563eb;color:white;font-weight:850;cursor:pointer;text-decoration:none;text-align:center}.rep-btn.alt{background:#e9f0f7;color:#143858}.rep-kpis{display:grid;grid-template-columns:repeat(4,minmax(140px,1fr));gap:12px}.rep-kpi{background:linear-gradient(180deg,#f9fcff,#eef6ff);border:1px solid #d9e8f6;border-radius:14px;padding:15px}.rep-kpi span{display:block;font-size:12px;color:#64748b;font-weight:850}.rep-kpi strong{display:block;font-size:22px;margin-top:8px;color:#0b4f91}.rep-sectionhead{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;flex-wrap:wrap}.rep-sectionhead h2{margin:0;font-size:20px}.rep-note{font-size:12px;color:#64748b}.rep-scroll{overflow:auto}.rep-table{border-collapse:collapse;width:100%;min-width:760px}.rep-table th,.rep-table td{text-align:right;padding:12px 10px;border-bottom:1px solid #e5edf5;white-space:nowrap}.rep-table th:first-child,.rep-table td:first-child{text-align:left}.rep-table th{background:#f2f7fc;font-size:12px;color:#48617a}.rep-table td{font-size:13px;font-weight:700}.rep-table tfoot td{background:#eaf4ff;font-weight:950}.rep-progress{height:9px;border-radius:99px;background:#e4eef8;overflow:hidden;min-width:95px}.rep-progress>div{height:100%;background:linear-gradient(90deg,#2563eb,#0ea5e9);border-radius:99px}.rep-rewards{display:grid;grid-template-columns:repeat(2,minmax(220px,1fr));gap:14px}.rep-reward{border:1px solid #dbe7f3;border-radius:14px;padding:16px;background:#f9fcff}.rep-reward h3{margin:0 0 10px}.rep-rewardstats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;text-align:center}.rep-rewardstats>div{padding:10px 4px;border:1px solid #e4eaf1;border-radius:12px;background:#fff}.rep-rewardstats b{display:block;font-size:23px;color:#123a61}.rep-rewardstats small{display:block;color:#60758b;margin-top:4px}.rep-alert{padding:14px;border-radius:12px;background:#fff1f2;border:1px solid #fecdd3;color:#9f1239}.rep-highlight{color:#0b4f91;font-weight:950}.rep-foot{color:#64748b;font-size:12px;line-height:1.6}.rep-badges{display:flex;gap:8px;flex-wrap:wrap}.rep-badges span{border-radius:30px;background:#eff6ff;padding:6px 10px;font-size:12px;font-weight:800;color:#1e40af}
+@media(max-width:980px){.rep-filters{grid-template-columns:repeat(2,minmax(0,1fr))}.rep-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){.rep-filters{grid-template-columns:1fr}.rep-kpis,.rep-rewards{grid-template-columns:1fr}.rep-panel{padding:13px}}
+
+/* Màu tiền theo từng bước thanh toán: áp dụng cả từng bàn và dòng TỔNG. */
+.rep-table .rep-before-discount{color:#2563eb;font-weight:500;font-style:normal}
+.rep-table .rep-discount{color:#dc2626;font-style:italic;font-weight:500}
+.rep-table .rep-collected{color:#15803d;font-size:15px;font-weight:800;font-style:normal}
+.rep-table tfoot .rep-before-discount{font-weight:400}
+.rep-table tfoot .rep-discount{font-weight:700}
+.rep-table tfoot .rep-collected{font-size:16px;font-weight:950}
+</style>
+{% endblock %}
+{% block content %}
+<div class="report">
+ <div><h1><i class="fa-solid fa-chart-column"></i> Báo cáo CLB</h1></div>
+ {% if report_error %}<div class="rep-alert">{{ report_error }}</div>{% endif %}
+ <div class="rep-panel">
+  <form class="rep-filters" method="get" action="{{ url_for('bao_cao') }}">
+   <div class="rep-field"><label>Thành viên</label><input id="repMemberSearch" type="search" placeholder="Tìm tên, mã hoặc số điện thoại..." autocomplete="off" list="repMemberList" value="{% if selected_member %}{{ selected_member.ho_va_ten }} — {{ selected_member.ma_thanh_vien }}{% endif %}"><datalist id="repMemberList">{% for m in members %}<option value="{{ m.ho_va_ten }} — {{ m.ma_thanh_vien }}">{{ m.so_dien_thoai or '' }}</option>{% endfor %}</datalist><input id="repMemberCode" type="hidden" name="thanh_vien" value="{{ member_code }}"></div>
+   <div class="rep-field"><label>Tháng</label><select name="thang"><option value="">Tất cả tháng</option>{% for i in range(1,13) %}<option value="{{ i }}" {% if i==month %}selected{% endif %}>Tháng {{ i }}</option>{% endfor %}</select></div>
+   <div class="rep-field"><label>Năm</label><select name="nam"><option value="">Tất cả năm</option>{% for y in range(2020, 2101) %}<option value="{{ y }}" {% if y==year %}selected{% endif %}>{{ y }}</option>{% endfor %}</select></div>
+   <button class="rep-btn" type="submit"><i class="fa-solid fa-filter"></i> Xem báo cáo</button><a href="{{ url_for('bao_cao') }}" class="rep-btn alt">Đặt lại</a>
+  </form>
+ </div>
+ {% if selected_member %}<div class="rep-panel"><div class="rep-sectionhead"><h2>Thông tin thành viên</h2><div class="rep-badges"><span>{{ selected_member.ma_thanh_vien }}</span><span>{{ selected_member.so_dien_thoai or 'Chưa có SĐT' }}</span></div></div><b>{{ selected_member.ho_va_ten }}</b></div>{% endif %}
+ <div class="rep-kpis">
+  <div class="rep-kpi"><span>Doanh thu đã thanh toán (thực thu)</span><strong>{{ money(sums.get('da_thu',0)) }}</strong></div>
+  <div class="rep-kpi"><span>Tiền bàn (trước giảm giá)</span><strong>{{ money(sums.get('tien_ban',0)) }}</strong></div>
+  <div class="rep-kpi"><span>Tiền dịch vụ (trước giảm giá)</span><strong>{{ money(sums.get('tien_dich_vu',0)) }}</strong></div>
+  <div class="rep-kpi"><span>Tổng lượt chơi đã thanh toán</span><strong>{{ sums.get('luot',0) }} lượt</strong></div>
+  <div class="rep-kpi"><span>Tổng giảm giá</span><strong>{{ money(sums.get('giam_gia',0)) }}</strong></div>
+  <div class="rep-kpi"><span>Hóa đơn đang chờ thanh toán</span><strong>{{ sums.get('hoa_don_cho',0) }} đơn</strong><small>{{ money(sums.get('cho_thanh_toan',0)) }}</small></div>
+  <div class="rep-kpi"><span>Doanh thu trung bình / lượt</span><strong>{{ money(sums.get('trung_binh',0)) }}</strong></div>
+  <div class="rep-kpi"><span>Thời lượng chơi bình quân / lượt</span><strong>{{ sums.get('phut_trung_binh',0) }} phút</strong></div>
+ </div>
+ <div class="rep-panel">
+  <div class="rep-sectionhead"><h2>Hiệu quả từng bàn</h2></div>
+  <div class="rep-scroll"><table class="rep-table"><thead><tr><th>Bàn</th><th>Lượt chơi</th><th>Tỷ trọng lượt</th><th>Thời gian chơi</th><th>Tiền bàn</th><th>Dịch vụ</th><th class="rep-before-discount">Tổng trước giảm</th><th class="rep-discount">Giảm giá</th><th class="rep-collected">Đã thu</th></tr></thead><tbody>
+   {% for t in tables %}<tr><td><strong>Bàn {{ t.ban_so }}</strong></td><td>{{ t.luot }}</td><td><div class="rep-progress" title="{{ (t.luot / sums.luot * 100)|round(1) if sums.luot else 0 }}%"><div style="width:{{ (t.luot / sums.luot * 100)|round(1) if sums.luot else 0 }}%"></div></div></td><td>{{ (t.phut // 60) }} giờ {{ (t.phut % 60) }} phút</td><td>{{ money(t.tien_ban) }}</td><td>{{ money(t.tien_dich_vu) }}</td><td class="rep-before-discount">{{ money(t.tien_ban+t.tien_dich_vu) }}</td><td class="rep-discount">{{ money(t.giam_gia) }}</td><td class="rep-collected">{{ money(t.da_thu) }}</td></tr>{% endfor %}
+   </tbody><tfoot><tr><td>TỔNG</td><td>{{ sums.get('luot',0) }}</td><td>100%{% if not sums.get('luot') %} (0 lượt){% endif %}</td><td>{{ sums.get('phut',0)//60 }} giờ {{ sums.get('phut',0)%60 }} phút</td><td>{{ money(sums.get('tien_ban',0)) }}</td><td>{{ money(sums.get('tien_dich_vu',0)) }}</td><td class="rep-before-discount">{{ money(sums.get('tien_ban',0)+sums.get('tien_dich_vu',0)) }}</td><td class="rep-discount">{{ money(sums.get('giam_gia',0)) }}</td><td class="rep-collected">{{ money(sums.get('da_thu',0)) }}</td></tr></tfoot></table></div>
+ </div>
+ <div class="rep-panel"><div class="rep-sectionhead"><h2>Quà tặng và Voucher</h2></div><div class="rep-rewards">
+  {% for key,name in [('qua','Quà tặng'),('voucher','Voucher')] %}{% set stat=gifts.get(key,{}) %}<div class="rep-reward"><h3><i class="fa-solid fa-gift"></i> {{ name }}</h3><div class="rep-rewardstats"><div><b>{{ stat.get('tong',0) }}</b><small>Đã phát hành</small></div><div><b>{{ stat.get('da',0) }}</b><small>Đã kích hoạt / nhận</small></div><div><b>{{ stat.get('chua',0) }}</b><small>Chưa kích hoạt</small></div></div></div>{% endfor %}
+  </div>
+ </div>
+</div>
+{% endblock %}
+{% block page_script %}
+<script>
+(() => {
+ const list = {{ members|tojson }};
+ const box = document.getElementById('repMemberSearch');
+ const code = document.getElementById('repMemberCode');
+ const byLabel = new Map(list.map(x => [String(x.ho_va_ten || '')+' — '+String(x.ma_thanh_vien || ''), String(x.ma_thanh_vien || '')]));
+ function resolve(){const value=box.value.trim();code.value=byLabel.get(value)||'';return !value||!!code.value;}
+ box.addEventListener('input',resolve);
+ box.closest('form').addEventListener('submit',e=>{if(!resolve()){e.preventDefault();alert('Vui lòng chọn thành viên hợp lệ từ danh sách, hoặc xóa ô tìm kiếm để xem toàn CLB.');box.focus();}});
+})();
+</script>
+{% endblock %}

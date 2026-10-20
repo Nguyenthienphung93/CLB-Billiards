@@ -2211,6 +2211,7 @@ ENDPOINT_PERMISSION_MAP = {
 
     # Hoạt động
     "hoat_dong": "hoat_dong",
+    "bao_cao": "bao_cao",
     "api_bat_dau_ban": "hoat_dong",
     "api_luu_gio_hang": "hoat_dong",
     "api_tao_hoa_don": "hoat_dong",
@@ -9417,7 +9418,7 @@ def hoat_dong():
         ensure_billiards_tables(table_count)
         ban_rows_all = (
             supabase.table(ACTIVITY_TABLE)
-            .select("id,ban_so,dang_hoat_dong,thoi_gian_bat_dau,dich_vu_them")
+            .select("id,ban_so,dang_hoat_dong,thoi_gian_bat_dau,dich_vu_them,khach_tam")
             .order("ban_so")
             .execute().data or []
         )
@@ -9443,6 +9444,104 @@ def hoat_dong():
         setup_config=setup_config,
     )
 
+
+
+# ==========================================================
+# BÁO CÁO CHỦ CLB — Chỉ owner; truy vấn đọc dữ liệu
+# ==========================================================
+def _report_all(table, columns="*", member_code=None):
+    """Đọc phân trang để không thiếu dữ liệu khi vượt giới hạn REST 1000 hàng."""
+    result = []
+    offset = 0
+    while True:
+        query = supabase.table(table).select(columns)
+        if member_code:
+            query = query.eq("ma_thanh_vien", member_code)
+        batch = query.range(offset, offset + 999).execute().data or []
+        result.extend(batch)
+        if len(batch) < 1000:
+            return result
+        offset += 1000
+        if offset > 300000:
+            raise RuntimeError("Báo cáo vượt giới hạn 300.000 bản ghi; cần chuyển sang RPC thống kê.")
+
+
+def _report_period(raw_date, month, year):
+    if not month and not year:
+        return True
+    date = parse_iso_datetime(raw_date)
+    if not date:
+        return False
+    date = date.astimezone(VIETNAM_TZ)
+    return (not month or date.month == month) and (not year or date.year == year)
+
+
+@app.get("/bao-cao")
+def bao_cao():
+    admin = get_current_admin()
+    if not admin or not bool(admin.get("is_owner")):
+        return render_template("403.html"), 403
+
+    month_text = clean_text(request.args.get("thang"))
+    year_text = clean_text(request.args.get("nam"))
+    member_code = clean_text(request.args.get("thanh_vien")).upper()
+    if month_text and (not month_text.isdecimal() or not 1 <= int(month_text) <= 12):
+        return "Tháng không hợp lệ", 400
+    if year_text and (not year_text.isdecimal() or not 2000 <= int(year_text) <= 2100):
+        return "Năm không hợp lệ", 400
+    month = int(month_text) if month_text else 0
+    year = int(year_text) if year_text else 0
+    try:
+        members = _report_all(TABLE_NAME, "ma_thanh_vien,ho_va_ten,so_dien_thoai")
+        members.sort(key=lambda x: clean_text(x.get("ho_va_ten")).casefold())
+        known_codes = {clean_text(x.get("ma_thanh_vien")).upper() for x in members}
+        if member_code and member_code not in known_codes:
+            return "Mã thành viên không tồn tại", 400
+
+        invoices = _report_all(INVOICE_TABLE,
+            "ma_hoa_don,ma_thanh_vien,ban_so,created_at,thoi_gian_ket_thuc,thoi_luong_choi_phut,tien_ban,tien_dich_vu,tong_tien,so_tien_giam,thanh_tien,trang_thai", member_code or None)
+        invoices = [x for x in invoices if _report_period(x.get("created_at"), month, year)]
+        paid = [x for x in invoices if clean_text(x.get("trang_thai")) == "Đã thanh toán"]
+        pending = [x for x in invoices if clean_text(x.get("trang_thai")) != "Đã thanh toán"]
+        count = int(load_setup_config().get("club", {}).get("table_count", 12))
+        table_ids = sorted(set(range(1, count + 1)) | {int(x.get("ban_so") or 0) for x in paid if x.get("ban_so")})
+        tables = {n: {"ban_so": n, "luot": 0, "phut": 0, "tien_ban": 0, "tien_dich_vu": 0, "giam_gia": 0, "da_thu": 0} for n in table_ids if n > 0}
+        for item in paid:
+            n = int(item.get("ban_so") or 0)
+            if n not in tables: continue
+            row = tables[n]
+            row["luot"] += 1
+            row["phut"] += int(item.get("thoi_luong_choi_phut") or 0)
+            for name in ("tien_ban", "tien_dich_vu"):
+                row[name] += int(item.get(name) or 0)
+            row["giam_gia"] += int(item.get("so_tien_giam") or 0)
+            row["da_thu"] += int(item.get("thanh_tien") or 0)
+        table_rows = list(tables.values())
+        sums = {key: sum(int(x.get(key) or 0) for x in table_rows) for key in ("luot", "phut", "tien_ban", "tien_dich_vu", "giam_gia", "da_thu")}
+        sums["cho_thanh_toan"] = sum(int(x.get("thanh_tien") or 0) for x in pending)
+        sums["hoa_don_cho"] = len(pending)
+        sums["trung_binh"] = round(sums["da_thu"] / sums["luot"]) if sums["luot"] else 0
+        sums["phut_trung_binh"] = round(sums["phut"] / sums["luot"]) if sums["luot"] else 0
+
+        gifts = _report_all(PROMOTION_REDEEM_TABLE, "ma_qua,ma_thanh_vien,trang_thai,kich_hoat_at,created_at", member_code or None)
+        vouchers = _report_all(PROMOTION_VOUCHER_TABLE, "ma_voucher,ma_thanh_vien,trang_thai,kich_hoat_at,created_at", member_code or None)
+        gift_stats = {}
+        for name, rows in (("qua", gifts), ("voucher", vouchers)):
+            # Theo kỳ phát hành: thống kê các phần thưởng được tạo trong tháng/năm được chọn.
+            rows = [x for x in rows if _report_period(x.get("created_at"), month, year)]
+            active = sum(bool(x.get("kich_hoat_at")) or clean_text(x.get("trang_thai")) in
+                ({"Đã đổi quà", "Đã nhận quà"} if name == "qua" else {"Đã sử dụng", "Đã kích hoạt"}) for x in rows)
+            gift_stats[name] = {"tong": len(rows), "da": active, "chua": len(rows) - active}
+
+        selected_member = next((x for x in members if clean_text(x.get("ma_thanh_vien")).upper() == member_code), None)
+        return render_template("Baocao.html", members=members, selected_member=selected_member,
+            month=month, year=year, member_code=member_code, tables=table_rows, sums=sums,
+            gifts=gift_stats, money=format_money_vn)
+    except Exception as exc:
+        app.logger.exception("[BAO CAO ERROR] %s", exc)
+        return render_template("Baocao.html", members=[], selected_member=None, month=month,
+            year=year, member_code=member_code, tables=[], sums={}, gifts={},
+            money=format_money_vn, report_error="Không thể tải dữ liệu báo cáo. Vui lòng kiểm tra kết nối Supabase hoặc log Flask.")
 
 @app.get("/hoa-don")
 def hoa_don():
@@ -9845,6 +9944,8 @@ def api_bat_dau_ban(ban_so):
             "dich_vu_them":
                 "[]",
 
+            "khach_tam": {},
+
             "updated_at":
                 now_iso,
         }
@@ -9969,6 +10070,31 @@ def api_bat_dau_ban(ban_so):
 
         }), 500
 
+
+
+@app.post('/api/ban/<int:ban_so>/khach-tam')
+def api_luu_khach_tam(ban_so):
+    try:
+        payload = request.get_json(silent=True) or {}
+        member_id = str(payload.get('member_id') or '').strip()
+        name = str(payload.get('name') or '').strip()[:150]
+        phone = str(payload.get('phone') or '').strip()[:20]
+        code = str(payload.get('code') or '').strip()[:60]
+        if member_id:
+            # Chỉ chấp nhận ID thành viên đang tồn tại.
+            members = (supabase.table(TABLE_NAME).select('id,ma_thanh_vien,ho_va_ten,so_dien_thoai').eq('id',member_id).limit(1).execute().data or [])
+            if not members:
+                return jsonify(ok=False,message='Không tìm thấy thành viên.'), 400
+            member = members[0]
+            code = str(member.get('ma_thanh_vien') or '')
+        customer = dict(member_id=member_id or None,name=name,code=code,phone=phone)
+        rows = (supabase.table(ACTIVITY_TABLE).update({'khach_tam':customer}).eq('ban_so',ban_so).eq('dang_hoat_dong',True).execute().data or [])
+        if not rows:
+            return jsonify(ok=False,message='Bàn không còn hoạt động.'), 409
+        return jsonify(ok=True,customer=customer)
+    except Exception as exc:
+        print('[SAVE TEMP CUSTOMER ERROR]',repr(exc))
+        return jsonify(ok=False,message='Không lưu được khách tạm. Kiểm tra cấu hình cơ sở dữ liệu.'), 500
 
 @app.post("/api/ban/<int:ban_so>/gio-hang")
 def api_luu_gio_hang(ban_so):

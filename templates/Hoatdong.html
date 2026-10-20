@@ -1397,7 +1397,6 @@
     <div class="page-head">
         <div>
             <h1>Hoạt Động</h1>
-            <p>Quản lý hoạt động {{ setup_config.club.table_count }} bàn bida, theo dõi thời gian chơi và tạo hóa đơn sau khi kết thúc bàn.</p>
         </div>
     </div>
 
@@ -1572,6 +1571,17 @@
     </div>
 
 </div>
+
+<div id="startCustomerModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'startCustomerModal')">
+ <div class="modal small"><div class="modal-head"><h2 id="startCustomerTitle">Khách hàng mở bàn</h2><button type="button" class="modal-close" onclick="closeModal('startCustomerModal')">×</button></div>
+ <div class="modal-body"><p style="color:#64748b">Đồng hồ đã chạy. Có thể lưu khách bây giờ hoặc bổ sung khi kết thúc.</p>
+ <div class="member-grid">
+ <div class="field full"><label>Tìm thành viên theo mã, tên hoặc số điện thoại</label><input id="startMemberSearch" autocomplete="off" placeholder="Tìm thành viên..." oninput="searchStartMember(this.value)"><select id="startMemberSelect" size="5" style="height:125px" onchange="selectStartMember(this.value)"><option value="">Khách lẻ / chưa chọn thành viên</option></select></div>
+ <div class="field"><label>Họ và tên</label><input id="startCustomerName" maxlength="150" placeholder="Tên khách lẻ"></div>
+ <div class="field"><label>Mã thành viên (nếu có)</label><input id="startCustomerCode" maxlength="60" placeholder="Mã thành viên" readonly></div>
+ <div class="field full"><label>Số điện thoại</label><input id="startCustomerPhone" maxlength="20" placeholder="Số điện thoại" inputmode="tel"></div>
+ </div><div class="modal-actions"><button class="secondary-btn" type="button" onclick="closeModal('startCustomerModal')">Để sau</button><button class="primary-btn" id="saveStartCustomerBtn" type="button" onclick="saveStartCustomer()">Lưu tạm thông tin</button></div>
+ </div></div></div>
 
 <div id="endConfirmModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'endConfirmModal')">
     <div class="modal small">
@@ -2390,7 +2400,8 @@ const tablesState =
                 cart:
                     parseStoredServices(
                         saved.dich_vu_them
-                    )
+                    ),
+                customer: saved.khach_tam || {}
             };
         }
     );
@@ -2756,6 +2767,59 @@ async function confirmTableCart() {
 }
 
 
+
+let startCustomerTableNo = null;
+function searchStartMember(query) {
+    const select = document.getElementById('startMemberSelect');
+    const q = String(query || '').trim().toLocaleLowerCase('vi');
+    const matches = membersData.filter(m => !q || [m.ma_thanh_vien,m.ho_va_ten,m.so_dien_thoai].some(v => String(v || '').toLocaleLowerCase('vi').includes(q))).slice(0,60);
+    select.innerHTML = '<option value="">Khách lẻ / chưa chọn thành viên</option>' + matches.map(m => `<option value="${escapeHtml(String(m.id))}">${escapeHtml(m.ma_thanh_vien || '')} - ${escapeHtml(m.ho_va_ten || '')}</option>`).join('');
+}
+function selectStartMember(id) {
+    const member = membersData.find(m => String(m.id) === String(id));
+    document.getElementById('startCustomerName').value = member?.ho_va_ten || '';
+    document.getElementById('startCustomerCode').value = member?.ma_thanh_vien || '';
+    document.getElementById('startCustomerPhone').value = member?.so_dien_thoai || '';
+}
+function openStartCustomer(tableNo) {
+    const table = getTable(tableNo);
+    if (!table || !table.active) return;
+    startCustomerTableNo = tableNo;
+    document.getElementById('startCustomerTitle').textContent = `Khách hàng – Bàn ${tableNo}`;
+    document.getElementById('startMemberSearch').value = '';
+    searchStartMember('');
+    const customer = table.customer || {};
+    document.getElementById('startMemberSelect').value = customer.member_id ? String(customer.member_id) : '';
+    document.getElementById('startCustomerName').value = customer.name || '';
+    document.getElementById('startCustomerCode').value = customer.code || '';
+    document.getElementById('startCustomerPhone').value = customer.phone || '';
+    openModal('startCustomerModal');
+}
+async function saveStartCustomer() {
+    const tableNo = startCustomerTableNo;
+    const table = getTable(tableNo);
+    if (!table?.active) return;
+    const customer = {
+        member_id: document.getElementById('startMemberSelect').value || null,
+        name: document.getElementById('startCustomerName').value.trim(),
+        code: document.getElementById('startCustomerCode').value.trim(),
+        phone: document.getElementById('startCustomerPhone').value.trim()
+    };
+    if (customer.member_id && !membersData.some(m => String(m.id) === String(customer.member_id))) {
+        alert('Thành viên không hợp lệ.'); return;
+    }
+    const btn = document.getElementById('saveStartCustomerBtn');
+    btn.disabled = true;
+    try {
+        const response = await fetch(`/api/ban/${tableNo}/khach-tam`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(customer)});
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error(data.message || 'Không lưu được khách hàng');
+        table.customer = data.customer;
+        closeModal('startCustomerModal');
+        renderTables();
+    } catch(err) { alert(err.message); } finally { btn.disabled = false; }
+}
+
 function updateStatusCounts() {
     const activeCount = tablesState.filter(table => table.active).length;
     const idleCount = tablesState.length - activeCount;
@@ -2776,6 +2840,8 @@ function renderTables() {
         const statusClass = table.active ? 'active' : '';
         const statusText = table.active ? 'Đang hoạt động' : 'Đang trống';
         const timerText = table.active ? formatDurationShort(Date.now() - table.startedAt.getTime()) : '00:00:00';
+        const customerName = table.active ? (String(table.customer?.name || '').trim() || 'Khách lẻ') : 'Đang chờ';
+        const customerLabel = `<div style="font-size:12px;font-weight:800;color:${table.active ? '#2563eb' : '#64748b'};margin-top:5px">Khách: ${escapeHtml(customerName)}</div>`;
         const timerSub = table.active ? `Bắt đầu: ${formatDateTime(table.startedAt)}` : 'Chưa bắt đầu';
 
         return `
@@ -2800,7 +2866,7 @@ function renderTables() {
                 <div class="table-meta">
                     <div class="table-timer">
                         <strong id="timer_${table.tableNo}">${timerText}</strong>
-                        <small id="timerSub_${table.tableNo}">${timerSub}</small>
+                        <small id="timerSub_${table.tableNo}">${timerSub}</small>${customerLabel}
                     </div>
                     <div class="table-actions">
 
@@ -2827,6 +2893,7 @@ function renderTables() {
                         }
 
 
+                        ${table.active ? `<button type="button" class="cart-btn enabled" title="Đổi khách" onclick="openStartCustomer(${table.tableNo})"><i class="fa-solid fa-user-pen"></i></button>` : ''}
                         <button
                             class="cart-btn ${table.active ? 'enabled' : 'disabled'}"
                             ${table.active ? '' : 'disabled'}
@@ -2967,6 +3034,8 @@ async function startTable(tableNo) {
         table.finalDurationMinutes = 0;
 
         table.cart = [];
+        table.customer = {};
+        openStartCustomer(tableNo);
 
 
         /*
@@ -3122,6 +3191,13 @@ function openInvoiceModal(tableNo) {
     hideMemberSearchResults();
     syncMemberSearchClearButton();
     document.getElementById('invoiceMemberInfo').innerHTML = 'Chưa chọn thành viên.';
+    const savedCustomer = table.customer || {};
+    if (savedCustomer.member_id && membersData.some(m => String(m.id) === String(savedCustomer.member_id))) {
+        document.getElementById('invoiceMemberSelect').value = String(savedCustomer.member_id);
+        handleMemberSelect(String(savedCustomer.member_id));
+    }
+    document.getElementById('invoiceCustomerName').value = savedCustomer.name || '';
+    document.getElementById('invoiceCustomerPhone').value = savedCustomer.phone || '';
     document.getElementById('discountValue').value = 0;
     document.getElementById('discountType').value = 'amount';
 

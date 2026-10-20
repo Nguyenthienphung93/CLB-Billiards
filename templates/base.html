@@ -460,6 +460,20 @@
             {% endif %}
 
 
+            {% if current_admin and current_admin.is_owner %}
+            <!-- BÁO CÁO: CHỈ ADMIN CHỦ -->
+            <a
+                href="{{ url_for('bao_cao') }}"
+                class="nav-link {{ 'active' if request.endpoint == 'bao_cao' else '' }}"
+            >
+                <span class="nav-icon">
+                    <i class="fa-solid fa-chart-column"></i>
+                </span>
+                <span class="nav-text">Báo cáo</span>
+            </a>
+            {% endif %}
+
+
             {% if admin_can('setup') %}
             <!-- SETUP -->
             <a

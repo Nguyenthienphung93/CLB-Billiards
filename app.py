@@ -243,6 +243,7 @@ DEFAULT_SETUP = {
         {"code": "banh_mi", "name": "Bánh mì", "price": 20000},
         {"code": "khoai_tay", "name": "Khoai tây chiên", "price": 30000},
     ],
+    "combos": [],
     "discounts": {"percent_enabled": True, "max_percent": 100},
     "payment": {
         "account_name": "",
@@ -392,6 +393,42 @@ def normalize_setup_config(raw=None):
             })
 
         result["services"] = clean_services
+
+    # Combo giữ mã ổn định; bản ghi phiên chơi là snapshot độc lập.
+    clean_combos = []
+    used_codes = set()
+    valid_service_codes = {x["code"] for x in result["services"]}
+    for item in (raw.get("combos") or []):
+        if not isinstance(item, dict):
+            continue
+        code = clean_text(item.get("code"))
+        name = clean_text(item.get("name"))[:120]
+        if not re.fullmatch(r"[a-zA-Z0-9_-]{8,80}", code or "") or code in used_codes or not name:
+            continue
+        try:
+            minutes = int(item.get("minutes") or 0)
+            price = int(item.get("price") or 0)
+        except (ValueError, TypeError):
+            continue
+        if not 1 <= minutes <= 1440 or not 0 <= price <= 1000000000:
+            continue
+        services = []
+        for entry in (item.get("services") or []):
+            if not isinstance(entry, dict):
+                continue
+            scode = clean_text(entry.get("code"))
+            try:
+                qty = int(entry.get("quantity") or 0)
+            except (ValueError, TypeError):
+                continue
+            if scode in valid_service_codes and 1 <= qty <= 100:
+                services.append({"code": scode, "quantity": qty})
+        used_codes.add(code)
+        clean_combos.append({"code":code,"name":name,"minutes":minutes,"price":price,
+                             "start_hint":clean_text(item.get("start_hint"))[:5],
+                             "end_hint":clean_text(item.get("end_hint"))[:5],
+                             "services":services})
+    result["combos"] = clean_combos
 
     discounts = raw.get("discounts")
     if isinstance(discounts, dict):
@@ -8338,6 +8375,44 @@ def setup():
                     "table_count": table_count,
                 }
 
+            elif section == "combos":
+                raw_json = request.form.get("combos_json") or "[]"
+                try:
+                    entries = json.loads(raw_json)
+                except (ValueError, TypeError):
+                    raise ValueError("Dữ liệu Combo không hợp lệ.")
+                if not isinstance(entries, list) or len(entries) > 100:
+                    raise ValueError("Chỉ được khai báo tối đa 100 Combo.")
+                old_codes = {x.get("code") for x in config.get("combos", [])}
+                result_combos = []
+                for item in entries:
+                    if not isinstance(item, dict):
+                        raise ValueError("Combo không hợp lệ.")
+                    code = clean_text(item.get("code"))
+                    if not code:
+                        code = "cb_" + uuid.uuid4().hex[:16]
+                    elif code not in old_codes:
+                        raise ValueError("Mã Combo không tồn tại trong cấu hình.")
+                    name = clean_text(item.get("name"))[:120]
+                    minutes = int(item.get("minutes") or 0)
+                    price = int(item.get("price") or 0)
+                    if not name or not 1 <= minutes <= 1440 or not 0 <= price <= 1000000000:
+                        raise ValueError("Tên, thời lượng hoặc giá Combo không hợp lệ.")
+                    included = []
+                    valid = {x["code"] for x in config.get("services", [])}
+                    for x in item.get("services", []):
+                        if x.get("code") not in valid:
+                            raise ValueError("Dịch vụ thuộc Combo không còn tồn tại trong Setup.")
+                        qty = int(x.get("quantity") or 0)
+                        if not 1 <= qty <= 100:
+                            raise ValueError("Số lượng dịch vụ không hợp lệ.")
+                        included.append({"code":x["code"],"quantity":qty})
+                    result_combos.append({"code":code,"name":name,"minutes":minutes,
+                                          "price":price,"services":included,
+                                          "start_hint":clean_text(item.get("start_hint"))[:5],
+                                          "end_hint":clean_text(item.get("end_hint"))[:5]})
+                config["combos"] = result_combos
+
             elif section == "discounts":
                 config["discounts"] = {
                     "percent_enabled": request.form.get("percent_enabled") == "1",
@@ -9418,7 +9493,7 @@ def hoat_dong():
         ensure_billiards_tables(table_count)
         ban_rows_all = (
             supabase.table(ACTIVITY_TABLE)
-            .select("id,ban_so,dang_hoat_dong,thoi_gian_bat_dau,dich_vu_them,khach_tam")
+            .select("id,ban_so,dang_hoat_dong,thoi_gian_bat_dau,dich_vu_them,khach_tam,combo_state")
             .order("ban_so")
             .execute().data or []
         )
@@ -9946,6 +10021,8 @@ def api_bat_dau_ban(ban_so):
 
             "khach_tam": {},
 
+            "combo_state": None,
+
             "updated_at":
                 now_iso,
         }
@@ -10072,6 +10149,92 @@ def api_bat_dau_ban(ban_so):
 
 
 
+
+# -------- COMBO: theo phiên, không phụ thuộc bảng giá theo giờ --------
+def combo_snapshot(combo, config):
+    service_map = {x["code"]: x for x in config.get("services", [])}
+    included = []
+    for entry in combo.get("services", []):
+        service = service_map.get(entry["code"])
+        if service:
+            included.append({"code":service["code"],"name":service["name"],
+                             "quantity":int(entry["quantity"])})
+    return {"session_id":uuid.uuid4().hex,"code":combo["code"],"name":combo["name"],
+            "minutes":int(combo["minutes"]),"price":int(combo["price"]),
+            "services":included,"status":"playing"}
+
+
+def normalized_combo_status(row):
+    state = row.get("combo_state") or {}
+    if not isinstance(state, dict) or not state.get("session_id"):
+        return None
+    start = parse_iso_datetime(row.get("thoi_gian_bat_dau"))
+    if not start:
+        return state
+    expires = start + timedelta(minutes=int(state["minutes"]))
+    state = dict(state)
+    state["ends_at"] = expires.isoformat()
+    if datetime.now(timezone.utc) >= expires.astimezone(timezone.utc):
+        state["status"] = "expired"
+    return state
+
+
+@app.post('/api/ban/<int:ban_so>/combo')
+def api_set_combo(ban_so):
+    if not current_admin_can('hoat_dong'):
+        return jsonify(ok=False,message='Không có quyền hoạt động.'), 403
+    try:
+        payload = request.get_json(silent=True) or {}
+        code = clean_text(payload.get('combo_code'))
+        rows = (supabase.table(ACTIVITY_TABLE).select('ban_so,dang_hoat_dong,thoi_gian_bat_dau,combo_state')
+                .eq('ban_so',ban_so).limit(1).execute().data or [])
+        if not rows or rows[0].get('dang_hoat_dong') is not True:
+            return jsonify(ok=False,message='Bàn không hoạt động.'), 409
+        existing = normalized_combo_status(rows[0])
+        if existing and existing.get('status') == 'expired':
+            return jsonify(ok=False,message='Combo hết giờ, phải lập hóa đơn trước.'), 409
+        if existing and code != existing.get('code'):
+            return jsonify(ok=False,message='Không thể đổi Combo đang chạy. Hãy kết thúc phiên trước.'),409
+        if not code:
+            snapshot = None
+        else:
+            combo = next((x for x in load_setup_config().get('combos',[]) if x.get('code') == code),None)
+            if not combo:
+                return jsonify(ok=False,message='Combo không tồn tại.'),400
+            snapshot = existing or combo_snapshot(combo,load_setup_config())
+            start = parse_iso_datetime(rows[0].get('thoi_gian_bat_dau'))
+            if datetime.now(timezone.utc) >= (start + timedelta(minutes=snapshot['minutes'])).astimezone(timezone.utc):
+                snapshot['status'] = 'expired'
+        updated = (supabase.table(ACTIVITY_TABLE).update({'combo_state':snapshot})
+                   .eq('ban_so',ban_so).eq('dang_hoat_dong',True).execute().data or [])
+        if not updated:
+            return jsonify(ok=False,message='Không lưu được Combo.'),409
+        return jsonify(ok=True,combo=normalized_combo_status(updated[0]))
+    except Exception as exc:
+        app.logger.exception('COMBO SAVE ERROR')
+        return jsonify(ok=False,message='Không lưu được Combo.'),500
+
+
+@app.get('/api/ban/combo-trang-thai')
+def api_combo_status():
+    if not current_admin_can('hoat_dong'):
+        return jsonify(ok=False),403
+    try:
+        rows = (supabase.table(ACTIVITY_TABLE).select('ban_so,dang_hoat_dong,thoi_gian_bat_dau,combo_state')
+                .eq('dang_hoat_dong',True).execute().data or [])
+        items = []
+        for row in rows:
+            state = normalized_combo_status(row)
+            if state and state.get('status') == 'expired' and (row.get('combo_state') or {}).get('status') != 'expired':
+                # Chỉ chốt trạng thái; giữ bàn để Admin lập hóa đơn, không giải phóng bàn sớm.
+                (supabase.table(ACTIVITY_TABLE).update({'combo_state':state})
+                 .eq('ban_so',row['ban_so']).eq('dang_hoat_dong',True).execute())
+            items.append({'ban_so':row['ban_so'],'combo':state})
+        return jsonify(ok=True,items=items)
+    except Exception:
+        app.logger.exception('COMBO STATUS ERROR')
+        return jsonify(ok=False),500
+
 @app.post('/api/ban/<int:ban_so>/khach-tam')
 def api_luu_khach_tam(ban_so):
     try:
@@ -10142,6 +10305,12 @@ def api_luu_gio_hang(ban_so):
                 "ok": False,
                 "message": "Không tìm thấy bàn."
             }), 404
+
+        current_combo_rows = (supabase.table(ACTIVITY_TABLE)
+                              .select('thoi_gian_bat_dau,combo_state')
+                              .eq('ban_so',ban_so).limit(1).execute().data or [])
+        if current_combo_rows and (normalized_combo_status(current_combo_rows[0]) or {}).get('status') == 'expired':
+            return jsonify(ok=False,message='Combo đã hết giờ. Hãy lập hóa đơn, không thể gọi thêm vào lượt cũ.'),409
 
         if rows[0].get("dang_hoat_dong") is not True:
 
@@ -10687,6 +10856,30 @@ def api_tao_hoa_don():
             }), 400
 
 
+        # Với Combo, thời gian và giá phải lấy từ DB, tuyệt đối không tin JS.
+        activity_rows = (supabase.table(ACTIVITY_TABLE)
+                         .select('dang_hoat_dong,thoi_gian_bat_dau,combo_state')
+                         .eq('ban_so',ban_so).limit(1).execute().data or [])
+        if not activity_rows or activity_rows[0].get('dang_hoat_dong') is not True:
+            return jsonify(ok=False,message='Phiên bàn đã đóng hoặc không tồn tại.'),409
+        combo_state = normalized_combo_status(activity_rows[0])
+        db_start = parse_iso_datetime(activity_rows[0].get('thoi_gian_bat_dau'))
+        if combo_state:
+            if abs((start_dt-db_start).total_seconds()) > 2:
+                return jsonify(ok=False,message='Thời gian phiên Combo không khớp.'),409
+            scheduled_end = db_start + timedelta(minutes=int(combo_state['minutes']))
+            # Cho phép khách trả bàn trước hạn: vẫn thu nguyên giá Combo.
+            # Không tin thời gian kết thúc vượt tương lai do client gửi lên.
+            now_utc = datetime.now(timezone.utc)
+            if end_dt.astimezone(timezone.utc) > now_utc + timedelta(seconds=15):
+                return jsonify(ok=False,message='Thời gian kết thúc không hợp lệ.'),400
+            start_dt = db_start
+            end_dt = min(end_dt, scheduled_end)
+        else:
+            # Giữ nguyên quy trình kết thúc thông thường.
+            if db_start and abs((start_dt-db_start).total_seconds()) > 2:
+                return jsonify(ok=False,message='Thời gian bắt đầu không khớp phiên.'),409
+
         duration_seconds = (
             end_dt
             - start_dt
@@ -10734,6 +10927,15 @@ def api_tao_hoa_don():
             or []
         )
 
+
+        if combo_state:
+            tien_ban = int(combo_state['price'])
+            # Thời lượng thực tế nếu trả bàn sớm, không ép lên đủ giờ Combo.
+            duration_minutes = max(1, math.ceil((end_dt-start_dt).total_seconds()/60))
+            chi_tiet_tien_ban = [{"ten_khung":"Combo: " + combo_state['name'],
+                "khung_gio":"Giá trọn gói", "so_phut":duration_minutes,
+                "thoi_luong_hien_thi":format_minutes_detail(duration_minutes),
+                "don_gia_gio":0,"thanh_tien":tien_ban}]
 
         # ==========================================
         # 2. DỊCH VỤ
@@ -10845,6 +11047,14 @@ def api_tao_hoa_don():
             else "[]"
         )
 
+
+        if combo_state:
+            # Hiển thị dịch vụ tặng trong combo nhưng không cộng tiền lần hai.
+            for gift in combo_state.get('services', []):
+                services.insert(0, {"ten":gift['name'],"so_luong":gift['quantity'],
+                                    "don_gia":0,"thanh_tien":0,"trong_combo":True})
+            dich_vu_them = ("[" + ", ".join(
+                f"{x['ten']} x{x['so_luong']}" for x in services) + "]") if services else "[]"
 
         tong_tien = (
             tien_ban
@@ -11312,6 +11522,8 @@ def api_tao_hoa_don():
 
         payload = {
 
+            "combo_snapshot": combo_state if combo_state else None,
+
             "ma_hoa_don":
                 generate_invoice_code(),
 
@@ -11477,6 +11689,9 @@ def api_tao_hoa_don():
 
                 "dich_vu_them":
                     "[]",
+
+                "combo_state": None,
+                "khach_tam": {},
 
                 "updated_at":
                     datetime.now()

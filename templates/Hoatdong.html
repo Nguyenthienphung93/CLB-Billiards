@@ -1389,6 +1389,8 @@
 
 .receipt-paid-stamp{display:none;width:max-content;max-width:100%;margin:18px auto 3px;padding:12px 22px;border:4px double #15803d;border-radius:10px;color:#15803d;text-align:center;font-size:21px;font-weight:1000;letter-spacing:1px;transform:rotate(-5deg)}
 .receipt-paid-stamp.visible{display:block}
+ .combo-ended{border-color:#f59e0b!important;background:#fffbeb!important}
+ .combo-alert{position:fixed;top:126px;right:18px;z-index:5600;max-width:390px;padding:18px;border-radius:16px;border:2px solid #f59e0b;background:#fffbeb;box-shadow:0 14px 40px #0003;color:#92400e;font-weight:900}
 </style>
 {% endblock %}
 
@@ -1580,7 +1582,8 @@
  <div class="field"><label>Họ và tên</label><input id="startCustomerName" maxlength="150" placeholder="Tên khách lẻ"></div>
  <div class="field"><label>Mã thành viên (nếu có)</label><input id="startCustomerCode" maxlength="60" placeholder="Mã thành viên" readonly></div>
  <div class="field full"><label>Số điện thoại</label><input id="startCustomerPhone" maxlength="20" placeholder="Số điện thoại" inputmode="tel"></div>
- </div><div class="modal-actions"><button class="secondary-btn" type="button" onclick="closeModal('startCustomerModal')">Để sau</button><button class="primary-btn" id="saveStartCustomerBtn" type="button" onclick="saveStartCustomer()">Lưu tạm thông tin</button></div>
+  <div class="field full" style="margin-top:12px"><label>Hình thức chơi</label><select id="startComboSelect" onchange="previewComboStart()"><option value="">Chơi thông thường (theo bảng giá)</option></select><div id="startComboPreview" class="member-search-help"></div></div>
+  </div><div class="modal-actions"><button class="secondary-btn" type="button" onclick="closeModal('startCustomerModal')">Để sau</button><button class="primary-btn" id="saveStartCustomerBtn" type="button" onclick="saveStartCustomer()">Lưu tạm thông tin</button></div>
  </div></div></div>
 
 <div id="endConfirmModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'endConfirmModal')">
@@ -1691,6 +1694,10 @@
                 <div id="serviceRows" class="service-rows"></div>
             </div>
 
+            <div id="invoiceComboBox" class="modal-section" style="display:none;border-color:#93c5fd">
+                <div class="section-head"><i class="fa-solid fa-box-open"></i> Combo đã chọn</div>
+                <div id="invoiceComboInfo"></div>
+            </div>
             <div class="modal-section">
                 <div class="section-head"><i class="fa-solid fa-tags"></i> Khung 4: Giảm giá</div>
 
@@ -2290,6 +2297,7 @@ function calculatePlayCharge(
 
 
 const membersData = {{ members|default([])|tojson }};
+const COMBOS = {{ setup_config.combos|default([])|tojson }};
 
 let memberBenefitOptions = [];
 let selectedMemberBenefit = null;
@@ -2401,7 +2409,8 @@ const tablesState =
                     parseStoredServices(
                         saved.dich_vu_them
                     ),
-                customer: saved.khach_tam || {}
+                customer: saved.khach_tam || {},
+                combo: saved.combo_state || null
             };
         }
     );
@@ -2793,6 +2802,11 @@ function openStartCustomer(tableNo) {
     document.getElementById('startCustomerName').value = customer.name || '';
     document.getElementById('startCustomerCode').value = customer.code || '';
     document.getElementById('startCustomerPhone').value = customer.phone || '';
+    const comboSelect = document.getElementById('startComboSelect');
+    comboSelect.innerHTML = '<option value="">Chơi thông thường (theo bảng giá)</option>' + COMBOS.map(x=>`<option value="${escapeHtml(x.code)}">${escapeHtml(x.name)} – ${x.minutes} phút – ${formatMoney(x.price)}</option>`).join('');
+    comboSelect.value = table.combo?.code || '';
+    comboSelect.disabled = Boolean(table.combo);
+    previewComboStart();
     openModal('startCustomerModal');
 }
 async function saveStartCustomer() {
@@ -2814,11 +2828,39 @@ async function saveStartCustomer() {
         const response = await fetch(`/api/ban/${tableNo}/khach-tam`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(customer)});
         const data = await response.json();
         if (!response.ok || !data.ok) throw new Error(data.message || 'Không lưu được khách hàng');
+        const comboCode = document.getElementById('startComboSelect').value;
+        const cResponse = await fetch(`/api/ban/${tableNo}/combo`, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({combo_code:comboCode})});
+        const cData = await cResponse.json();
+        if(!cResponse.ok || !cData.ok) throw new Error(cData.message||'Không lưu được Combo');
+        table.combo = cData.combo;
         table.customer = data.customer;
         closeModal('startCustomerModal');
         renderTables();
     } catch(err) { alert(err.message); } finally { btn.disabled = false; }
 }
+
+function previewComboStart(){
+ const code=document.getElementById('startComboSelect').value;
+ const combo=COMBOS.find(x=>x.code===code);
+ document.getElementById('startComboPreview').textContent=combo?`${combo.minutes} phút, giá cố định ${formatMoney(combo.price)}. Bắt đầu tính từ lúc mở bàn. Dịch vụ tặng: ${(combo.services||[]).map(x=>{const item=SERVICES.find(s=>s.id===x.code);return (item?.name||x.code)+' × '+x.quantity}).join(', ')||'Không có'}`:'Tính theo biểu phí thời gian trong Setup.';
+}
+function comboEndsAt(table){return table.combo && table.startedAt?new Date(table.startedAt.getTime()+Number(table.combo.minutes)*60000):null;}
+function comboExpired(table){const due=comboEndsAt(table);return due && Date.now()>=due.getTime();}
+function showComboAlert(table){
+ const key=`combo_alert_${table.combo.session_id}`;
+ if(sessionStorage.getItem(key))return;
+ sessionStorage.setItem(key,'1');
+ const div=document.createElement('div');div.className='combo-alert';div.textContent=`Bàn ${table.tableNo} đã hết giờ chơi – ${table.combo.name}. Vui lòng lập hóa đơn.`;
+ try { if ('speechSynthesis' in window) {const u=new SpeechSynthesisUtterance(`Bàn ${table.tableNo} đã hết giờ chơi`);u.lang='vi-VN';u.rate=.9;window.speechSynthesis.speak(u);} } catch(e){console.warn(e)}
+ const button=document.createElement('button');button.textContent='Đã nhận';button.style.cssText='display:block;margin-top:10px;padding:8px 14px;cursor:pointer';button.onclick=()=>div.remove();div.appendChild(button);document.body.appendChild(div);
+ try {const audio=new (window.AudioContext||window.webkitAudioContext)();const beep=(t,f)=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=f;o.connect(g);g.connect(audio.destination);g.gain.setValueAtTime(.18,t);g.gain.exponentialRampToValueAtTime(.001,t+.35);o.start(t);o.stop(t+.35)};beep(audio.currentTime,880);beep(audio.currentTime+.45,660);beep(audio.currentTime+.9,880);}catch(e){console.warn('Trình duyệt chưa cho phép âm thanh',e)}
+}
+async function pollComboStatus(){
+ try {const res=await fetch('/api/ban/combo-trang-thai',{cache:'no-store'});if(!res.ok)return;const data=await res.json();if(!data.ok)return;
+ for(const item of data.items||[]){const t=getTable(item.ban_so);if(!t||!t.active)continue;t.combo=item.combo;if(t.combo&&comboExpired(t)){t.endedAt=comboEndsAt(t);t.finalDurationMinutes=t.combo.minutes;showComboAlert(t);}}
+ renderTables();}catch(e){console.warn('Combo status',e)}
+}
+setInterval(pollComboStatus,15000);
 
 function updateStatusCounts() {
     const activeCount = tablesState.filter(table => table.active).length;
@@ -2838,14 +2880,14 @@ function renderTables() {
         const stateClass = table.active ? 'is-active' : '';
         const clothClass = table.active ? 'active' : 'idle';
         const statusClass = table.active ? 'active' : '';
-        const statusText = table.active ? 'Đang hoạt động' : 'Đang trống';
-        const timerText = table.active ? formatDurationShort(Date.now() - table.startedAt.getTime()) : '00:00:00';
+        const statusText = table.active ? (comboExpired(table)?'Combo hết giờ':'Đang hoạt động') : 'Đang trống';
+        const timerText = table.active ? formatDurationShort(Math.max(0,(comboExpired(table)?comboEndsAt(table).getTime():Date.now()) - table.startedAt.getTime())) : '00:00:00';
         const customerName = table.active ? (String(table.customer?.name || '').trim() || 'Khách lẻ') : 'Đang chờ';
         const customerLabel = `<div style="font-size:12px;font-weight:800;color:${table.active ? '#2563eb' : '#64748b'};margin-top:5px">Khách: ${escapeHtml(customerName)}</div>`;
-        const timerSub = table.active ? `Bắt đầu: ${formatDateTime(table.startedAt)}` : 'Chưa bắt đầu';
+        const timerSub = table.active ? `Bắt đầu: ${formatDateTime(table.startedAt)}${table.combo?' · '+escapeHtml(table.combo.name):''}` : 'Chưa bắt đầu';
 
         return `
-            <div class="table-card ${stateClass}" id="tableCard_${table.tableNo}">
+            <div class="table-card ${stateClass} ${comboExpired(table)?'combo-ended':''}" id="tableCard_${table.tableNo}">
                 <div class="table-top">
                     <div class="table-name">Bàn ${table.tableNo}</div>
                     <div class="table-status ${statusClass}" id="status_${table.tableNo}">${statusText}</div>
@@ -3034,6 +3076,7 @@ async function startTable(tableNo) {
         table.finalDurationMinutes = 0;
 
         table.cart = [];
+        table.combo = null;
         table.customer = {};
         openStartCustomer(tableNo);
 
@@ -3139,6 +3182,12 @@ function requestEndTable(tableNo) {
     const table = getTable(tableNo);
     if (!table || !table.active || !table.startedAt) return;
 
+    if (table.combo && comboExpired(table)) {
+        table.endedAt=comboEndsAt(table);
+        table.finalDurationMinutes=Number(table.combo.minutes);
+        openInvoiceModal(tableNo);
+        return;
+    }
     currentConfirmTable = tableNo;
     const now = new Date();
     const durationMinutes = diffMinutes(table.startedAt, now);
@@ -3147,6 +3196,11 @@ function requestEndTable(tableNo) {
     document.getElementById('confirmStartTime').textContent = formatDateTime(table.startedAt);
     document.getElementById('confirmEndTime').textContent = formatDateTime(now);
     document.getElementById('confirmDuration').textContent = formatMinutesHuman(durationMinutes);
+    const title = document.querySelector('#endConfirmModal .modal-head h2');
+    if (title) title.textContent = table.combo
+        ? 'Khách muốn kết thúc Combo sớm?' : 'Xác nhận kết thúc bàn';
+    const finishButton = document.querySelector('#endConfirmModal .danger-btn');
+    if (finishButton) finishButton.textContent = table.combo ? 'Đồng ý, tạo hóa đơn' : 'Kết thúc';
 
     openModal('endConfirmModal');
 }
@@ -3160,7 +3214,8 @@ function confirmFinishTable() {
         return;
     }
 
-    table.endedAt = new Date();
+    const actualEnd = new Date();
+    table.endedAt = table.combo && comboExpired(table) ? comboEndsAt(table) : actualEnd;
     table.finalDurationMinutes = diffMinutes(table.startedAt, table.endedAt);
 
     if (table.intervalRef) {
@@ -3198,6 +3253,9 @@ function openInvoiceModal(tableNo) {
     }
     document.getElementById('invoiceCustomerName').value = savedCustomer.name || '';
     document.getElementById('invoiceCustomerPhone').value = savedCustomer.phone || '';
+    const comboBox=document.getElementById('invoiceComboBox');
+    comboBox.style.display=table.combo?'block':'none';
+    document.getElementById('invoiceComboInfo').textContent=table.combo?`${table.combo.name} – ${table.combo.minutes} phút – ${formatMoney(table.combo.price)}. Dịch vụ đã bao gồm: ${(table.combo.services||[]).map(x=>x.name+' × '+x.quantity).join(', ')||'Không có'}`:'';
     document.getElementById('discountValue').value = 0;
     document.getElementById('discountType').value = 'amount';
 
@@ -3254,6 +3312,46 @@ function populateMemberOptions() {
 
 let memberSearchMatches = [];
 let memberSearchActiveIndex = -1;
+
+// Âm thanh quét mã: 1 tiếng khi hợp lệ, 2 tiếng khi sai/lỗi.
+// Dùng Web Audio API, không cần file MP3 hoặc kết nối Internet.
+let scanAudioContext = null;
+let lastScanErrorSoundAt = 0;
+function playScanFeedback(success, {throttleError=false} = {}) {
+    const now = Date.now();
+    if (!success && throttleError && now - lastScanErrorSoundAt < 1800) return;
+    if (!success) lastScanErrorSoundAt = now;
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!scanAudioContext) scanAudioContext = new AudioCtx();
+        if (scanAudioContext.state === 'suspended') scanAudioContext.resume().catch(() => {});
+        const start = scanAudioContext.currentTime + 0.015;
+        const tones = success ? [{at:0, hz:1050, duration:.14}] : [
+            {at:0, hz:500, duration:.13}, {at:.19, hz:400, duration:.17}
+        ];
+        for (const tone of tones) {
+            const osc = scanAudioContext.createOscillator();
+            const gain = scanAudioContext.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = tone.hz;
+            gain.gain.setValueAtTime(.0001, start + tone.at);
+            gain.gain.exponentialRampToValueAtTime(.16, start + tone.at + .012);
+            gain.gain.exponentialRampToValueAtTime(.0001, start + tone.at + tone.duration);
+            osc.connect(gain); gain.connect(scanAudioContext.destination);
+            osc.start(start + tone.at); osc.stop(start + tone.at + tone.duration + .01);
+        }
+    } catch (e) { console.warn('Không phát được âm thanh quét mã:', e); }
+}
+function unlockScanAudio() {
+    try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        if (!scanAudioContext) scanAudioContext = new AudioCtx();
+        if (scanAudioContext.state === 'suspended') scanAudioContext.resume().catch(() => {});
+    } catch(e) {}
+}
+
 let memberQrScanner = null;
 let memberQrCurrentCameraId = '';
 let memberQrScannerRunning = false;
@@ -3475,12 +3573,14 @@ function setMemberQrStatus(message, type='') {
     if (!status) return;
     status.className = 'qr-scan-status' + (type ? ' ' + type : '');
     status.textContent = message || '';
+    if (type === 'bad') playScanFeedback(false, {throttleError: true});
 }
 
 async function openMemberQrScanner() {
     const modal = document.getElementById('memberQrScanModal');
     if (!modal) return;
     modal.classList.add('show');
+    unlockScanAudio();
 
     const manualInput =
         document.getElementById(
@@ -3575,6 +3675,7 @@ async function handleMemberQrDecoded(decodedText) {
         return;
     }
 
+    playScanFeedback(true);
     setMemberQrStatus(`Đã tìm thấy: ${member.ho_va_ten || member.ma_thanh_vien}`, 'good');
     selectMemberFromSearch(member.id, { focusSearch: false });
     await closeMemberQrScanner();
@@ -3640,6 +3741,7 @@ function submitMemberQrManualCode() {
         return;
     }
 
+    playScanFeedback(true);
     setMemberQrStatus(
         `Đã tìm thấy: ${member.ho_va_ten || member.ma_thanh_vien}`,
         'good'
@@ -4397,11 +4499,10 @@ function updateInvoiceSummary() {
     const playMinutes =
         Number(table.finalDurationMinutes || 0);
 
-    const playChargeResult =
-        calculatePlayChargeDetail(
-            table.startedAt,
-            table.endedAt
-        );
+    const playChargeResult = table.combo ? {total:Number(table.combo.price),details:[{
+        khung_gio:`Combo: ${table.combo.name}`,don_gia_gio:0,
+        thoi_luong_hien_thi:formatMinutesHuman(table.finalDurationMinutes),thanh_tien:Number(table.combo.price)
+    }]} : calculatePlayChargeDetail(table.startedAt,table.endedAt);
 
     const playCharge =
         playChargeResult.total;
@@ -4651,6 +4752,8 @@ async function saveInvoice() {
         table.endedAt = null;
         table.finalDurationMinutes = 0;
         table.cart = [];
+        table.combo = null;
+        table.customer = {};
 
         if (table.intervalRef) {
             clearInterval(table.intervalRef);
@@ -5300,6 +5403,11 @@ function updateAllActiveTableTimers() {
 
     tablesState.forEach(
         table => {
+            if(table.active && table.combo && comboExpired(table)) {
+                table.endedAt=comboEndsAt(table);
+                table.finalDurationMinutes=Number(table.combo.minutes);
+                showComboAlert(table);
+            }
 
             if (
                 table.active
@@ -5315,7 +5423,7 @@ function updateAllActiveTableTimers() {
 
                     timerEl.textContent =
                         formatDurationShort(
-                            Date.now()
+                            (comboExpired(table)?comboEndsAt(table).getTime():Date.now())
                             - table.startedAt.getTime()
                         );
                 }
@@ -5358,6 +5466,7 @@ document.addEventListener(
     renderTables();
 
     updateStatusCounts();
+    pollComboStatus();
 
     populateMemberOptions();
 

@@ -290,6 +290,19 @@ body{
 }
 @media(max-width:900px){.setup-grid,.payment-layout{grid-template-columns:1fr}.rate-row{grid-template-columns:1fr 1fr}.service-row{grid-template-columns:1fr 160px 46px 46px}.qr-card{position:static}}
 @media(max-width:650px){.setup-tabs{grid-template-columns:1fr}.setup-panel{padding:14px}.rate-row,.service-row{grid-template-columns:1fr}.icon-btn{width:100%}}
+
+/* Combo: chọn dịch vụ gọn, chỉ hiện những món đã thêm */
+.combo-service-editor{margin-top:9px;padding:12px;border:1px solid #dbe7f3;border-radius:13px;background:#f8fbff}
+.combo-service-picker{display:flex;gap:10px;align-items:center}
+.combo-service-select{flex:1;min-width:0;min-height:43px;border:1px solid #cbd5e1;border-radius:11px;background:white;padding:0 12px;color:#123a61}
+.combo-add-service{border:0;border-radius:11px;background:#15803d;color:#fff;padding:0 14px;height:43px;font-weight:900;cursor:pointer}
+.combo-selected-services{display:grid;gap:8px;margin-top:10px}
+.combo-selected-row{display:flex;align-items:center;gap:14px;padding:8px 11px;background:#fff;border:1px solid #dbe7f3;border-radius:11px}
+.combo-selected-row strong{flex:1;min-width:0;color:#123a61}
+.combo-selected-row label{display:flex;align-items:center;gap:8px;color:#64748b;font-size:12px;font-weight:800}
+.combo-selected-qty{width:65px!important;height:36px!important;min-height:36px!important;text-align:center;padding:0 5px!important}
+.combo-remove-service{width:34px;height:34px;border:0;border-radius:9px;background:#fee2e2;color:#dc2626;font-size:22px;cursor:pointer}
+@media(max-width:600px){.combo-service-picker{flex-direction:column;align-items:stretch}.combo-selected-row{gap:7px}}
 </style>
 {% endblock %}
 
@@ -301,6 +314,7 @@ body{
     <div class="setup-tabs">
       <button type="button" class="setup-tab active" data-tab="club"><i class="fa-solid fa-building"></i>Thông tin CLB</button>
       <button type="button" class="setup-tab" data-tab="pricing"><i class="fa-solid fa-tags"></i>Biểu phí</button>
+      <button type="button" class="setup-tab" data-tab="combos"><i class="fa-solid fa-box-open"></i>Combo</button>
       <button type="button" class="setup-tab" data-tab="payment"><i class="fa-solid fa-qrcode"></i>Thanh toán</button>
       <button type="button" class="setup-tab" data-tab="member_ranks"><i class="fa-solid fa-ranking-star"></i>Hạng thành viên</button>
       <button type="button" class="setup-tab" data-tab="discounts"><i class="fa-solid fa-percent"></i>Ưu đãi hóa đơn</button>
@@ -363,6 +377,18 @@ body{
           </div>
         </div>
         <div class="save-row"><button class="save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu</button></div>
+      </form>
+    </div>
+
+    <div id="combos" class="setup-panel">
+      <form method="post" id="comboSetupForm" onsubmit="return serializeComboSetup()">
+        <input type="hidden" name="section" value="combos">
+        <input type="hidden" name="combos_json" id="combosJson">
+        <div class="section-title"><i class="fa-solid fa-box-open"></i>Combo giờ chơi & dịch vụ</div>
+        <div class="helper" style="margin-bottom:15px">Giờ gợi ý chỉ giúp Admin chọn phù hợp, không hạn chế giờ bắt đầu. Giá giữ cố định từ khi mở bàn, dù đi qua khung giờ khác.</div>
+        <div id="comboSetupList"></div>
+        <button type="button" class="icon-btn add" style="width:auto;padding:0 18px" onclick="addComboSetup()">+ Thêm Combo</button>
+        <div class="save-row"><button class="save-btn" type="submit">Lưu danh sách Combo</button></div>
       </form>
     </div>
 
@@ -874,6 +900,71 @@ body{
 
 {% block page_script %}
 <script>
+
+const COMBO_INITIAL = {{ setup_config.combos|default([])|tojson }};
+const COMBO_SERVICES = {{ setup_config.services|default([])|tojson }};
+let comboDraft = JSON.parse(JSON.stringify(COMBO_INITIAL));
+function escapeCombo(value) { return String(value??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function renderComboServiceRows(services, comboIndex) {
+ const selected = Array.isArray(services) ? services : [];
+ const choices = COMBO_SERVICES.filter(s => !selected.some(x => x.code === s.code));
+ return `<div class="combo-service-editor" data-combo-index="${comboIndex}">
+  <div class="combo-service-picker">
+   <select class="combo-service-select" aria-label="Chọn dịch vụ thêm vào Combo">
+    <option value="">-- Chọn dịch vụ đi kèm --</option>
+    ${choices.map(s => `<option value="${escapeCombo(s.code)}">${escapeCombo(s.name)}</option>`).join('')}
+   </select>
+   <button type="button" class="combo-add-service" onclick="addComboService(${comboIndex})">+ Thêm</button>
+  </div>
+  <div class="combo-selected-services">${selected.map(item => {
+   const service = COMBO_SERVICES.find(s => s.code === item.code);
+   if (!service) return '';
+   return `<div class="combo-selected-row" data-service-code="${escapeCombo(item.code)}">
+      <strong>${escapeCombo(service.name)}</strong>
+      <label>Số lượng <input type="number" min="1" max="100" value="${Math.max(1, Math.min(100, Number(item.quantity)||1))}" class="combo-selected-qty" aria-label="Số lượng ${escapeCombo(service.name)}"></label>
+      <button type="button" class="combo-remove-service" onclick="removeComboService(${comboIndex}, '${escapeCombo(item.code)}')" title="Xóa dịch vụ">×</button>
+    </div>`;
+  }).join('')}</div>
+ </div>`;
+}
+function renderComboSetup() {
+ const box = document.getElementById('comboSetupList'); if (!box) return;
+ box.innerHTML = comboDraft.map((c,i)=>`<div class="setup-card combo-edit" data-index="${i}">
+ <div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><strong>Combo ${i+1}</strong><button type="button" class="icon-btn remove" onclick="removeComboSetup(${i})" title="Xóa Combo">×</button></div>
+ <div class="setup-grid" style="margin-top:12px">
+ <div class="field"><label>Tên Combo</label><input data-prop="name" value="${escapeCombo(c.name)}" maxlength="120" required></div>
+ <div class="field"><label>Giá trọn gói (VNĐ)</label><input data-prop="price" class="money-input" value="${Number(c.price||0).toLocaleString('en-US')}" inputmode="numeric" required></div>
+ <div class="field"><label>Thời lượng chơi (phút)</label><input data-prop="minutes" type="number" min="1" max="1440" value="${c.minutes||120}" required></div>
+ <div class="field"><label>Giờ gợi ý (không bắt buộc)</label><div style="display:flex;gap:8px"><input data-prop="start_hint" type="time" value="${escapeCombo(c.start_hint||'')}"><input data-prop="end_hint" type="time" value="${escapeCombo(c.end_hint||'')}"></div></div>
+ </div><div style="margin-top:14px;font-weight:850">Dịch vụ đi kèm</div>
+ ${renderComboServiceRows(c.services||[],i)}
+ </div>`).join('');
+}
+function collectComboDraft() {
+ comboDraft=[...document.querySelectorAll('#comboSetupList .combo-edit')].map((el,i)=>{
+  const old=comboDraft[i]||{}; const value=k=>el.querySelector(`[data-prop="${k}"]`).value;
+  return {code:old.code||'',name:value('name').trim(),price:Number(value('price').replace(/\D/g,'')),minutes:Number(value('minutes')),
+   start_hint:value('start_hint'),end_hint:value('end_hint'),services:[...el.querySelectorAll('.combo-selected-row')].map(row=>({code:row.dataset.serviceCode,quantity:Number(row.querySelector('.combo-selected-qty').value)}))};
+ });
+}
+function addComboService(i) {
+ const box=document.querySelector(`.combo-edit[data-index="${i}"]`);
+ const code=box?.querySelector('.combo-service-select')?.value;
+ if (!code) return;
+ collectComboDraft();
+ if (!comboDraft[i].services.some(s=>s.code===code)) comboDraft[i].services.push({code,quantity:1});
+ renderComboSetup();
+}
+function removeComboService(i, code) {
+ collectComboDraft();
+ comboDraft[i].services=comboDraft[i].services.filter(s=>s.code!==code);
+ renderComboSetup();
+}
+function addComboSetup(){collectComboDraft();comboDraft.push({code:'',name:'',minutes:120,price:0,services:[]});renderComboSetup();}
+function removeComboSetup(i){if(!confirm('Ken có chắc chắn muốn xóa Combo này? Các phiên đã bán vẫn giữ lịch sử.'))return;collectComboDraft();comboDraft.splice(i,1);renderComboSetup();}
+function serializeComboSetup(){collectComboDraft();if(comboDraft.some(x=>!x.name || x.minutes<1 || x.minutes>1440 || x.price<0)){alert('Kiểm tra lại tên, thời lượng và giá Combo.');return false;}document.getElementById('combosJson').value=JSON.stringify(comboDraft);return true;}
+document.addEventListener('DOMContentLoaded',renderComboSetup);
+
 (function(){
   const tabs=[...document.querySelectorAll('.setup-tab')];
   const panels=[...document.querySelectorAll('.setup-panel')];
@@ -883,7 +974,7 @@ body{
   }
   tabs.forEach(x=>x.addEventListener('click',()=>{openTab(x.dataset.tab);history.replaceState(null,'','#'+x.dataset.tab);}));
   const first=(location.hash||'#club').slice(1);
-  openTab(['club','pricing','payment','member_ranks','discounts','backup','admin'].includes(first)?first:'club');
+  openTab(['club','pricing','combos','payment','member_ranks','discounts','backup','admin'].includes(first)?first:'club');
 })();
 
 document.addEventListener('input',e=>{

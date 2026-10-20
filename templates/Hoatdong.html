@@ -3313,8 +3313,8 @@ function populateMemberOptions() {
 let memberSearchMatches = [];
 let memberSearchActiveIndex = -1;
 
-// Âm thanh quét mã: 1 tiếng khi hợp lệ, 2 tiếng khi sai/lỗi.
-// Dùng Web Audio API, không cần file MP3 hoặc kết nối Internet.
+// Âm báo quét mã kiểu siêu thị: 1 beep sắc khi thành công, 3 beep khi sai/lỗi.
+// Âm lượng mạnh nhưng có giới hạn để tránh méo tiếng / chói tai.
 let scanAudioContext = null;
 let lastScanErrorSoundAt = 0;
 function playScanFeedback(success, {throttleError=false} = {}) {
@@ -3326,20 +3326,31 @@ function playScanFeedback(success, {throttleError=false} = {}) {
         if (!AudioCtx) return;
         if (!scanAudioContext) scanAudioContext = new AudioCtx();
         if (scanAudioContext.state === 'suspended') scanAudioContext.resume().catch(() => {});
-        const start = scanAudioContext.currentTime + 0.015;
-        const tones = success ? [{at:0, hz:1050, duration:.14}] : [
-            {at:0, hz:500, duration:.13}, {at:.19, hz:400, duration:.17}
-        ];
-        for (const tone of tones) {
+
+        const start = scanAudioContext.currentTime + 0.025;
+        // Barcode scanner: âm vuông/sắc với một hòa âm nhẹ, khác tiếng chuông sine.
+        const notes = success
+            ? [{at:0, hz:1920, duration:0.20}]
+            : [
+                {at:0, hz:1050, duration:0.15},
+                {at:0.22, hz:1050, duration:0.15},
+                {at:0.44, hz:1050, duration:0.15}
+            ];
+        for (const note of notes) {
+            const t = start + note.at;
             const osc = scanAudioContext.createOscillator();
             const gain = scanAudioContext.createGain();
-            osc.type = 'sine';
-            osc.frequency.value = tone.hz;
-            gain.gain.setValueAtTime(.0001, start + tone.at);
-            gain.gain.exponentialRampToValueAtTime(.16, start + tone.at + .012);
-            gain.gain.exponentialRampToValueAtTime(.0001, start + tone.at + tone.duration);
-            osc.connect(gain); gain.connect(scanAudioContext.destination);
-            osc.start(start + tone.at); osc.stop(start + tone.at + tone.duration + .01);
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(note.hz, t);
+            // Envelope nhanh, âm thanh rõ; tránh pop/click và clipping.
+            gain.gain.setValueAtTime(0.0001, t);
+            gain.gain.linearRampToValueAtTime(0.20, t + 0.008);
+            gain.gain.setValueAtTime(0.20, t + note.duration - 0.025);
+            gain.gain.linearRampToValueAtTime(0.0001, t + note.duration);
+            osc.connect(gain);
+            gain.connect(scanAudioContext.destination);
+            osc.start(t);
+            osc.stop(t + note.duration + 0.01);
         }
     } catch (e) { console.warn('Không phát được âm thanh quét mã:', e); }
 }

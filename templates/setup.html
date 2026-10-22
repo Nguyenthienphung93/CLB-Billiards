@@ -303,6 +303,13 @@ body{
 .combo-selected-qty{width:65px!important;height:36px!important;min-height:36px!important;text-align:center;padding:0 5px!important}
 .combo-remove-service{width:34px;height:34px;border:0;border-radius:9px;background:#fee2e2;color:#dc2626;font-size:22px;cursor:pointer}
 @media(max-width:600px){.combo-service-picker{flex-direction:column;align-items:stretch}.combo-selected-row{gap:7px}}
+/* Logo riêng từng CLB */
+.club-logo-editor{display:flex;align-items:center;gap:22px;flex-wrap:wrap}
+.club-logo-preview{width:170px;height:170px;flex:0 0 170px;display:grid;place-items:center;border:2px dashed #cbd5e1;background:#fff;border-radius:18px;overflow:hidden}
+.club-logo-preview img{max-width:100%;max-height:100%;object-fit:contain}
+.club-logo-controls{flex:1;min-width:230px;display:flex;flex-direction:column;align-items:flex-start;gap:10px}
+.club-logo-controls input[type=file]{max-width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:10px}
+@media(max-width:600px){.club-logo-preview{width:140px;height:140px;flex-basis:140px}}
 </style>
 {% endblock %}
 
@@ -341,6 +348,28 @@ body{
           </div>
         </div>
         <div class="save-row"><button class="save-btn" type="submit"><i class="fa-solid fa-floppy-disk"></i> Lưu</button></div>
+      </form>
+      <form method="post" enctype="multipart/form-data" id="clubLogoForm" style="margin-top:16px">
+        <input type="hidden" name="section" value="club_logo">
+        <input type="hidden" name="csrf" value="{{ setup_csrf }}">
+        <div class="section-title"><i class="fa-solid fa-image"></i> Logo CLB</div>
+        <div class="setup-card club-logo-editor">
+          <div class="club-logo-preview">
+            {% if logo_url %}
+              <img id="clubLogoPreview" src="{{ logo_url }}" alt="Logo hiện tại của CLB">
+            {% else %}
+              <img id="clubLogoPreview" alt="Logo CLB" style="display:none">
+              <div id="clubLogoEmpty">Chưa có logo mặc định</div>
+            {% endif %}
+          </div>
+          <div class="club-logo-controls">
+            <label for="clubLogoFile"><strong>Chọn hoặc thay đổi logo</strong></label>
+            <input type="file" id="clubLogoFile" name="club_logo_file" accept="image/png,image/jpeg,image/webp" required>
+            <div class="helper">PNG, JPG hoặc WebP · tối đa 4 MB. Ảnh được lưu tại Supabase Storage và ghi đè logo cũ, không tạo thêm file mới.</div>
+            <div class="helper">Nếu chưa tải logo lên hoặc không đọc được từ Supabase, website tự dùng logo trong <code>static/pictures</code>.</div>
+            <button type="submit" class="save-btn"><i class="fa-solid fa-cloud-arrow-up"></i> Tải logo lên Supabase</button>
+          </div>
+        </div>
       </form>
     </div>
 
@@ -900,6 +929,28 @@ body{
 
 {% block page_script %}
 <script>
+
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('clubLogoFile');
+  const image = document.getElementById('clubLogoPreview');
+  let previewUrl = null;
+  if (!input || !image) return;
+  input.addEventListener('change', () => {
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (file.size > 4 * 1024 * 1024 || !['image/png','image/jpeg','image/webp'].includes(file.type)) {
+      alert('Chỉ chấp nhận ảnh PNG/JPG/WebP tối đa 4 MB.');
+      input.value = '';
+      return;
+    }
+    previewUrl = URL.createObjectURL(file);
+    image.src = previewUrl;
+    image.style.display = 'block';
+    const empty = document.getElementById('clubLogoEmpty');
+    if (empty) empty.style.display = 'none';
+  });
+});
 
 const COMBO_INITIAL = {{ setup_config.combos|default([])|tojson }};
 const COMBO_SERVICES = {{ setup_config.services|default([])|tojson }};

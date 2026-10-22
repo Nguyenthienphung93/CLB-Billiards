@@ -8,6 +8,7 @@ import json
 import copy
 import time
 import io
+from flask import send_file
 import tarfile
 import hashlib
 import zipfile
@@ -1282,13 +1283,85 @@ def verify_system_admin_password(password):
         return False
 
 
-def find_logo_url():
+# Logo riêng mỗi Supabase. Bucket PRIVATE; Flask chỉ cung cấp đúng object logo.
+CLUB_LOGO_BUCKET = (os.getenv("CLUB_LOGO_BUCKET") or "club-assets").strip()
+CLUB_LOGO_PATH = "logos/logo_clb.webp"
+CLUB_LOGO_MAX_BYTES = 4 * 1024 * 1024
+
+
+def _static_logo_url():
     picture_dir = BASE_DIR / "static" / "pictures"
     for ext in ("png", "webp", "jpg", "jpeg", "svg"):
-        candidate = picture_dir / f"logo_clb.{ext}"
-        if candidate.exists():
+        if (picture_dir / f"logo_clb.{ext}").is_file():
             return url_for("static", filename=f"pictures/logo_clb.{ext}")
     return ""
+
+
+def find_logo_url(config=None):
+    config = config if isinstance(config, dict) else load_setup_config()
+    version = str(config.get("club", {}).get("logo_version") or "").strip()
+    if version:
+        return url_for("club_logo_image", v=version)
+    return _static_logo_url()
+
+
+@app.get("/club-logo")
+def club_logo_image():
+    """Serve only the shared club logo, never arbitrary Storage object paths."""
+    try:
+        data = supabase.storage.from_(CLUB_LOGO_BUCKET).download(CLUB_LOGO_PATH)
+        if data:
+            response = send_file(io.BytesIO(bytes(data)), mimetype="image/webp")
+            response.headers["Cache-Control"] = "public, max-age=300"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            return response
+    except Exception as exc:
+        app.logger.warning("[CLUB LOGO FALLBACK] %s", type(exc).__name__)
+    fallback = _static_logo_url()
+    if fallback:
+        return redirect(fallback, code=302)
+    return ("", 404)
+
+
+def upload_club_logo(file_storage):
+    """Validate, resize and rewrite in a single stable object; no historical files."""
+    if not file_storage or not file_storage.filename:
+        raise ValueError("Vui lòng chọn ảnh logo.")
+    raw = file_storage.stream.read(CLUB_LOGO_MAX_BYTES + 1)
+    if not raw or len(raw) > CLUB_LOGO_MAX_BYTES:
+        raise ValueError("Logo phải có dung lượng tối đa 4 MB.")
+
+    try:
+        from PIL import Image, ImageOps, UnidentifiedImageError
+    except ImportError as exc:
+        raise RuntimeError("Thiếu Pillow: hãy cài pip install Pillow và thêm vào requirements.txt.") from exc
+
+    try:
+        Image.MAX_IMAGE_PIXELS = 12_000_000
+        with Image.open(io.BytesIO(raw)) as source:
+            if source.format not in {"PNG", "JPEG", "WEBP"}:
+                raise ValueError("Chỉ chấp nhận ảnh PNG, JPG hoặc WebP.")
+            source.load()
+            if source.width * source.height > 12_000_000:
+                raise ValueError("Ảnh quá lớn, tối đa 12 triệu điểm ảnh.")
+            image = ImageOps.exif_transpose(source)
+            image.thumbnail((1200, 1200), Image.Resampling.LANCZOS)
+            if image.mode not in {"RGB", "RGBA"}:
+                image = image.convert("RGBA")
+            stream = io.BytesIO()
+            image.save(stream, format="WEBP", quality=88, method=6)
+            payload = stream.getvalue()
+    except (OSError, ValueError, Image.DecompressionBombError) as exc:
+        raise ValueError(f"File logo không hợp lệ: {exc}") from exc
+
+    bucket = supabase.storage.from_(CLUB_LOGO_BUCKET)
+    # Upsert on exactly one path prevents extra objects when replacing logo.
+    bucket.upload(CLUB_LOGO_PATH, payload, file_options={
+        "content-type": "image/webp",
+        "cache-control": "300",
+        "upsert": "true",
+    })
+    return uuid.uuid4().hex[:16]
 
 
 @app.context_processor
@@ -1316,7 +1389,7 @@ def inject_layout_data():
             )
 
     return {
-        "logo_url": find_logo_url(),
+        "logo_url": find_logo_url(setup_config),
         "app_setup": setup_config,
         "payment_qr_url": build_payment_qr_url(
             setup_config
@@ -2798,6 +2871,25 @@ def admin_logout():
     return redirect(
         url_for("admin_login")
     )
+
+
+# Optional diagnostic: BIDA_PERF_LOG=1 in local .env logs slow GET pages.
+@app.before_request
+def _perf_request_start():
+    if os.getenv("BIDA_PERF_LOG") == "1":
+        g._page_started_at = time.perf_counter()
+
+
+@app.after_request
+def _perf_request_finish(response):
+    started = getattr(g, "_page_started_at", None)
+    if started is not None and request.method == "GET" and request.endpoint != "static":
+        elapsed_ms = (time.perf_counter() - started) * 1000
+        if elapsed_ms >= 250:
+            app.logger.warning("[SLOW PAGE] endpoint=%s status=%d duration_ms=%.0f",
+                               request.endpoint, response.status_code, elapsed_ms)
+        response.headers["Server-Timing"] = "app;dur=%.1f" % elapsed_ms
+    return response
 
 
 @app.before_request
@@ -8370,10 +8462,23 @@ def setup():
                 ensure_billiards_tables(table_count)
 
                 config["club"] = {
+                    **config.get("club", {}),
                     "title": title,
                     "name": name,
                     "table_count": table_count,
                 }
+
+            elif section == "club_logo":
+                # Setup already requires authenticated Admin and re-unlock.
+                # Verify a per-session CSRF token for this multipart upload.
+                received = str(request.form.get("csrf") or "")
+                expected = str(session.get("setup_csrf") or "")
+                if not expected or not hmac.compare_digest(received, expected):
+                    raise ValueError("Phiên xác thực không hợp lệ. Tải lại trang và thử lại.")
+                if request.content_length and request.content_length > CLUB_LOGO_MAX_BYTES + 1024 * 1024:
+                    raise ValueError("File gửi lên quá lớn (tối đa 4 MB).")
+                version = upload_club_logo(request.files.get("club_logo_file"))
+                config.setdefault("club", {})["logo_version"] = version
 
             elif section == "combos":
                 raw_json = request.form.get("combos_json") or "[]"
@@ -8789,11 +8894,7 @@ def setup():
             )
 
             return redirect(
-                url_for(
-                    "setup"
-                )
-                + "#"
-                + section
+                url_for("setup") + ("#club" if section == "club_logo" else "#" + section)
             )
 
         except Exception as exc:
@@ -9381,22 +9482,23 @@ def xoa_admin(admin_id):
     )
 
 
-def ensure_billiards_tables(table_count):
-    """Đồng bộ các bàn 1..N trong Supabase; không xóa bàn/hóa đơn cũ.
+def ensure_billiards_tables(table_count, existing_rows=None):
+    """Ensure table numbers exist; avoid repeated Supabase reads on every page view.
 
-    Có thể gọi lại an toàn. UNIQUE(ban_so) bảo vệ khi nhiều worker cùng tạo.
-    Nếu DB lỗi phải báo lỗi thay vì dựng trạng thái bàn giả.
+    Use existing_rows from the caller when available. All writes remain conditional
+    and an insert race is rechecked. No active session can be overwritten.
     """
     table_count = int(table_count)
     if not 1 <= table_count <= 100:
         raise ValueError("Số bàn phải từ 1 đến 100.")
 
-    query = (supabase.table(ACTIVITY_TABLE)
-             .select("ban_so")
-             .order("ban_so")
-             .execute())
-    existing = {int(row["ban_so"]) for row in (query.data or [])}
+    if existing_rows is None:
+        existing_rows = (supabase.table(ACTIVITY_TABLE)
+                         .select("ban_so").execute().data or [])
+    existing = {int(row["ban_so"]) for row in existing_rows}
     missing = sorted(set(range(1, table_count + 1)) - existing)
+    if not missing:
+        return 0
 
     for number in missing:
         try:
@@ -9407,18 +9509,14 @@ def ensure_billiards_tables(table_count):
                 "dich_vu_them": "[]",
             }).execute()
         except Exception:
-            # Worker khác có thể vừa tạo bàn. Chỉ bỏ qua nếu bàn đã tồn tại.
             recheck = (supabase.table(ACTIVITY_TABLE)
                        .select("ban_so").eq("ban_so", number)
                        .limit(1).execute().data or [])
             if not recheck:
                 raise
 
-    # Xác minh trạng thái DB thay vì coi lệnh ghi thành công một cách mặc định.
     final_rows = (supabase.table(ACTIVITY_TABLE)
-                  .select("ban_so")
-                  .order("ban_so")
-                  .execute().data or [])
+                  .select("ban_so").execute().data or [])
     final_numbers = {int(row["ban_so"]) for row in final_rows}
     still_missing = sorted(set(range(1, table_count + 1)) - final_numbers)
     if still_missing:
@@ -9490,13 +9588,21 @@ def hoat_dong():
     ban_rows = []
     try:
         # Hỗ trợ cả CLB mới cài và dữ liệu cũ chưa được đồng bộ.
-        ensure_billiards_tables(table_count)
         ban_rows_all = (
             supabase.table(ACTIVITY_TABLE)
             .select("id,ban_so,dang_hoat_dong,thoi_gian_bat_dau,dich_vu_them,khach_tam,combo_state")
             .order("ban_so")
             .execute().data or []
         )
+        # The same result verifies existence; extra round trips only when adding tables.
+        added = ensure_billiards_tables(table_count, existing_rows=ban_rows_all)
+        if added:
+            ban_rows_all = (
+                supabase.table(ACTIVITY_TABLE)
+                .select("id,ban_so,dang_hoat_dong,thoi_gian_bat_dau,dich_vu_them,khach_tam,combo_state")
+                .order("ban_so")
+                .execute().data or []
+            )
         # Giảm số bàn chỉ ẩn các bàn vượt mức; giữ dữ liệu nguyên vẹn.
         ban_rows = [row for row in ban_rows_all
                     if 1 <= int(row.get("ban_so") or 0) <= table_count]
@@ -10258,6 +10364,67 @@ def api_luu_khach_tam(ban_so):
     except Exception as exc:
         print('[SAVE TEMP CUSTOMER ERROR]',repr(exc))
         return jsonify(ok=False,message='Không lưu được khách tạm. Kiểm tra cấu hình cơ sở dữ liệu.'), 500
+
+
+
+# Các thao tác chuyển / hủy bàn sử dụng PostgreSQL RPC để cập nhật nguyên tử.
+# Function SQL được cài bằng file ban_chuyen_huy.sql.
+@app.post('/api/ban/<int:ban_so>/chuyen-ban')
+def api_chuyen_ban(ban_so):
+    if not current_admin_can('hoat_dong'):
+        return jsonify(ok=False, message='Không có quyền quản lý hoạt động bàn.'), 403
+    data = request.get_json(silent=True) or {}
+    try:
+        target = int(data.get('ban_moi'))
+    except (ValueError, TypeError):
+        return jsonify(ok=False, message='Vui lòng chọn bàn muốn chuyển.'), 400
+    count = int(load_setup_config().get('club', {}).get('table_count') or 12)
+    if not (1 <= ban_so <= count and 1 <= target <= count) or ban_so == target:
+        return jsonify(ok=False, message='Bàn chuyển không hợp lệ.'), 400
+    try:
+        result = supabase.rpc('bida_transfer_table', {
+            'p_source': ban_so, 'p_target': target
+        }).execute()
+        response = result.data or {}
+        if isinstance(response, dict) and response.get('ok'):
+            return jsonify(ok=True, message=f'Đã chuyển Bàn {ban_so} sang Bàn {target}.')
+        return jsonify(ok=False, message='Không thể chuyển bàn. Vui lòng tải lại trang.'), 409
+    except Exception as exc:
+        app.logger.exception('TRANSFER TABLE ERROR')
+        err = str(exc).lower()
+        if 'đang hoạt động' in err or 'không còn trống' in err or 'không hoạt động' in err:
+            return jsonify(ok=False, message='Bàn nguồn không còn hoạt động hoặc bàn đích đã có khách. Tải lại trang.'), 409
+        return jsonify(ok=False, message='Không chuyển được bàn. Kiểm tra đã chạy SQL ban_chuyen_huy.sql và kết nối Supabase.'), 500
+
+
+@app.post('/api/ban/<int:ban_so>/huy-ban')
+def api_huy_ban(ban_so):
+    """Huy phien dang choi: mot UPDATE co dieu kien, khong RPC/log/hoa don."""
+    if not current_admin_can('hoat_dong'):
+        return jsonify(ok=False, message='Không có quyền quản lý hoạt động bàn.'), 403
+    count = int(load_setup_config().get('club', {}).get('table_count') or 12)
+    if not 1 <= ban_so <= count:
+        return jsonify(ok=False, message='Bàn không hợp lệ.'), 400
+    try:
+        # Chỉ hủy nếu bàn vẫn đang hoạt động; một lệnh cập nhật trên một bản ghi.
+        # Không xóa bản ghi Ban_hoat_dong và không động tới bảng Hoadon.
+        cleared = {
+            'dang_hoat_dong': False,
+            'thoi_gian_bat_dau': None,
+            'dich_vu_them': '[]',
+            'khach_tam': {},
+            'combo_state': None,
+            'updated_at': datetime.now(VIETNAM_TZ).isoformat(),
+        }
+        rows = (supabase.table(ACTIVITY_TABLE).update(cleared)
+                .eq('ban_so', ban_so).eq('dang_hoat_dong', True)
+                .execute().data or [])
+        if not rows:
+            return jsonify(ok=False, message='Bàn không còn hoạt động. Vui lòng tải lại trang.'), 409
+        return jsonify(ok=True, message=f'Đã hủy Bàn {ban_so}.')
+    except Exception:
+        app.logger.exception('CANCEL TABLE ERROR')
+        return jsonify(ok=False, message='Không thể hủy bàn. Vui lòng thử lại.'), 500
 
 @app.post("/api/ban/<int:ban_so>/gio-hang")
 def api_luu_gio_hang(ban_so):

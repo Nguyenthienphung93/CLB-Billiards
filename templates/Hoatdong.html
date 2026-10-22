@@ -1391,6 +1391,19 @@
 .receipt-paid-stamp.visible{display:block}
  .combo-ended{border-color:#f59e0b!important;background:#fffbeb!important}
  .combo-alert{position:fixed;top:126px;right:18px;z-index:5600;max-width:390px;padding:18px;border-radius:16px;border:2px solid #f59e0b;background:#fffbeb;box-shadow:0 14px 40px #0003;color:#92400e;font-weight:900}
+
+/* Tách hàng tiện ích khỏi thao tác Bắt đầu/Kết thúc. */
+.table-utility-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:7px;margin-bottom:0}
+.table-utility-actions .utility-btn{min-width:0;width:100%;height:39px;border:0;border-radius:11px;display:grid;place-items:center;cursor:pointer;background:linear-gradient(135deg,#2563eb,#1d4ed8);color:#fff;font-size:16px;position:relative}
+.table-utility-actions .utility-btn.utility-cancel{background:linear-gradient(135deg,#f43f5e,#be123c)}
+.table-utility-actions .utility-btn:disabled{background:#e2e8f0;color:#94a3b8;cursor:not-allowed}
+.table-utility-actions .utility-btn .cart-count{right:-3px;top:-6px}
+.table-main-action{display:flex;margin-top:0}
+.table-main-action .table-btn{width:100%}
+.table-meta{gap:8px}
+.table-action-dialog-note{padding:13px;border:1px solid #dbe7f3;border-radius:12px;background:#f8fbff;color:#334155;font-weight:750;line-height:1.65}
+.table-action-dialog-note b{color:#123a61}
+
 </style>
 {% endblock %}
 
@@ -1574,6 +1587,23 @@
 
 </div>
 
+
+<!-- Chuyển bàn: không kết thúc phiên; chỉ hiện bàn còn trống. -->
+<div id="transferTableModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event,'transferTableModal')">
+ <div class="modal small"><div class="modal-head"><h2><i class="fa-solid fa-arrows-rotate"></i> Chuyển bàn chơi</h2><button class="modal-close" type="button" onclick="closeModal('transferTableModal')">×</button></div>
+ <div class="modal-body"><div class="table-action-dialog-note" id="transferTableInfo"></div>
+ <div class="field" style="margin-top:16px"><label for="transferTargetSelect">Chọn bàn mới (chỉ bàn trống)</label><select id="transferTargetSelect"></select></div>
+ <p style="font-size:12px;color:#64748b;line-height:1.5">Giữ nguyên giờ bắt đầu, khách hàng, Combo và toàn bộ dịch vụ đã gọi. Bàn cũ chỉ được giải phóng khi lưu thành công.</p>
+ <div class="modal-actions"><button class="secondary-btn" type="button" onclick="closeModal('transferTableModal')">Quay lại</button><button id="transferConfirmBtn" class="primary-btn" type="button" onclick="confirmTransferTable()">Xác nhận đổi bàn</button></div></div></div>
+</div>
+<!-- Hủy bàn: xác nhận một lần, không gọi thủ tục SQL hay tạo hóa đơn. -->
+<div id="cancelTableModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event,'cancelTableModal')">
+ <div class="modal small"><div class="modal-head"><h2 style="color:#be123c"><i class="fa-solid fa-triangle-exclamation"></i> Xác nhận hủy bàn</h2><button class="modal-close" type="button" onclick="closeModal('cancelTableModal')">×</button></div>
+ <div class="modal-body"><p id="cancelTableInfo" style="font-size:15px;font-weight:850;color:#334155">Bạn có chắc muốn hủy bàn này không?</p>
+ <p style="color:#be123c;font-size:12px;font-weight:750">Hủy bàn sẽ xóa phiên chơi hiện tại và không tạo hóa đơn.</p>
+ <div class="modal-actions"><button class="secondary-btn" type="button" onclick="closeModal('cancelTableModal')">Không hủy</button><button id="cancelConfirmBtn" class="danger-btn" type="button" onclick="confirmCancelTable()">Đúng, hủy bàn</button></div></div></div>
+</div>
+
 <div id="startCustomerModal" class="modal-backdrop" onclick="closeModalOnBackdrop(event, 'startCustomerModal')">
  <div class="modal small"><div class="modal-head"><h2 id="startCustomerTitle">Khách hàng mở bàn</h2><button type="button" class="modal-close" onclick="closeModal('startCustomerModal')">×</button></div>
  <div class="modal-body"><p style="color:#64748b">Đồng hồ đã chạy. Có thể lưu khách bây giờ hoặc bổ sung khi kết thúc.</p>
@@ -1618,7 +1648,7 @@
         </div>
         <div class="modal-body">
             <div class="modal-section">
-                <div class="section-head"><i class="fa-solid fa-user"></i> Khung 1: Chọn thành viên / khách hàng</div>
+                <div class="section-head"><i class="fa-solid fa-user"></i> Thành viên / khách hàng</div>
                 <div class="member-grid">
                     <div class="field full member-search-wrap">
                         <label>Tìm thành viên</label>
@@ -1653,11 +1683,6 @@
                             </button>
                         </div>
 
-                        <div class="member-search-help">
-                            Có thể tìm theo <b>Mã thành viên</b>, <b>Họ tên</b> hoặc <b>SĐT</b>.
-                            Máy quét mã USB cũng có thể quét trực tiếp vào ô này rồi nhấn Enter.
-                        </div>
-
                         <div id="memberSearchResults" class="member-search-results"></div>
 
                         <select id="invoiceMemberSelect" onchange="handleMemberSelect(this.value)" style="display:none">
@@ -1680,7 +1705,7 @@
             </div>
 
             <div class="modal-section">
-                <div class="section-head"><i class="fa-solid fa-clock"></i> Khung 2: Thời gian hoạt động bàn</div>
+                <div class="section-head"><i class="fa-solid fa-clock"></i> Hoạt động bàn</div>
                 <div class="invoice-summary-grid">
                     <div class="info-box"><span>Bàn số</span><strong id="billTableNo">—</strong></div>
                     <div class="info-box"><span>Thời gian bắt đầu</span><strong id="billStartTime">—</strong></div>
@@ -1690,7 +1715,7 @@
             </div>
 
             <div class="modal-section">
-                <div class="section-head"><i class="fa-solid fa-mug-hot"></i> Khung 3: Dịch vụ thêm</div>
+                <div class="section-head"><i class="fa-solid fa-mug-hot"></i> Dịch vụ thêm</div>
                 <div id="serviceRows" class="service-rows"></div>
             </div>
 
@@ -1699,11 +1724,11 @@
                 <div id="invoiceComboInfo"></div>
             </div>
             <div class="modal-section">
-                <div class="section-head"><i class="fa-solid fa-tags"></i> Khung 4: Giảm giá</div>
+                <div class="section-head"><i class="fa-solid fa-tags"></i>Voucher | Giảm giá</div>
 
                 <div id="memberBenefitBox" class="member-benefit-box is-disabled">
                     <div class="field full">
-                        <label>Voucher / Quà tặng giảm tiền của thành viên</label>
+                        <label>Voucher / Quà tặng của thành viên</label>
 
                         <select
                             id="memberBenefitSelect"
@@ -1714,11 +1739,6 @@
                                 Hãy chọn Thành viên hoặc Đăng ký thành viên
                             </option>
                         </select>
-
-                        <div id="memberBenefitNote" class="member-benefit-note">
-                            Chỉ áp dụng Voucher hoặc Quà tặng có giá trị tiền.
-                            Quà vật phẩm như gấu bông, nước... không được quy đổi vào hóa đơn.
-                        </div>
                     </div>
                 </div>
 
@@ -1749,7 +1769,7 @@
             </div>
 
             <div class="modal-section">
-                <div class="section-head"><i class="fa-solid fa-receipt"></i> Khung 5: Thanh toán</div>
+                <div class="section-head"><i class="fa-solid fa-receipt"></i>Thanh toán</div>
                 <div class="payment-summary">
                     <div class="table-fee-box">
                         <div class="table-fee-head">
@@ -2910,62 +2930,14 @@ function renderTables() {
                         <strong id="timer_${table.tableNo}">${timerText}</strong>
                         <small id="timerSub_${table.tableNo}">${timerSub}</small>${customerLabel}
                     </div>
-                    <div class="table-actions">
-
-                        ${
-                            table.active
-
-                            ? `
-                            <button
-                                class="table-btn end-btn"
-                                onclick="requestEndTable(${table.tableNo})"
-                            >
-                                Kết thúc
-                            </button>
-                            `
-
-                            : `
-                            <button
-                                class="table-btn start-btn"
-                                onclick="startTable(${table.tableNo})"
-                            >
-                                Bắt đầu
-                            </button>
-                            `
-                        }
-
-
-                        ${table.active ? `<button type="button" class="cart-btn enabled" title="Đổi khách" onclick="openStartCustomer(${table.tableNo})"><i class="fa-solid fa-user-pen"></i></button>` : ''}
-                        <button
-                            class="cart-btn ${table.active ? 'enabled' : 'disabled'}"
-                            ${table.active ? '' : 'disabled'}
-                            onclick="openTableCart(${table.tableNo})"
-                            title="Dịch vụ thêm"
-                        >
-                            <i class="fa-solid fa-cart-shopping"></i>
-
-                            ${
-                                table.cart &&
-                                table.cart.length
-
-                                ? `
-                                <span class="cart-count">
-                                    ${table.cart.reduce(
-                                        (sum, item) =>
-                                            sum
-                                            + Number(
-                                                item.quantity || 0
-                                            ),
-                                        0
-                                    )}
-                                </span>
-                                `
-
-                                : ''
-                            }
-
-                        </button>
-
+                    <div class="table-utility-actions">
+                       <button type="button" class="utility-btn" title="Dịch vụ thêm" aria-label="Dịch vụ thêm" ${table.active?'':'disabled'} onclick="openTableCart(${table.tableNo})"><i class="fa-solid fa-cart-shopping"></i>${table.active && table.cart && table.cart.length ? `<span class="cart-count">${table.cart.reduce((sum,x)=>sum+Number(x.quantity||0),0)}</span>` : ''}</button>
+                       <button type="button" class="utility-btn" title="Sửa thông tin thành viên" aria-label="Sửa thông tin thành viên" ${table.active?'':'disabled'} onclick="openStartCustomer(${table.tableNo})"><i class="fa-solid fa-user-pen"></i></button>
+                       <button type="button" class="utility-btn" title="Đổi bàn" aria-label="Đổi bàn" ${table.active?'':'disabled'} onclick="openTransferTable(${table.tableNo})"><i class="fa-solid fa-arrows-rotate"></i></button>
+                       <button type="button" class="utility-btn utility-cancel" title="Hủy bàn" aria-label="Hủy bàn" ${table.active?'':'disabled'} onclick="openCancelTable(${table.tableNo})"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="table-main-action">
+                      ${table.active ? `<button class="table-btn end-btn" onclick="requestEndTable(${table.tableNo})">Kết thúc</button>` : `<button class="table-btn start-btn" onclick="startTable(${table.tableNo})">Bắt đầu</button>`}
                     </div>
                 </div>
             </div>
@@ -3176,6 +3148,64 @@ function updateTableTimer(tableNo) {
         timerSubEl.textContent =
             `Bắt đầu: ${formatDateTime(table.startedAt)}`;
     }
+}
+
+
+let tableTransferSource = null;
+let tableCancelSource = null;
+let tableActionBusy = false;
+
+function currentTableSummary(table) {
+    const start = table.startedAt ? formatDateTime(table.startedAt) : '—';
+    const items = (table.cart || []).map(x => `${escapeHtml(x.name)} × ${Number(x.quantity || 1)}`).join(', ') || 'Không có';
+    const customer = escapeHtml(table.customer?.name || 'Khách lẻ');
+    const combo = table.combo ? escapeHtml(table.combo.name || 'Combo') : 'Chơi thông thường';
+    return `<b>Bàn ${table.tableNo}</b><div>Khách: ${customer}</div><div>Bắt đầu: ${start}</div><div>Hình thức: ${combo}</div><div>Dịch vụ đã gọi: ${items}</div>`;
+}
+function openTransferTable(tableNo) {
+    if(tableActionBusy) return;
+    const source=getTable(tableNo);
+    if(!source?.active) return;
+    tableTransferSource=tableNo;
+    const targets=tablesState.filter(x=>!x.active && x.tableNo!==tableNo);
+    const select=document.getElementById('transferTargetSelect');
+    select.innerHTML=targets.length ? targets.map(x=>`<option value="${x.tableNo}">Bàn ${x.tableNo} – Đang trống</option>`).join('') : '<option value="">Không có bàn trống</option>';
+    document.getElementById('transferTableInfo').innerHTML=currentTableSummary(source);
+    document.getElementById('transferConfirmBtn').disabled=!targets.length;
+    openModal('transferTableModal');
+}
+async function confirmTransferTable(){
+    if(tableActionBusy || !tableTransferSource) return;
+    const target=Number(document.getElementById('transferTargetSelect').value);
+    if(!target || getTable(target)?.active){alert('Chỉ được chuyển sang bàn đang trống.');return;}
+    if(!confirm(`Xác nhận chuyển Bàn ${tableTransferSource} sang Bàn ${target}?`))return;
+    const button=document.getElementById('transferConfirmBtn');
+    tableActionBusy=true;button.disabled=true;
+    try{
+        const res=await fetch(`/api/ban/${tableTransferSource}/chuyen-ban`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ban_moi:target})});
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok || !data.ok)throw new Error(data.message||'Không thể chuyển bàn.');
+        // Tải lại trạng thái xác thực từ Supabase, không tự giả lập chuyển dữ liệu trên client.
+        window.location.reload();
+    }catch(e){alert(e.message);button.disabled=false;tableActionBusy=false;}
+}
+function openCancelTable(tableNo){
+    if(tableActionBusy)return;
+    const source=getTable(tableNo);if(!source?.active)return;
+    tableCancelSource=tableNo;
+    document.getElementById('cancelTableInfo').textContent=`Bạn có chắc muốn hủy Bàn ${tableNo} không?`;
+    openModal('cancelTableModal');
+}
+async function confirmCancelTable(){
+    if(tableActionBusy || !tableCancelSource)return;
+    const btn=document.getElementById('cancelConfirmBtn');
+    tableActionBusy=true;btn.disabled=true;
+    try{
+        const res=await fetch(`/api/ban/${tableCancelSource}/huy-ban`,{method:'POST',headers:{'Content-Type':'application/json'}});
+        const data=await res.json().catch(()=>({}));
+        if(!res.ok || !data.ok)throw new Error(data.message||'Không thể hủy bàn.');
+        window.location.reload();
+    }catch(e){alert(e.message);btn.disabled=false;tableActionBusy=false;}
 }
 
 function requestEndTable(tableNo) {

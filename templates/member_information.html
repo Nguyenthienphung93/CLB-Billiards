@@ -323,30 +323,62 @@
         min-width:0;
     }
 
-    .rank-dot{
+    /* Bi pool chuẩn: 1 vàng, 2 xanh dương, 3 đỏ, 4 tím, 5 cam, 6 xanh lá.
+       Chỉ mốc đã đạt mới hiện màu; mốc chưa đạt giữ xám. */
+    .rank-dot.pool-ball{
+        --ball-color:#aab4c3;
+        --ball-light:#e0e5ec;
         width:38px;
         height:38px;
         margin:0 auto 8px;
         border-radius:50%;
+        position:relative;
         display:grid;
         place-items:center;
+        isolation:isolate;
+        border:2px solid rgba(255,255,255,.88);
+        background:radial-gradient(circle at 29% 23%,var(--ball-light) 0%,var(--ball-color) 53%,#697586 100%);
+        box-shadow:inset -4px -5px 8px rgba(0,0,0,.20),
+                   inset 3px 3px 5px rgba(255,255,255,.38),
+                   0 3px 8px rgba(15,23,42,.19);
+        transition:transform .2s ease,box-shadow .2s ease;
+    }
+    .rank-dot.pool-ball::before{
+        content:"";
+        position:absolute;
+        top:5px;left:7px;
+        width:11px;height:7px;
+        border-radius:50%;
+        background:rgba(255,255,255,.48);
+        filter:blur(1px);
+        pointer-events:none;
+    }
+    .pool-ball-number{
+        width:21px;
+        height:21px;
+        border-radius:50%;
         background:#fff;
-        border:4px solid #cbd5e1;
-        box-shadow:0 3px 10px rgba(15,23,42,.08);
-        font-size:15px;
+        box-shadow:0 1px 3px rgba(0,0,0,.22);
+        display:grid;
+        place-items:center;
+        font-size:12px;
         font-weight:1000;
-        color:#64748b;
+        line-height:1;
+        color:#101827;
+        z-index:1;
     }
-
-    .rank-step.done .rank-dot,
-    .rank-step.current .rank-dot{
-        border-color:#2563eb;
-        color:#1d4ed8;
-        background:#eff6ff;
-    }
-
-    .rank-step.current .rank-dot{
-        box-shadow:0 0 0 6px rgba(37,99,235,.10),0 4px 12px rgba(15,23,42,.10);
+    .rank-step.done .pool-ball.ball-1,.rank-step.current .pool-ball.ball-1{--ball-color:#f5c400;--ball-light:#ffed76}
+    .rank-step.done .pool-ball.ball-2,.rank-step.current .pool-ball.ball-2{--ball-color:#1765d5;--ball-light:#86bdff}
+    .rank-step.done .pool-ball.ball-3,.rank-step.current .pool-ball.ball-3{--ball-color:#dc2626;--ball-light:#ff9696}
+    .rank-step.done .pool-ball.ball-4,.rank-step.current .pool-ball.ball-4{--ball-color:#7337b9;--ball-light:#c8a4f7}
+    .rank-step.done .pool-ball.ball-5,.rank-step.current .pool-ball.ball-5{--ball-color:#e97710;--ball-light:#ffbc70}
+    .rank-step.done .pool-ball.ball-6,.rank-step.current .pool-ball.ball-6{--ball-color:#16864c;--ball-light:#81dfa4}
+    .rank-step.current .rank-dot.pool-ball{
+        transform:scale(1.1);
+        box-shadow:inset -4px -5px 8px rgba(0,0,0,.20),
+                   inset 3px 3px 5px rgba(255,255,255,.38),
+                   0 0 0 5px rgba(37,99,235,.17),
+                   0 5px 13px rgba(37,99,235,.28);
     }
 
     .rank-step-name{
@@ -818,7 +850,8 @@
         .rank-progress{ overflow-x:auto; grid-template-columns:repeat(6,minmax(86px,1fr)); padding-bottom:8px; }
         .rank-progress::before,.rank-progress::after{ display:none; }
         .rank-step{ padding:0 4px; }
-        .rank-dot{ width:34px; height:34px; }
+        .rank-dot.pool-ball{ width:34px; height:34px; }
+        .pool-ball-number{ width:19px; height:19px; font-size:11px; }
         .member-card{ width:100%; max-width:560px; aspect-ratio:16 / 9; min-height:0; padding:14px 15px; border-radius:20px; }
         .card-content{ grid-template-columns:1.25fr .75fr; grid-template-rows:auto 1fr; grid-template-areas:"top top" "info center"; gap:7px 10px; }
         .club-mini-title{ font-size:8px; }
@@ -846,6 +879,8 @@
         margin-right:auto;
         align-self:center;
     }
+
+    
 
     
 </style>
@@ -961,7 +996,7 @@
              style="grid-template-columns:repeat({{ member_ranks|length if member_ranks else 6 }},1fr)">
             {% for rank in member_ranks %}
             <div class="rank-step" data-rank-index="{{ loop.index0 }}">
-                <div class="rank-dot">{{ loop.index }}</div>
+                <div class="rank-dot pool-ball ball-{{ loop.index }}" role="img" aria-label="Bi số {{ loop.index }} - {{ rank.name }}"><span class="pool-ball-number">{{ loop.index }}</span></div>
                 <div class="rank-step-name">{{ rank.name }}</div>
             </div>
             {% endfor %}

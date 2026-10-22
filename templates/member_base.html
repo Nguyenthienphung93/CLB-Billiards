@@ -535,6 +535,94 @@
                 border-radius:12px;
             }
         }
+
+        /* HEADER MEMBER - đồng bộ kích thước và phong cách với base Admin. */
+        :root{--header-h:118px}
+        .header,
+        .app.sidebar-collapsed .header{
+            grid-template-columns:150px minmax(0,1fr) 220px;
+            gap:18px;
+            padding:12px 24px;
+            background:linear-gradient(135deg,#dff3ff 0%,#bfe5ff 50%,#d9f0ff 100%);
+            border-bottom:1px solid rgba(37,99,235,.18);
+            box-shadow:0 10px 28px rgba(37,99,235,.12);
+        }
+        .club-logo{
+            width:92px;
+            height:92px;
+            padding:8px;
+            border-radius:20px;
+            background:rgba(255,255,255,.92);
+            border:1px solid rgba(37,99,235,.18);
+            box-shadow:0 10px 20px rgba(15,37,64,.12);
+        }
+        .club-logo img{width:100%;height:100%;object-fit:contain}
+        .header-title{min-width:0;line-height:1.02;user-select:none}
+        .header-title .small{
+            font-size:32px;
+            font-weight:950;
+            letter-spacing:.3px;
+            color:#0a3f78;
+            text-shadow:0 1px 0 #fff,0 2px 0 #9fcff1,0 3px 0 #73b4e2,0 5px 9px rgba(15,78,128,.22);
+        }
+        .header-title .big{
+            margin-top:7px;
+            font-size:47px;
+            font-weight:1000;
+            letter-spacing:1.5px;
+            color:#0b4f8a;
+            text-shadow:0 1px 0 #e8f7ff,0 2px 0 #9dd2f3,0 3px 0 #6fb8e7,0 4px 0 #3f8fc4,0 8px 14px rgba(15,78,128,.26);
+        }
+        .time-box{
+            width:100%;min-width:0;min-height:76px;
+            padding:11px 14px;
+            background:rgba(255,255,255,.73);
+            border:1px solid rgba(37,99,235,.22);
+            box-shadow:0 9px 22px rgba(37,99,235,.11);
+            backdrop-filter:blur(7px);
+        }
+        .time-clock{font-size:28px;color:#0b4f8a;font-variant-numeric:tabular-nums;letter-spacing:1px}
+        .time-date{margin-top:6px;font-size:13px;color:#315471}
+
+        @media(max-width:900px){
+            :root{--header-h:96px}
+            .header,.app.sidebar-collapsed .header{
+                grid-template-columns:92px minmax(0,1fr) 170px;
+                padding:9px 12px;
+                gap:8px;
+            }
+            .club-logo{width:70px;height:70px;border-radius:15px;padding:6px}
+            .header-title .small{font-size:22px}
+            .header-title .big{font-size:32px}
+            .time-box{min-height:64px;padding:8px}
+            .time-clock{font-size:21px}
+            .time-date{font-size:11px}
+        }
+        @media(max-width:680px){
+            :root{--header-h:96px}
+            .header,.app.sidebar-collapsed .header{
+                grid-template-columns:80px minmax(0,1fr) 154px;
+                padding:8px 10px;
+                gap:6px;
+            }
+            .header-title .small{font-size:17px;white-space:normal}
+            .header-title .big{font-size:26px;white-space:normal;overflow-wrap:anywhere}
+            .time-box{display:block;min-height:60px;padding:8px 4px}
+            .time-clock{font-size:18px}
+            .time-date{font-size:9px;white-space:normal}
+        }
+        @media(max-width:650px){
+            :root{--header-h:86px}
+            .header,.app.sidebar-collapsed .header{
+                grid-template-columns:65px minmax(0,1fr);
+                padding:8px 10px;
+                gap:8px;
+            }
+            .club-logo{width:58px;height:58px;border-radius:13px;padding:5px}
+            .header-title .small{font-size:15px}
+            .header-title .big{font-size:24px;margin-top:4px}
+            .time-box{display:none}
+        }
     </style>
 
     {% block extra_css %}{% endblock %}
